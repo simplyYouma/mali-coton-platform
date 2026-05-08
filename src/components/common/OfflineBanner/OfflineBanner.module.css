@@ -1,0 +1,22 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-bottom: 1px solid var(--color-warning-border);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+.syncing {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  border-bottom-color: var(--color-info-border);
+}
+.spin {
+  animation: spin 1.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

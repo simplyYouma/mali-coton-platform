@@ -1,0 +1,213 @@
+/*
+ * Design tokens — Plateforme Mali Coton (PNUD × Sahel Analytics)
+ * Source unique. NEVER hardcode values in components.
+ *
+ * Direction esthétique : dashboard premium type Pinterest/Dribbble — fond
+ * blanc cassé, hairlines, surfaces blanches, typo tranchée, primaire noir,
+ * accents sobres tirés des logos PNUD (bleu ONU) et Sahel Analytics
+ * (navy + sable chaud).
+ *
+ * Note de gouvernance — `--color-brand-rust` et `--color-brand-indigo`
+ * sont conservés comme alias historiques mais correspondent désormais aux
+ * slots brand primary/secondary. Voir memory/feedback_design_direction.md.
+ */
+
+:root {
+  /* ─────────────────────────────────────────────
+   * 1. Neutrals — premium dashboard base
+   * ───────────────────────────────────────────── */
+  --color-bg: #f5f6f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #fafbfc;
+  --color-surface-sunken: #f1f2f4;
+  --color-border: #ececef;
+  --color-border-strong: #d8dadd;
+  --color-text: #0a0a0b;
+  --color-text-muted: #6b7280;
+  --color-text-disabled: #b0b4ba;
+
+  /* ─────────────────────────────────────────────
+   * 2. Brand — logos PNUD (bleu ONU) + Sahel Analytics (navy + sable)
+   *    Primary  = bleu ONU PNUD — CTA, liens, focus
+   *    Secondary = navy Sahel — accents structurels, texte fort
+   *    Accent   = sable Sahel — highlights chaleureux dosés
+   *    Ink      = noir — réservé typographie corps
+   * ───────────────────────────────────────────── */
+  --color-primary: #418fde;
+  --color-primary-hover: #2f7bc9;
+  --color-primary-active: #2466ad;
+  --color-primary-soft: #e8f1fb;
+  --color-primary-soft-hover: #d4e6f7;
+
+  --color-secondary: #14253a;
+  --color-secondary-hover: #0c1828;
+  --color-secondary-soft: #e7ecf3;
+
+  /* Accents bonbons élégants — pour highlights et différenciation chart */
+  --color-accent: #14b8a6; /* mint/teal — moderne, neutre */
+  --color-accent-hover: #0d9488;
+  --color-accent-soft: #ccfbf1;
+
+  --color-coral: #fb7185;
+  --color-coral-hover: #e85a6f;
+  --color-coral-soft: #ffe4e6;
+
+  --color-lavender: #a78bfa;
+  --color-lavender-hover: #8b5cf6;
+  --color-lavender-soft: #ede9fe;
+
+  --color-amber: #f59e0b;
+  --color-amber-hover: #d97706;
+  --color-amber-soft: #fef3c7;
+
+  --color-ink: #0a0a0b;
+
+  /* Convenience aliases */
+  --color-un-blue: var(--color-primary);
+  --color-un-blue-hover: var(--color-primary-hover);
+  --color-un-blue-soft: var(--color-primary-soft);
+  --color-navy: var(--color-secondary);
+  --color-navy-hover: var(--color-secondary-hover);
+  --color-navy-soft: var(--color-secondary-soft);
+
+  /* Aliases historiques — composants legacy */
+  --color-brand-rust: var(--color-primary);
+  --color-brand-rust-hover: var(--color-primary-hover);
+  --color-brand-rust-soft: var(--color-primary-soft);
+  --color-brand-indigo: var(--color-secondary);
+  --color-brand-indigo-hover: var(--color-secondary-hover);
+  --color-brand-indigo-soft: var(--color-secondary-soft);
+
+  /* ─────────────────────────────────────────────
+   * 3. Semantic — pastels très doux
+   * ───────────────────────────────────────────── */
+  --color-success: #157f4a;
+  --color-success-bg: #e8f5ee;
+  --color-success-border: #cfe7d8;
+
+  --color-warning: #a85b00;
+  --color-warning-bg: #fbf0dc;
+  --color-warning-border: #f0d8a8;
+
+  --color-danger: #b21f1f;
+  --color-danger-bg: #fbe7e7;
+  --color-danger-border: #ecbcbc;
+
+  --color-info: #1f6cb1;
+  --color-info-bg: #e6f0f8;
+  --color-info-border: #c2d8ec;
+
+  /* ─────────────────────────────────────────────
+   * 4. Chart palette
+   * ───────────────────────────────────────────── */
+  --chart-1: #418fde; /* UN sky blue */
+  --chart-2: #14b8a6; /* mint */
+  --chart-3: #fb7185; /* coral */
+  --chart-4: #a78bfa; /* lavender */
+  --chart-5: #f59e0b; /* amber */
+  --chart-6: #64748b; /* slate */
+
+  /* ─────────────────────────────────────────────
+   * 5. Typography — Inter only, hiérarchie franche
+   * ───────────────────────────────────────────── */
+  --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --text-display: 2.5rem;
+  --text-h1: 1.875rem;
+  --text-h2: 1.25rem;
+  --text-h3: 1rem;
+  --text-body: 0.875rem;
+  --text-sm: 0.8125rem;
+  --text-xs: 0.6875rem;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ─────────────────────────────────────────────
+   * 6. Spacing (8px scale)
+   * ───────────────────────────────────────────── */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* ─────────────────────────────────────────────
+   * 7. Border radius
+   * ───────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* ─────────────────────────────────────────────
+   * 8. Shadows — quasi inexistantes
+   * ───────────────────────────────────────────── */
+  --shadow-sm: 0 1px 0 rgba(10, 10, 11, 0.02);
+  --shadow-md: 0 1px 2px rgba(10, 10, 11, 0.04);
+  --shadow-lg: 0 8px 24px rgba(10, 10, 11, 0.06);
+
+  /* ─────────────────────────────────────────────
+   * 9. Borders
+   * ───────────────────────────────────────────── */
+  --border-hairline: 1px solid var(--color-border);
+  --border-strong: 1px solid var(--color-border-strong);
+
+  /* ─────────────────────────────────────────────
+   * 10. Focus ring (custom — never native)
+   * ───────────────────────────────────────────── */
+  --ring-focus: 0 0 0 3px rgba(65, 143, 222, 0.28);
+  --ring-focus-danger: 0 0 0 3px rgba(178, 31, 31, 0.18);
+
+  /* ─────────────────────────────────────────────
+   * 11. Layout
+   * ───────────────────────────────────────────── */
+  --sidebar-width: 248px;
+  --sidebar-width-collapsed: 64px;
+  --topbar-height: 64px;
+  --content-max-width: 1440px;
+
+  /* ─────────────────────────────────────────────
+   * 12. Motion
+   * ───────────────────────────────────────────── */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ─────────────────────────────────────────────
+   * 13. Z-index scale
+   * ───────────────────────────────────────────── */
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-drawer: 400;
+  --z-overlay: 500;
+  --z-modal: 600;
+  --z-popover: 700;
+  --z-toast: 800;
+  --z-tooltip: 900;
+
+  /* ─────────────────────────────────────────────
+   * 14. Breakpoints
+   * ───────────────────────────────────────────── */
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1536px;
+}

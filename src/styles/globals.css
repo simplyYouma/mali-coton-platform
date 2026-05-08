@@ -1,0 +1,75 @@
+@import './fonts.css';
+@import './tokens.css';
+@import './reset.css';
+
+/* Utility — visually hidden but accessible to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Containers */
+.container {
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+  padding-inline: var(--space-5);
+}
+
+/* Display headers — semantic class for KPI numbers and major titles */
+.display {
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.01em;
+}
+
+/* Mono — GPS coordinates, IDs, codes */
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* ───────────────────────────────────────────────
+ * Print mode — module Reporting (CDC §5.3 Module 7)
+ *
+ * Quand l'utilisateur clique « Générer PDF », on ajoute la classe
+ * `printing-report` sur <body> avant `window.print()`. Tout est masqué
+ * sauf le rapport. Format A4 portrait, marges réduites — le navigateur
+ * gère le saut de page sur les éléments avec `page-break-after: always`.
+ * ─────────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  /* Pendant l'impression, le rapport est hoisté en enfant direct de <body>.
+     On masque tous les autres enfants de <body> et on neutralise les
+     transforms/filters appliqués pour l'aperçu. */
+  body.printing-report > *:not(#report-print-root) {
+    display: none !important;
+  }
+  body.printing-report,
+  html:has(body.printing-report) {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.printing-report > #report-print-root {
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
+  body.printing-report > #report-print-root * {
+    transform: none !important;
+    filter: none !important;
+  }
+}

@@ -1,0 +1,202 @@
+/* ───────────────────────────────────────────────
+ * PhotoLightbox — visionneuse style e-commerce premium
+ * Backdrop floutée, image cadrée, miniatures + navigation clavier
+ * ─────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  justify-items: center;
+  padding: var(--space-5);
+  background: rgba(8, 14, 28, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: fadeIn 180ms ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Bouton fermer ── */
+.closeBtn {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+  backdrop-filter: blur(8px);
+}
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.05);
+}
+
+/* ── Navigation latérale ── */
+.navBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+  backdrop-filter: blur(8px);
+  z-index: 2;
+}
+.navBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.navPrev {
+  left: var(--space-5);
+}
+.navPrev:hover {
+  transform: translateY(-50%) translateX(-2px);
+}
+.navNext {
+  right: var(--space-5);
+}
+.navNext:hover {
+  transform: translateY(-50%) translateX(2px);
+}
+
+/* ── Image principale ── */
+.frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(1080px, 92vw);
+  max-height: calc(100vh - 220px);
+  margin: 0;
+}
+.imageWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.55);
+  background: #0b0f1a;
+  max-height: calc(100vh - 260px);
+}
+.imageWrap img {
+  display: block;
+  max-width: min(1080px, 92vw);
+  max-height: calc(100vh - 260px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* ── Légende ── */
+.caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  color: #fff;
+  max-width: 720px;
+}
+.captionNote {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  letter-spacing: -0.01em;
+}
+.captionMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.04em;
+}
+.captionDot {
+  opacity: 0.5;
+}
+.captionCount {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Miniatures e-commerce ── */
+.thumbStrip {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  max-width: 92vw;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+.thumbStrip::-webkit-scrollbar {
+  height: 6px;
+}
+.thumbStrip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.thumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  padding: 0;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+  opacity: 0.6;
+}
+.thumb:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.thumbActive {
+  border-color: #fff;
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .navBtn { width: 38px; height: 38px; }
+  .navPrev { left: var(--space-3); }
+  .navNext { right: var(--space-3); }
+  .thumb { width: 48px; height: 48px; }
+}

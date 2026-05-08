@@ -1,0 +1,285 @@
+/* ───────────────────────────────────────────────
+ * Sidebar — minimaliste premium (Dribbble/Pinterest dashboards)
+ * Brand block compact, sections aérées, item actif élégant.
+ * ─────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-5) var(--space-3) var(--space-4);
+}
+@media (max-width: 1024px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+/* ───── Brand block ───── */
+.workspace {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) var(--space-6);
+}
+.workspaceButton {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.brandMark {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(20, 37, 58, 0.18);
+}
+.brandLogo {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+.workspaceMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.workspaceName {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-body);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+.workspacePlan {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.collapseToggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.collapseToggle:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+/* ───── Nav ───── */
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  overflow-y: auto;
+  padding: 0 var(--space-2);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.sectionTitle {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-disabled);
+  margin: 0 0 var(--space-2) var(--space-2);
+  font-weight: var(--weight-semibold);
+}
+.sectionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  position: relative;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.link:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+.linkActive {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-active);
+  font-weight: var(--weight-semibold);
+}
+.linkActive:hover {
+  background: var(--color-primary-soft);
+}
+.linkActive .linkIcon {
+  color: var(--color-primary);
+}
+.linkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.link:hover .linkIcon {
+  color: var(--color-text);
+}
+.linkLabel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.linkBadge {
+  font-size: 10px;
+  background: var(--color-secondary);
+  color: #fff;
+  padding: 1px 7px;
+  min-width: 18px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+.linkBadgeDanger {
+  background: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+.linkBadgeWarning {
+  background: var(--color-amber);
+  box-shadow: 0 0 0 3px var(--color-amber-soft);
+}
+
+/* ───── Footer aide ───── */
+.footerCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) var(--space-2) 0;
+  padding: 8px var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.footerCard:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+.footerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.footerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.footerTitle {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: inherit;
+}
+.footerHint,
+.footerArrow {
+  display: none;
+}
+
+/* ───── Collapsed state ───── */
+.collapsed {
+  padding: var(--space-5) var(--space-2) var(--space-4);
+}
+.collapsed .workspace {
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 0 var(--space-5);
+}
+.collapsed .workspaceButton {
+  justify-content: center;
+}
+.collapsed .nav {
+  padding: 0;
+}
+.collapsed .link {
+  justify-content: center;
+  padding: 8px;
+}
+.collapsed .sectionTitle {
+  display: none;
+}
+.collapsed .footerCard {
+  justify-content: center;
+  padding: 8px;
+}

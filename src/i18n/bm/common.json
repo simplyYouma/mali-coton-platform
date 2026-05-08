@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "Mali Kɔɔri",
+    "tagline": "PNUD ka baara — Yɔrɔw kɔlɔsili"
+  },
+  "actions": {
+    "save": "K'a mara",
+    "cancel": "K'a dabila",
+    "submit": "K'a ci",
+    "edit": "K'a yɛlɛma",
+    "delete": "K'a jɔsi",
+    "back": "Kɔsegin",
+    "next": "Nata",
+    "previous": "Tɛmɛnen",
+    "search": "Ɲini",
+    "filter": "Sigayɔrɔ",
+    "export": "Bɔ kɛnɛma"
+  },
+  "status": {
+    "loading": "A b'a labɛn…",
+    "error": "Fili dɔ kɛra",
+    "empty": "Foyi tɛ yen"
+  }
+}

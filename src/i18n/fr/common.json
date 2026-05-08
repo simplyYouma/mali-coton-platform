@@ -1,0 +1,24 @@
+{
+  "app": {
+    "name": "Mali Coton",
+    "tagline": "Plateforme PNUD — Suivi socio-environnemental"
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "submit": "Soumettre",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter"
+  },
+  "status": {
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue",
+    "empty": "Aucune donnée"
+  }
+}

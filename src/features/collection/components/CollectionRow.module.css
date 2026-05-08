@@ -1,0 +1,218 @@
+/* ───────────────────────────────────────────────
+ * CollectionRow — table row alignée, sans accent gauche
+ * Type "data table" propre avec icône statut, méta secondaires, CTA discret
+ * ─────────────────────────────────────────────── */
+
+.row {
+  display: grid;
+  grid-template-columns: 36px 1.4fr 1fr 100px 140px 28px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+.row:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.row:hover .arrow {
+  color: var(--color-primary);
+}
+
+/* Pastille statut (cercle coloré) */
+.statusDot {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+.row[data-status='draft'] .statusDot {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+}
+.row[data-status='pending_sync'] .statusDot {
+  background: var(--color-amber-soft);
+  color: var(--color-amber-hover);
+}
+.row[data-status='submitted'] .statusDot {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.row[data-status='awaiting_lab'] .statusDot {
+  background: var(--color-lavender-soft);
+  color: var(--color-lavender-hover);
+}
+.row[data-status='lab_complete'] .statusDot {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+}
+.row[data-status='validated'] .statusDot {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.row[data-status='rejected'] .statusDot {
+  background: var(--color-coral-soft);
+  color: var(--color-coral-hover);
+}
+
+/* Colonne principale — site + statut text */
+.mainCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.siteLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  font-size: var(--text-body);
+  letter-spacing: -0.01em;
+}
+.siteCity {
+  color: var(--color-text-muted);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-sm);
+}
+.statusLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--weight-medium);
+}
+
+/* Colonne meta (agent · id · GPS) */
+.metaCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.metaTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+.id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-secondary);
+  background: var(--color-secondary-soft);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+}
+.gps {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+}
+
+/* Colonne mesure pH */
+.measuresCol {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  background: var(--color-primary-soft);
+  padding: 5px var(--space-3);
+  border-radius: var(--radius-sm);
+  justify-content: center;
+}
+.measureLabel {
+  font-size: 10px;
+  color: var(--color-primary-active);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--weight-semibold);
+}
+.measureValue {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  color: var(--color-primary-active);
+  font-size: var(--text-sm);
+}
+.measureEmpty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-disabled);
+  background: var(--color-surface-2);
+  padding: 5px var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+/* Colonne date */
+.dateCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+  min-width: 0;
+}
+.dateValue {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-mono);
+}
+.dateRelative {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Flèche CTA */
+.arrow {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+@media (max-width: 1024px) {
+  .row {
+    grid-template-columns: 36px 1fr auto;
+  }
+  .metaCol {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+  .measuresCol,
+  .measureEmpty {
+    grid-column: 2;
+    grid-row: 3;
+    justify-self: start;
+  }
+  .dateCol {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .arrow {
+    display: none;
+  }
+}

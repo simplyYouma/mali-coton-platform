@@ -1,0 +1,5 @@
+- [User profile — Youma](user_profile.md) — UI/UX Lead du projet PNUD Mali Coton, francophone
+- [Project — Mali Coton platform](project_mali_coton.md) — Plateforme PNUD suivi socio-environnemental teintureries
+- [Feedback — design direction](feedback_design_direction.md) — Direction esthétique premium minimaliste validée
+- [Project — Modèle collecte hybride](project_collection_model.md) — Collecte = dossier progressif (in situ + labo différé), JAMAIS atomique
+- [Feedback — Copy UI](feedback_ui_copy.md) — Pas de méta-références CDC/tech-spec dans l'interface ; sources normatives par indicateur OK
