@@ -356,27 +356,17 @@ export function AnalyticsPage() {
                 Pas assez de données pour cet indicateur sur la période.
               </p>
             ) : (
-              <>
-                <LineChart
-                  labels={trend.labels}
-                  series={trend.series}
-                  height={280}
-                  threshold={
-                    rule?.maxOk !== undefined
-                      ? { value: rule.maxOk, label: `Seuil ${rule.unit}` }
-                      : undefined
-                  }
-                  fillArea
-                />
-                <div className={styles.legend} style={{ marginTop: 'var(--space-3)' }}>
-                  {trend.series.map((s) => (
-                    <span key={s.label} className={styles.legendItem}>
-                      <span className={styles.legendDot} style={{ background: s.color }} />
-                      {s.label}
-                    </span>
-                  ))}
-                </div>
-              </>
+              <LineChart
+                labels={trend.labels}
+                series={trend.series}
+                height={280}
+                threshold={
+                  rule?.maxOk !== undefined
+                    ? { value: rule.maxOk, label: `Seuil ${rule.unit}` }
+                    : undefined
+                }
+                fillArea
+              />
             )}
           </div>
         </section>
