@@ -242,49 +242,51 @@ export function AnalyticsPage() {
       </header>
 
       <div className={styles.toolbar}>
-        <span className={styles.toolbarLabel}>Indicateur</span>
-        <div className={styles.toolbarSelect}>
-          <Select<string>
-            value={indicatorId}
-            onChange={setIndicatorId}
-            options={indicatorOptions}
-            aria-label="Indicateur à explorer"
-          />
+        <div className={styles.toolbarRow}>
+          <div className={styles.toolbarField}>
+            <span className={styles.toolbarLabel}>Indicateur</span>
+            <div className={styles.toolbarSelect}>
+              <Select<string>
+                value={indicatorId}
+                onChange={setIndicatorId}
+                options={indicatorOptions}
+                aria-label="Indicateur à explorer"
+              />
+            </div>
+          </div>
+          <div className={styles.toolbarField}>
+            <span className={styles.toolbarLabel}>Période</span>
+            <Tabs
+              value={period}
+              onChange={setPeriod}
+              items={PERIODS}
+              variant="pill"
+              aria-label="Période"
+            />
+          </div>
         </div>
-        <span
-          className={styles.toolbarLabel}
-          style={{ marginLeft: 'var(--space-3)' }}
-        >
-          Sites
-        </span>
-        <div className={styles.siteChips} role="group" aria-label="Filtrer par site">
-          <button
-            type="button"
-            className={`${styles.siteChip} ${isAllSelected ? styles.siteChipActive : ''}`}
-            onClick={() => setActiveSiteIds(new Set())}
-          >
-            Tous
-          </button>
-          {sites.map((s) => (
+        <div className={styles.toolbarRow}>
+          <span className={styles.toolbarLabel}>Sites</span>
+          <div className={styles.siteChips} role="group" aria-label="Filtrer par site">
             <button
-              key={s.id}
               type="button"
-              className={`${styles.siteChip} ${activeSiteIds.has(s.id) ? styles.siteChipActive : ''}`}
-              onClick={() => toggleSite(s.id)}
-              aria-pressed={activeSiteIds.has(s.id)}
+              className={`${styles.siteChip} ${isAllSelected ? styles.siteChipActive : ''}`}
+              onClick={() => setActiveSiteIds(new Set())}
             >
-              {s.shortName}
+              Tous
             </button>
-          ))}
-        </div>
-        <div className={styles.toolbarTabs}>
-          <Tabs
-            value={period}
-            onChange={setPeriod}
-            items={PERIODS}
-            variant="pill"
-            aria-label="Période"
-          />
+            {sites.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`${styles.siteChip} ${activeSiteIds.has(s.id) ? styles.siteChipActive : ''}`}
+                onClick={() => toggleSite(s.id)}
+                aria-pressed={activeSiteIds.has(s.id)}
+              >
+                {s.shortName}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -380,37 +382,37 @@ export function AnalyticsPage() {
         </section>
 
         <section className={styles.compositeCard} aria-labelledby="composite-heading">
-          <span className={styles.compositeAccent} aria-hidden="true" />
-          <span className={styles.compositeLabel}>Indice composite environnement-social</span>
-          <div className={styles.compositeValue}>
-            <span className={styles.compositeNumber}>{composite.overall}</span>
-            <span className={styles.compositeUnit}>/100</span>
-          </div>
-          <div className={styles.compositeBreakdown}>
-            <div className={styles.compositeBar}>
-              <span className={styles.compositeBarLabel}>Environnement</span>
-              <span className={styles.compositeBarTrack}>
-                <span
-                  className={styles.compositeBarFill}
-                  style={{ width: `${composite.env}%` }}
-                />
-              </span>
-              <span className={styles.compositeBarValue}>{composite.env}</span>
+          <header className={styles.compositeHead}>
+            <span className={styles.compositeLabel}>Indice composite</span>
+            <h2 id="composite-heading" className={styles.compositeTitle}>
+              Environnement &amp; social
+            </h2>
+          </header>
+          <div className={styles.compositeRing}>
+            <CircleGauge value={composite.overall} size={148} stroke={12} />
+            <div className={styles.compositeRingLabel}>
+              <span className={styles.compositeRingValue}>{composite.overall}</span>
+              <span className={styles.compositeRingUnit}>/ 100</span>
             </div>
-            <div className={styles.compositeBar}>
-              <span className={styles.compositeBarLabel}>Social / SST</span>
-              <span className={styles.compositeBarTrack}>
-                <span
-                  className={styles.compositeBarFill}
-                  style={{ width: `${composite.soc}%` }}
-                />
-              </span>
-              <span className={styles.compositeBarValue}>{composite.soc}</span>
+          </div>
+          <div className={styles.compositeSplit}>
+            <div className={styles.compositeSubScore}>
+              <CircleGauge value={composite.env} size={68} stroke={6} accent="primary" />
+              <div>
+                <span className={styles.subScoreLabel}>Environnement</span>
+                <span className={styles.subScoreValue}>{composite.env}</span>
+              </div>
+            </div>
+            <div className={styles.compositeSubScore}>
+              <CircleGauge value={composite.soc} size={68} stroke={6} accent="accent" />
+              <div>
+                <span className={styles.subScoreLabel}>Social / SST</span>
+                <span className={styles.subScoreValue}>{composite.soc}</span>
+              </div>
             </div>
           </div>
           <p className={styles.compositeFootnote}>
-            Pondération 60 % environnement (eaux/sol/air/déchets) + 40 % social (santé/SST/socio).
-            Score ≥ 80 conforme · 60-79 à surveiller · &lt; 60 critique.
+            Pondération 60 % environnement · 40 % social. ≥ 80 conforme · 60-79 à surveiller · &lt; 60 critique.
           </p>
         </section>
       </div>
@@ -479,6 +481,58 @@ export function AnalyticsPage() {
       </section>
 
     </div>
+  );
+}
+
+interface CircleGaugeProps {
+  value: number; // 0–100
+  size?: number;
+  stroke?: number;
+  accent?: 'primary' | 'accent' | 'auto';
+}
+
+function CircleGauge({ value, size = 120, stroke = 10, accent = 'auto' }: CircleGaugeProps) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = (Math.max(0, Math.min(100, value)) / 100) * c;
+  const tone =
+    accent === 'auto'
+      ? value >= 80
+        ? 'var(--color-success)'
+        : value >= 60
+          ? 'var(--color-amber)'
+          : 'var(--color-danger)'
+      : accent === 'accent'
+        ? 'var(--color-accent)'
+        : 'var(--color-primary)';
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={styles.gaugeSvg}
+      aria-hidden="true"
+    >
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="var(--color-surface-sunken)"
+        strokeWidth={stroke}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={tone}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${c - dash}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </svg>
   );
 }
 
