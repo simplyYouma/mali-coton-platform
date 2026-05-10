@@ -10,7 +10,6 @@ import {
   Select,
   Skeleton,
   Switch,
-  Textarea,
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
 import type { Indicator, IndicatorDomain } from '@/features/collection/api/collection.types';
@@ -21,6 +20,7 @@ import {
   useUpdateIndicator,
 } from '../hooks/useAdmin';
 import type { IndicatorCreateInput } from '../api/admin';
+import { refOptions } from '../lib/refData';
 import styles from './IndicatorsPage.module.css';
 
 const DOMAIN_LABEL: Record<IndicatorDomain, string> = {
@@ -325,11 +325,12 @@ export function IndicatorsPage() {
             />
           </FormField>
 
-          <FormField label="Unité" hint="Ex : mg/L, µS/cm, °C, ppm.">
-            <Input
+          <FormField label="Unité">
+            <Select<string>
               value={form.unit}
-              onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-              placeholder="mg/L"
+              onChange={(unit) => setForm((f) => ({ ...f, unit }))}
+              options={[{ value: '', label: '— Aucune unité —' }, ...refOptions('units')]}
+              placeholder="Sélectionner"
             />
           </FormField>
 
@@ -363,26 +364,25 @@ export function IndicatorsPage() {
 
           <FormField
             label="Méthode de mesure"
-            hint="Capteur, technique ou protocole utilisé."
             className={styles.formFull}
           >
-            <Input
+            <Select<string>
               value={form.method}
-              onChange={(e) => setForm((f) => ({ ...f, method: e.target.value }))}
-              placeholder="Ex : pH-mètre portable / Spectrophotométrie laboratoire"
+              onChange={(method) => setForm((f) => ({ ...f, method }))}
+              options={[{ value: '', label: '— Choisir une méthode —' }, ...refOptions('methods')]}
+              placeholder="Sélectionner"
             />
           </FormField>
 
           <FormField
             label="Source normative"
-            hint="Référence affichée à l'utilisateur (CDC §8.6)."
             className={styles.formFull}
           >
-            <Textarea
-              rows={2}
+            <Select<string>
               value={form.source}
-              onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
-              placeholder="Ex : OMS 2017 / Norme MN-03-02/002:2006"
+              onChange={(source) => setForm((f) => ({ ...f, source }))}
+              options={[{ value: '', label: '— Choisir une source —' }, ...refOptions('sources')]}
+              placeholder="Sélectionner"
             />
           </FormField>
 

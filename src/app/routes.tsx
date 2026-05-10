@@ -17,6 +17,7 @@ import {
   ThresholdsPage,
   AuditLogsPage,
   IndicatorsPage,
+  RefDataPage,
 } from '@/features/admin';
 import { AlertsPage } from '@/features/alerts';
 import { MappingPage } from '@/features/mapping';
@@ -113,6 +114,14 @@ export function AppRoutes() {
           element={
             <RoleGuard roles={['admin']}>
               <IndicatorsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/admin/referentiels"
+          element={
+            <RoleGuard roles={['admin']}>
+              <RefDataPage />
             </RoleGuard>
           }
         />

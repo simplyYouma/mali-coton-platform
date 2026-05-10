@@ -14,6 +14,7 @@ import {
   ScrollText,
   Beaker,
   ShieldCheck,
+  Database,
 } from 'lucide-react';
 import { AppShell } from '@/components/common/AppShell';
 import type { NavItem, NavSection } from '@/components/common/AppShell';
@@ -108,8 +109,15 @@ const ALL_NAV: NavSpec[] = [
   },
   {
     to: '/admin/indicateurs',
-    label: 'Référentiel',
+    label: 'Indicateurs',
     icon: <ListChecks size={18} />,
+    roles: ['admin'],
+    section: 'admin',
+  },
+  {
+    to: '/admin/referentiels',
+    label: 'Référentiels',
+    icon: <Database size={18} />,
     roles: ['admin'],
     section: 'admin',
   },
