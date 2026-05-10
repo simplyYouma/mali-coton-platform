@@ -89,7 +89,6 @@ export function AnalyticsPage() {
       (a, b) => new Date(a).getTime() - new Date(b).getTime(),
     );
 
-    const palette = ['#418fde', '#14253a', '#c99b6e', '#157f4a', '#7dafe2'];
     const series = Array.from(buckets.entries())
       .filter(([siteId]) => isSiteVisible(siteId))
       .slice(0, 5)
@@ -97,7 +96,7 @@ export function AnalyticsPage() {
         const site = sites.find((s) => s.id === siteId);
         return {
           label: site?.shortName ?? siteId,
-          color: palette[idx]!,
+          color: `var(--chart-${(idx % 6) + 1})`,
           values: labels.map((l) => {
             const arr = siteMap.get(l);
             if (!arr || arr.length === 0) return null;
@@ -110,28 +109,42 @@ export function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collections, indicatorId, days, sites, activeSiteIds]);
 
-  /* Comparateur — moyenne par site sur la période */
+  /* Comparateur — moyenne par site sur la période + min/max + série pour sparkline */
   const comparator = useMemo(() => {
     const cutoff = subDays(new Date(), days).getTime();
-    const map = new Map<string, number[]>();
+    const map = new Map<string, Array<{ value: number; ts: number }>>();
     for (const c of collections) {
-      if (new Date(c.collectedAt).getTime() < cutoff) continue;
+      const ts = new Date(c.collectedAt).getTime();
+      if (ts < cutoff) continue;
       const m = c.measurements.find(
         (x) => x.indicatorId === indicatorId && typeof x.value === 'number',
       );
       if (!m) continue;
       if (!map.has(c.siteId)) map.set(c.siteId, []);
-      map.get(c.siteId)!.push(Number(m.value));
+      map.get(c.siteId)!.push({ value: Number(m.value), ts });
     }
     const items = Array.from(map.entries())
-      .map(([siteId, values]) => {
+      .map(([siteId, points]) => {
         const site = sites.find((s) => s.id === siteId);
+        const sortedByTs = [...points].sort((a, b) => a.ts - b.ts);
+        const values = sortedByTs.map((p) => p.value);
         const avg = values.reduce((s, v) => s + v, 0) / values.length;
-        return { siteId, name: site?.shortName ?? siteId, avg };
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        return {
+          siteId,
+          name: site?.shortName ?? siteId,
+          avg,
+          min,
+          max,
+          n: values.length,
+          series: sortedByTs.map((p) => p.value),
+        };
       })
       .sort((a, b) => b.avg - a.avg);
-    const max = Math.max(...items.map((i) => i.avg), 1);
-    return { items, max };
+    const globalMax = Math.max(...items.map((i) => i.max), 1);
+    const globalMin = Math.min(...items.map((i) => i.min), 0);
+    return { items, globalMax, globalMin };
   }, [collections, indicatorId, days, sites]);
 
   /* Indice composite — moyenne pondérée environnement (60%) + social (40%)
@@ -306,14 +319,13 @@ export function AnalyticsPage() {
           <span className={styles.statLabel}>Hors seuil</span>
           <span
             className={styles.statValue}
-            style={{
-              color:
-                indicatorStats.exceedRate > 30
-                  ? 'var(--color-coral)'
-                  : indicatorStats.exceedRate > 0
-                    ? 'var(--color-amber)'
-                    : 'var(--color-success)',
-            }}
+            data-tone={
+              indicatorStats.exceedRate > 30
+                ? 'crit'
+                : indicatorStats.exceedRate > 0
+                  ? 'warn'
+                  : 'ok'
+            }
           >
             {indicatorStats.count === 0 ? '—' : `${indicatorStats.exceedRate}%`}
           </span>
@@ -426,24 +438,38 @@ export function AnalyticsPage() {
             <div className={styles.comparator}>
               {comparator.items.map((item) => {
                 const status = exceededFraction(item.avg);
-                const fillClass =
-                  status === 'crit'
-                    ? styles.comparatorFillCrit
-                    : status === 'warn'
-                      ? styles.comparatorFillWarn
-                      : styles.comparatorFill;
+                const range = comparator.globalMax - comparator.globalMin || 1;
+                const minPct = ((item.min - comparator.globalMin) / range) * 100;
+                const maxPct = ((item.max - comparator.globalMin) / range) * 100;
+                const avgPct = ((item.avg - comparator.globalMin) / range) * 100;
                 return (
-                  <div key={item.siteId} className={styles.comparatorRow}>
-                    <span className={styles.comparatorLabel}>{item.name}</span>
-                    <span className={styles.comparatorTrack}>
+                  <div key={item.siteId} className={styles.comparatorRow} data-tone={status}>
+                    <span className={styles.comparatorLabel}>
+                      {item.name}
+                      <span className={styles.comparatorN}>{item.n} mesures</span>
+                    </span>
+                    <span className={styles.comparatorTrack} aria-hidden="true">
                       <span
-                        className={fillClass}
-                        style={{ width: `${(item.avg / comparator.max) * 100}%` }}
+                        className={styles.comparatorRange}
+                        style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }}
+                      />
+                      <span
+                        className={styles.comparatorAvg}
+                        style={{ left: `${avgPct}%` }}
                       />
                     </span>
-                    <span className={styles.comparatorValue}>
-                      {item.avg.toFixed(rule?.unit === 'pH' ? 2 : 1)} {rule?.unit}
+                    <span className={styles.comparatorMeta}>
+                      <span className={styles.comparatorValue}>
+                        {item.avg.toFixed(rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1)}
+                      </span>
+                      <span className={styles.comparatorUnit}>{rule?.unit}</span>
                     </span>
+                    <span className={styles.comparatorRangeText}>
+                      {item.min.toFixed(rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1)}
+                      {' – '}
+                      {item.max.toFixed(rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1)}
+                    </span>
+                    <Sparkline values={item.series} tone={status} />
                   </div>
                 );
               })}
@@ -453,5 +479,37 @@ export function AnalyticsPage() {
       </section>
 
     </div>
+  );
+}
+
+interface SparklineProps {
+  values: number[];
+  tone: 'ok' | 'warn' | 'crit';
+}
+
+function Sparkline({ values, tone }: SparklineProps) {
+  if (values.length < 2) return <span className={styles.sparklineEmpty} />;
+  const w = 70;
+  const h = 22;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1);
+  const pts = values.map((v, i) => {
+    const x = i * step;
+    const y = h - ((v - min) / range) * (h - 2) - 1;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const path = `M${pts.join(' L')}`;
+  const color =
+    tone === 'crit'
+      ? 'var(--color-danger)'
+      : tone === 'warn'
+        ? 'var(--color-amber)'
+        : 'var(--color-success)';
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className={styles.sparkline} aria-hidden="true">
+      <path d={path} fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   );
 }
