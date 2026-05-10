@@ -30,11 +30,24 @@ export function Sidebar({
   workspaceName = 'PASET Mali',
   workspacePlan = 'Suivi socio-environnemental',
 }: SidebarProps) {
-  const { collapsed, toggle } = useSidebar();
+  const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebar();
 
   return (
+    <>
+      {mobileOpen ? (
+        <button
+          type="button"
+          className={styles.mobileBackdrop}
+          onClick={() => setMobileOpen(false)}
+          aria-label="Fermer le menu"
+        />
+      ) : null}
     <aside
-      className={clsx(styles.sidebar, collapsed && styles.collapsed)}
+      className={clsx(
+        styles.sidebar,
+        collapsed && styles.collapsed,
+        mobileOpen && styles.mobileOpen,
+      )}
       aria-label="Navigation principale"
       data-collapsed={collapsed}
     >
@@ -73,6 +86,7 @@ export function Sidebar({
                     to={item.to}
                     end={item.exact}
                     title={collapsed ? item.label : undefined}
+                    onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
                       clsx(styles.link, isActive && styles.linkActive)
                     }
@@ -115,5 +129,6 @@ export function Sidebar({
         ) : null}
       </button>
     </aside>
+    </>
   );
 }

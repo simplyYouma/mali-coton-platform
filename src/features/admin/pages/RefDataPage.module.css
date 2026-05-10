@@ -42,6 +42,13 @@
   text-align: left;
   transition: background-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
+  width: 100%;
+  min-width: 0;
+}
+.catLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .catItem:hover {
   background: var(--color-surface-2);
@@ -56,6 +63,9 @@
 .catLabel {
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .catCount {
   font-size: var(--text-2xs);
@@ -125,46 +135,54 @@
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
   white-space: nowrap;
+  height: 40px;
+  vertical-align: middle;
 }
+.table th:nth-child(1) { width: 130px; }
+.table th:nth-child(3) { width: 40%; }
+.table th:nth-child(4) { width: 100px; }
+.table th:nth-child(5) { width: 88px; text-align: right; }
+
 .table td {
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
+  height: 52px;
+  line-height: 1.4;
 }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr[data-inactive='true'] td { opacity: 0.55; }
 
 .code {
-  display: inline-block;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
   background: var(--color-surface-sunken);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text);
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 .labelCell {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 6px;
 }
 .label {
   font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
-.lockTag {
+.lockIcon {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 1px 7px;
-  background: var(--color-surface-sunken);
+  justify-content: center;
+  width: 18px;
+  height: 18px;
   color: var(--color-text-muted);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: var(--weight-bold);
+  opacity: 0.6;
 }
 .description {
   color: var(--color-text-muted);

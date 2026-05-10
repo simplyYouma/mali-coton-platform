@@ -179,9 +179,12 @@ export function RefDataPage() {
                       <td className={styles.labelCell}>
                         <span className={styles.label}>{e.label}</span>
                         {e.locked ? (
-                          <span className={styles.lockTag} title="Entrée socle CDC — modification autorisée, suppression bloquée">
-                            <Lock size={10} />
-                            socle
+                          <span
+                            className={styles.lockIcon}
+                            title="Entrée socle CDC — modification autorisée, suppression bloquée"
+                            aria-label="Socle CDC"
+                          >
+                            <Lock size={11} />
                           </span>
                         ) : null}
                       </td>

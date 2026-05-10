@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, RefreshCw, UserRound } from 'lucide-react';
+import { LogOut, Menu, RefreshCw, UserRound } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthProvider';
+import { useSidebar } from '@/app/providers/SidebarProvider';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { formatRelativeTime } from '@/lib/format';
 import { IconButton } from '../IconButton/IconButton';
@@ -20,6 +21,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 export function Topbar() {
   const navigate = useNavigate();
   const { user, logout, switchRole } = useAuth();
+  const { toggleMobile } = useSidebar();
   const { data: collectionsPage } = useCollections();
 
   const lastSyncAt = useMemo(() => {
@@ -43,6 +45,14 @@ export function Topbar() {
 
   return (
     <header className={styles.topbar}>
+      <button
+        type="button"
+        className={styles.mobileMenuBtn}
+        onClick={toggleMobile}
+        aria-label="Ouvrir le menu"
+      >
+        <Menu size={18} />
+      </button>
       <div className={styles.leading}>
         {lastSyncAt ? (
           <span className={styles.syncIndicator} aria-label="Dernière collecte reçue">

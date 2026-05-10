@@ -19,6 +19,28 @@
   align-items: center;
   gap: var(--space-3);
 }
+
+.mobileMenuBtn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.mobileMenuBtn:hover {
+  background: var(--color-surface-2);
+}
+@media (max-width: 1024px) {
+  .mobileMenuBtn {
+    display: inline-flex;
+  }
+}
 .syncIndicator {
   display: inline-flex;
   align-items: center;
