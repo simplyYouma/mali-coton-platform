@@ -378,31 +378,26 @@ export function AnalyticsPage() {
               Environnement &amp; social
             </h2>
           </header>
-          <div className={styles.compositeRing}>
-            <CircleGauge value={composite.overall} size={148} stroke={12} />
-            <div className={styles.compositeRingLabel}>
-              <span className={styles.compositeRingValue}>{composite.overall}</span>
-              <span className={styles.compositeRingUnit}>/ 100</span>
+
+          <CompositeRings overall={composite.overall} env={composite.env} soc={composite.soc} />
+
+          <div className={styles.compositeRows}>
+            <div className={styles.compositeRow}>
+              <span className={styles.compositeRowDot} data-tone="env" aria-hidden="true" />
+              <span className={styles.compositeRowLabel}>Environnement</span>
+              <span className={styles.compositeRowWeight}>60 %</span>
+              <span className={styles.compositeRowValue}>{composite.env}</span>
+            </div>
+            <div className={styles.compositeRow}>
+              <span className={styles.compositeRowDot} data-tone="soc" aria-hidden="true" />
+              <span className={styles.compositeRowLabel}>Social / SST</span>
+              <span className={styles.compositeRowWeight}>40 %</span>
+              <span className={styles.compositeRowValue}>{composite.soc}</span>
             </div>
           </div>
-          <div className={styles.compositeSplit}>
-            <div className={styles.compositeSubScore}>
-              <CircleGauge value={composite.env} size={68} stroke={6} accent="primary" />
-              <div>
-                <span className={styles.subScoreLabel}>Environnement</span>
-                <span className={styles.subScoreValue}>{composite.env}</span>
-              </div>
-            </div>
-            <div className={styles.compositeSubScore}>
-              <CircleGauge value={composite.soc} size={68} stroke={6} accent="accent" />
-              <div>
-                <span className={styles.subScoreLabel}>Social / SST</span>
-                <span className={styles.subScoreValue}>{composite.soc}</span>
-              </div>
-            </div>
-          </div>
+
           <p className={styles.compositeFootnote}>
-            Pondération 60 % environnement · 40 % social. ≥ 80 conforme · 60-79 à surveiller · &lt; 60 critique.
+            ≥ 80 conforme · 60-79 à surveiller · &lt; 60 critique
           </p>
         </section>
       </div>
@@ -474,55 +469,89 @@ export function AnalyticsPage() {
   );
 }
 
-interface CircleGaugeProps {
-  value: number; // 0–100
-  size?: number;
-  stroke?: number;
-  accent?: 'primary' | 'accent' | 'auto';
+interface CompositeRingsProps {
+  overall: number;
+  env: number;
+  soc: number;
 }
 
-function CircleGauge({ value, size = 120, stroke = 10, accent = 'auto' }: CircleGaugeProps) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const dash = (Math.max(0, Math.min(100, value)) / 100) * c;
-  const tone =
-    accent === 'auto'
-      ? value >= 80
-        ? 'var(--color-success)'
-        : value >= 60
-          ? 'var(--color-amber)'
-          : 'var(--color-danger)'
-      : accent === 'accent'
-        ? 'var(--color-accent)'
-        : 'var(--color-primary)';
+function CompositeRings({ overall, env, soc }: CompositeRingsProps) {
+  const size = 200;
+  const center = size / 2;
+  const stroke = 8;
+  const gap = 6;
+
+  const rOuter = center - stroke / 2;
+  const rMid = rOuter - stroke - gap;
+  const rInner = rMid - stroke - gap;
+
+  const arc = (r: number, value: number) => {
+    const c = 2 * Math.PI * r;
+    const dash = (Math.max(0, Math.min(100, value)) / 100) * c;
+    return { c, dash };
+  };
+
+  const overallArc = arc(rOuter, overall);
+  const envArc = arc(rMid, env);
+  const socArc = arc(rInner, soc);
+
+  const overallTone =
+    overall >= 80 ? 'var(--color-success)' : overall >= 60 ? 'var(--color-amber)' : 'var(--color-danger)';
+
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      className={styles.gaugeSvg}
-      aria-hidden="true"
-    >
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="var(--color-surface-sunken)"
-        strokeWidth={stroke}
-      />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke={tone}
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${c - dash}`}
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-      />
-    </svg>
+    <div className={styles.ringsWrap}>
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className={styles.ringsSvg}
+        aria-hidden="true"
+      >
+        {/* Tracks */}
+        <circle cx={center} cy={center} r={rOuter} fill="none" stroke="var(--color-surface-sunken)" strokeWidth={stroke} />
+        <circle cx={center} cy={center} r={rMid} fill="none" stroke="var(--color-surface-sunken)" strokeWidth={stroke} />
+        <circle cx={center} cy={center} r={rInner} fill="none" stroke="var(--color-surface-sunken)" strokeWidth={stroke} />
+
+        {/* Arcs */}
+        <circle
+          cx={center}
+          cy={center}
+          r={rOuter}
+          fill="none"
+          stroke={overallTone}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${overallArc.dash} ${overallArc.c - overallArc.dash}`}
+          transform={`rotate(-90 ${center} ${center})`}
+        />
+        <circle
+          cx={center}
+          cy={center}
+          r={rMid}
+          fill="none"
+          stroke="var(--color-primary)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${envArc.dash} ${envArc.c - envArc.dash}`}
+          transform={`rotate(-90 ${center} ${center})`}
+        />
+        <circle
+          cx={center}
+          cy={center}
+          r={rInner}
+          fill="none"
+          stroke="var(--color-accent)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${socArc.dash} ${socArc.c - socArc.dash}`}
+          transform={`rotate(-90 ${center} ${center})`}
+        />
+      </svg>
+      <div className={styles.ringsLabel}>
+        <span className={styles.ringsValue}>{overall}</span>
+        <span className={styles.ringsUnit}>/ 100</span>
+      </div>
+    </div>
   );
 }
 

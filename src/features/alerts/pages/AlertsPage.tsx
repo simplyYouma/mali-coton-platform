@@ -29,7 +29,6 @@ import {
   useAlerts,
   useResolveAlert,
 } from '../hooks/useAlerts';
-import { getRecommendedAction } from '../lib/actionRules';
 import styles from './AlertsPage.module.css';
 
 const SEVERITY_OPTIONS = [
@@ -337,21 +336,6 @@ function AlertDetail({
           </section>
         ) : null}
 
-        {(() => {
-          const resolved = getRecommendedAction(alert, { siteName: siteName ?? undefined });
-          if (!resolved) return null;
-          return (
-            <div className={styles.actionBlock}>
-              <header className={styles.actionHead}>
-                <span className={styles.actionLabel}>Action recommandée</span>
-                <span className={styles.actionRule}>
-                  <code>{resolved.ruleId}</code>
-                </span>
-              </header>
-              <p className={styles.actionText}>{resolved.text}</p>
-            </div>
-          );
-        })()}
       </div>
 
       {canAct && alert.status !== 'resolved' ? (
