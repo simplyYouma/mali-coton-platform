@@ -98,17 +98,7 @@ export function ThresholdsPage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        eyebrow="Administration"
-        title="Seuils &amp; normes"
-        description="Configuration des seuils de conformité par indicateur. Toute modification est tracée dans le journal d'audit."
-      />
-
-      <div className={styles.intro}>
-        <strong>Référence normative</strong> — les seuils par défaut sont alignés sur les normes
-        OMS et la réglementation malienne (Loi n°2021-032, Norme MN-03-02/002:2006, Décrets
-        n°01-394/P-RM et n°96-178/P-RM, conventions OIT). Modifiez avec précaution.
-      </div>
+      <PageHeader eyebrow="Administration" title="Seuils &amp; normes" />
 
       {isLoading ? (
         <Skeleton height={320} />

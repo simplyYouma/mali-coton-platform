@@ -25,6 +25,12 @@ import { enqueueSync, upsertLocalCollection } from '../lib/offlineDb';
 import styles from './CollectionImportPage.module.css';
 
 type Phase = 'upload' | 'preview' | 'done';
+type ImportSource = 'kobo' | 'lab';
+
+const SOURCE_OPTIONS: Array<{ value: ImportSource; label: string; sublabel: string }> = [
+  { value: 'kobo', label: 'Données terrain', sublabel: 'Export Kobo / ODK' },
+  { value: 'lab', label: 'Résultats laboratoire', sublabel: 'Export LNE / LIMS' },
+];
 
 export function CollectionImportPage() {
   const { user } = useAuth();
@@ -41,6 +47,7 @@ export function CollectionImportPage() {
   const [diagnostics, setDiagnostics] = useState<RowDiagnostic[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [source, setSource] = useState<ImportSource>('kobo');
   const [isCommitting, setIsCommitting] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
 
@@ -132,38 +139,59 @@ export function CollectionImportPage() {
       </header>
 
       {phase === 'upload' ? (
-        <div
-          className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          role="button"
-          tabIndex={0}
-        >
-          <span className={styles.dropIcon} aria-hidden="true">
-            <UploadCloud size={26} />
-          </span>
-          <h2 className={styles.dropTitle}>Déposez votre fichier ou cliquez pour parcourir</h2>
-          <p className={styles.dropHint}>
-            Formats acceptés : <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.csv</strong>{' '}
-            · Première ligne = entêtes · 1 ligne = 1 collecte
-          </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleFile(file);
-              e.target.value = '';
+        <>
+          <div className={styles.sourcePicker} role="radiogroup" aria-label="Type de fichier">
+            {SOURCE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                role="radio"
+                aria-checked={source === opt.value}
+                className={`${styles.sourceOption} ${source === opt.value ? styles.sourceOptionActive : ''}`}
+                onClick={() => setSource(opt.value)}
+              >
+                <span className={styles.sourceLabel}>{opt.label}</span>
+                <span className={styles.sourceSublabel}>{opt.sublabel}</span>
+              </button>
+            ))}
+          </div>
+
+          <div
+            className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
             }}
-          />
-        </div>
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            role="button"
+            tabIndex={0}
+          >
+            <span className={styles.dropIcon} aria-hidden="true">
+              <UploadCloud size={26} />
+            </span>
+            <h2 className={styles.dropTitle}>
+              {source === 'kobo'
+                ? 'Déposez l\'export Kobo'
+                : 'Déposez le fichier de résultats labo'}
+            </h2>
+            <p className={styles.dropHint}>
+              <strong>.xlsx</strong> · <strong>.xls</strong> · <strong>.csv</strong>
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleFile(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+        </>
       ) : null}
 
       {phase === 'preview' && mapping ? (
@@ -201,7 +229,7 @@ export function CollectionImportPage() {
             <header className={styles.panelHeader}>
               <h3 className={styles.panelTitle}>Mapping détecté</h3>
               <span className={styles.panelCaption}>
-                colonnes du fichier → champs Mali Coton
+                colonnes du fichier → champs plateforme
               </span>
             </header>
             <div className={styles.panelBody}>

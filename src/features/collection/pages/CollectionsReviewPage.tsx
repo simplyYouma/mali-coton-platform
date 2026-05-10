@@ -142,10 +142,6 @@ export function CollectionsReviewPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>File de validation</span>
           <h1 className={styles.heroTitle}>Revue des collectes</h1>
-          <p className={styles.heroDescription}>
-            Validez ou corrigez les saisies terrain transmises par les agents avant
-            consolidation. Toutes les actions sont tracées dans le journal d'audit.
-          </p>
         </div>
         <div className={styles.heroStats}>
           <div className={styles.heroStat} data-tone="primary">
@@ -274,7 +270,7 @@ export function CollectionsReviewPage() {
         open={correctOpen}
         onClose={() => setCorrectOpen(false)}
         title="Demander une correction"
-        description="L'agent recevra la demande, pourra rouvrir le wizard et resoumettre. Moins violent qu'un rejet — utiliser pour une valeur douteuse ou une étape incomplète."
+        description="L'agent recevra la demande et pourra resoumettre."
         footer={
           <>
             <Button variant="ghost" onClick={() => setCorrectOpen(false)}>

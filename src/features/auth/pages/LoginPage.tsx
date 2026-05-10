@@ -7,7 +7,6 @@ import styles from './LoginPage.module.css';
 const DEMO_ACCOUNTS = [
   { role: 'Administrateur', email: 'admin@pnud.org' },
   { role: 'Superviseur', email: 'superviseur@sahel.com' },
-  { role: 'Agent terrain', email: 'agent.bamako@sahel.com' },
   { role: 'Agent laboratoire', email: 'labo@lne.gouv.ml' },
   { role: 'Observateur', email: 'observateur@pnud.org' },
 ];
@@ -41,10 +40,10 @@ export function LoginPage() {
       <section className={styles.formPane}>
         <div className={styles.formCard}>
           <header className={styles.brand}>
-            <span className={styles.brandMark}>MC</span>
+            <span className={styles.brandMark}>P</span>
             <div>
               <p className={styles.brandLabel}>Plateforme</p>
-              <h1 className={styles.brandName}>Mali Coton</h1>
+              <h1 className={styles.brandName}>PASET Mali</h1>
             </div>
           </header>
 
@@ -116,7 +115,7 @@ export function LoginPage() {
         </div>
 
         <footer className={styles.footer}>
-          <p>© 2026 — Mali Coton</p>
+          <p>© 2026 — PASET Mali</p>
         </footer>
       </section>
     </main>

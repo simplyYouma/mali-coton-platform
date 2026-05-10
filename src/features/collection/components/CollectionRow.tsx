@@ -3,8 +3,6 @@ import {
   ArrowUpRight,
   Beaker,
   CheckCircle2,
-  CircleDashed,
-  CloudUpload,
   FlaskConical,
   Inbox,
   MapPin,
@@ -33,8 +31,6 @@ export interface CollectionRowProps {
 }
 
 const STATUS_ICONS: Record<CollectionStatus, typeof Inbox> = {
-  draft: CircleDashed,
-  pending_sync: CloudUpload,
   submitted: Inbox,
   awaiting_lab: FlaskConical,
   lab_complete: Beaker,

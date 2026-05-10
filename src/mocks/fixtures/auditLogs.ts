@@ -11,22 +11,29 @@ export type AuditAction =
   | 'user.create'
   | 'user.update'
   | 'user.delete'
+  | 'role.update'
   | 'site.create'
   | 'site.update'
+  | 'collection.import'
   | 'collection.submit'
   | 'collection.validate'
   | 'collection.reject'
+  | 'collection.correction_requested'
   | 'collection.lab_result'
-  | 'threshold.update';
+  | 'sample.transmitted'
+  | 'report.generated'
+  | 'threshold.update'
+  | 'alert.acknowledged'
+  | 'alert.resolved';
 
 export interface AuditLogEntry {
   id: string;
   occurredAt: string;
   actorId: string;
   actorName: string;
-  actorRole: 'admin' | 'superviseur' | 'agent';
+  actorRole: 'admin' | 'superviseur' | 'agent' | 'lab' | 'visitor';
   action: AuditAction;
-  resourceType: 'user' | 'site' | 'collection' | 'threshold' | 'auth';
+  resourceType: 'user' | 'role' | 'site' | 'collection' | 'sample' | 'report' | 'threshold' | 'alert' | 'auth';
   resourceId: string | null;
   resourceLabel?: string;
   ipAddress?: string;
@@ -63,7 +70,7 @@ export const mockAuditLogs: AuditLogEntry[] = [
     resourceId: 'col-0041',
     resourceLabel: 'Dianéguéla · 2026-04-26',
     ipAddress: '197.149.226.32',
-    userAgent: 'Mali Coton Tablette · Android 13',
+    userAgent: 'Kobo Collect · Android 13',
   },
   {
     id: 'audit-003',
@@ -129,7 +136,7 @@ export const mockAuditLogs: AuditLogEntry[] = [
     resourceType: 'auth',
     resourceId: null,
     ipAddress: '197.149.83.5',
-    userAgent: 'Mali Coton Tablette · Android 13',
+    userAgent: 'Kobo Collect · Android 13',
   },
   {
     id: 'audit-008',
@@ -165,5 +172,128 @@ export const mockAuditLogs: AuditLogEntry[] = [
     resourceId: 'air.pm25',
     resourceLabel: 'PM2,5 · seuil 24h',
     details: 'Création seuil 25 µg/m³ (OMS Air Quality 2021)',
+  },
+  {
+    id: 'audit-011',
+    occurredAt: minutesAgo(8),
+    actorId: 'u-lab-1',
+    actorName: 'Laboratoire National des Eaux',
+    actorRole: 'lab',
+    action: 'sample.transmitted',
+    resourceType: 'sample',
+    resourceId: 'SMPL-2026-0214',
+    resourceLabel: 'Sulfates · ATPEK · 4 332 mg/L',
+    ipAddress: '41.221.78.114',
+    userAgent: 'Chrome 121 / Windows 11',
+    details: 'Bordereau certifié joint · transmis au superviseur',
+  },
+  {
+    id: 'audit-012',
+    occurredAt: minutesAgo(35),
+    actorId: 'u-sup-1',
+    actorName: 'Moussa Coulibaly',
+    actorRole: 'superviseur',
+    action: 'collection.correction_requested',
+    resourceType: 'collection',
+    resourceId: 'col-0061',
+    resourceLabel: 'Galanimassiriw · 2026-05-06',
+    ipAddress: '10.42.1.18',
+    details: 'pH 12,4 implausible — étapes Eaux & GPS/photos à revoir',
+  },
+  {
+    id: 'audit-013',
+    occurredAt: minutesAgo(75),
+    actorId: 'u-admin-1',
+    actorName: 'Awa Diarra',
+    actorRole: 'admin',
+    action: 'report.generated',
+    resourceType: 'report',
+    resourceId: 'rpt-2026-04',
+    resourceLabel: 'Bilan mensuel · Avril 2026 · multi-sites',
+    details: 'Export PDF + XLSX · 18 collectes incluses',
+  },
+  {
+    id: 'audit-014',
+    occurredAt: minutesAgo(95),
+    actorId: 'u-admin-1',
+    actorName: 'Awa Diarra',
+    actorRole: 'admin',
+    action: 'collection.import',
+    resourceType: 'collection',
+    resourceId: 'batch-2026-05-04',
+    resourceLabel: 'Lot Kobo · 12 collectes',
+    details: 'Source : Kobo · 11 ok · 1 rejetée (siteId inconnu)',
+  },
+  {
+    id: 'audit-015',
+    occurredAt: minutesAgo(140),
+    actorId: 'u-sup-1',
+    actorName: 'Moussa Coulibaly',
+    actorRole: 'superviseur',
+    action: 'alert.acknowledged',
+    resourceType: 'alert',
+    resourceId: 'alert-2026-1142',
+    resourceLabel: 'pH > 8,5 · Dianéguéla',
+    ipAddress: '10.42.1.18',
+  },
+  {
+    id: 'audit-016',
+    occurredAt: minutesAgo(220),
+    actorId: 'u-sup-1',
+    actorName: 'Moussa Coulibaly',
+    actorRole: 'superviseur',
+    action: 'alert.resolved',
+    resourceType: 'alert',
+    resourceId: 'alert-2026-1138',
+    resourceLabel: 'PM2,5 > 25 µg/m³ · ATPEK',
+    details: 'Délai résolution : 14 h',
+  },
+  {
+    id: 'audit-017',
+    occurredAt: daysAgo(1.2),
+    actorId: 'u-admin-1',
+    actorName: 'Awa Diarra',
+    actorRole: 'admin',
+    action: 'role.update',
+    resourceType: 'role',
+    resourceId: 'lab',
+    resourceLabel: 'Agent laboratoire',
+    details: 'Permission Saisie résultats · none → write',
+  },
+  {
+    id: 'audit-018',
+    occurredAt: daysAgo(1.5),
+    actorId: 'u-lab-1',
+    actorName: 'Laboratoire National des Eaux',
+    actorRole: 'lab',
+    action: 'user.login',
+    resourceType: 'auth',
+    resourceId: null,
+    ipAddress: '41.221.78.114',
+    userAgent: 'Chrome 121 / Windows 11',
+  },
+  {
+    id: 'audit-019',
+    occurredAt: daysAgo(2.3),
+    actorId: 'u-admin-1',
+    actorName: 'Awa Diarra',
+    actorRole: 'admin',
+    action: 'report.generated',
+    resourceType: 'report',
+    resourceId: 'rpt-2026-q1',
+    resourceLabel: 'Rapport trimestriel · T1 2026',
+    details: 'Export PDF · 22 pages · audience comité de pilotage',
+  },
+  {
+    id: 'audit-020',
+    occurredAt: daysAgo(3.8),
+    actorId: 'u-admin-1',
+    actorName: 'Awa Diarra',
+    actorRole: 'admin',
+    action: 'role.update',
+    resourceType: 'role',
+    resourceId: 'visitor',
+    resourceLabel: 'Observateur',
+    details: 'Permission Cartographie · none → read',
   },
 ];

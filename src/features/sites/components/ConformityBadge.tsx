@@ -16,12 +16,11 @@ const VARIANT: Record<ConformityLevel, 'success' | 'warning' | 'danger'> = {
 export interface ConformityBadgeProps {
   level: ConformityLevel;
   size?: 'sm' | 'md';
-  withDot?: boolean;
 }
 
-export function ConformityBadge({ level, size = 'sm', withDot = true }: ConformityBadgeProps) {
+export function ConformityBadge({ level, size = 'sm' }: ConformityBadgeProps) {
   return (
-    <Badge variant={VARIANT[level]} size={size} dot={withDot}>
+    <Badge variant={VARIANT[level]} size={size}>
       {LABEL[level]}
     </Badge>
   );

@@ -241,7 +241,7 @@ export function CollectionDetailPage() {
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
-            <Badge variant={STATUS_BADGE_VARIANT[collection.status]} size="sm" dot>
+            <Badge variant={STATUS_BADGE_VARIANT[collection.status]} size="sm">
               {STATUS_LABEL[collection.status]}
             </Badge>
             · #{collection.id.slice(-6).toUpperCase()}

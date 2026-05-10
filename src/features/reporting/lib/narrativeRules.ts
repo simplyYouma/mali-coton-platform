@@ -34,7 +34,7 @@ export function executiveSummary(agg: ReportAggregate): NarrativeSentence[] {
     ruleId: 'narrative.summary.scope',
     text: scope.siteId
       ? `Le présent rapport couvre la période du ${formatFr(period.from)} au ${formatFr(period.to)} et porte sur le site ciblé.`
-      : `Le présent rapport couvre la période du ${formatFr(period.from)} au ${formatFr(period.to)} et consolide les données des ${siteCount} sites pilotes du projet Mali Coton.`,
+      : `Le présent rapport couvre la période du ${formatFr(period.from)} au ${formatFr(period.to)} et consolide les données des ${siteCount} sites pilotes.`,
     tone: 'neutral',
   });
 

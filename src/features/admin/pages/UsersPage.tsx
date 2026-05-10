@@ -172,7 +172,6 @@ export function UsersPage() {
       <PageHeader
         eyebrow="Administration"
         title="Utilisateurs"
-        description="Gestion des comptes et attribution des sites par rôle."
         actions={
           <Button variant="primary" iconLeft={<UserPlus size={16} />} onClick={openCreate}>
             Nouvel utilisateur
@@ -251,7 +250,7 @@ export function UsersPage() {
                     )}
                   </td>
                   <td>
-                    <Badge variant={user.isActive ? 'success' : 'neutral'} size="sm" dot>
+                    <Badge variant={user.isActive ? 'success' : 'neutral'} size="sm">
                       {user.isActive ? 'Actif' : 'Désactivé'}
                     </Badge>
                   </td>

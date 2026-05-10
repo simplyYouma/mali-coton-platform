@@ -137,10 +137,6 @@ export function AlertsPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Surveillance temps réel</span>
           <h1 className={styles.heroTitle}>Alertes</h1>
-          <p className={styles.heroDescription}>
-            Dépassements de seuils OMS et maliens, retards laboratoire et silences sites — toutes les actions
-            sont tracées dans le journal d'audit.
-          </p>
         </div>
         <div className={styles.heroStats}>
           <div className={styles.heroStat} data-tone="critical">

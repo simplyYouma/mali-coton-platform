@@ -21,9 +21,9 @@ export function exportReportToXlsx(
   const wb = XLSX.utils.book_new();
   wb.Props = {
     Title: `${template.title} — ${formatPeriod(agg.period.from, agg.period.to)}`,
-    Subject: 'Plateforme Mali Coton — Rapport de suivi socio-environnemental',
-    Author: 'Plateforme Mali Coton',
-    Company: 'PNUD Mali',
+    Subject: 'PASET Mali — Rapport de suivi socio-environnemental',
+    Author: 'PASET Mali',
+    Company: 'PASET Mali',
     CreatedDate: new Date(agg.generatedAt),
   };
 
@@ -48,7 +48,7 @@ function addCoverSheet(
 ): void {
   const rows: Array<Array<string | number | null>> = [
     [],
-    ['', 'MALI COTON · PLATEFORME DE SUIVI SOCIO-ENVIRONNEMENTAL'],
+    ['', 'PASET MALI · PLATEFORME DE SUIVI SOCIO-ENVIRONNEMENTAL'],
     [],
     ['', template.title.toUpperCase()],
     [],
@@ -89,7 +89,7 @@ function addCoverSheet(
     [],
     [
       '',
-      'Document généré automatiquement par la plateforme Mali Coton à partir des données terrain validées.',
+      'Document généré automatiquement par la plateforme PASET Mali à partir des données terrain validées.',
     ],
     ['', 'Indicateurs et seuils alignés sur les Directives OMS et la Norme malienne MN-03-02/002:2006.'],
   ];

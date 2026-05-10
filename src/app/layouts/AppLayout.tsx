@@ -13,6 +13,7 @@ import {
   ListChecks,
   ScrollText,
   Beaker,
+  ShieldCheck,
 } from 'lucide-react';
 import { AppShell } from '@/components/common/AppShell';
 import type { NavItem, NavSection } from '@/components/common/AppShell';
@@ -99,8 +100,15 @@ const ALL_NAV: NavSpec[] = [
     section: 'admin',
   },
   {
+    to: '/admin/roles',
+    label: 'Rôles & permissions',
+    icon: <ShieldCheck size={18} />,
+    roles: ['admin'],
+    section: 'admin',
+  },
+  {
     to: '/admin/indicateurs',
-    label: 'Questionnaire',
+    label: 'Référentiel',
     icon: <ListChecks size={18} />,
     roles: ['admin'],
     section: 'admin',

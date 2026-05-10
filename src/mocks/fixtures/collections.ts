@@ -20,7 +20,7 @@ function rand<T>(arr: T[]): T {
 }
 
 const STATUSES_OLD: CollectionStatus[] = ['validated', 'validated', 'validated', 'rejected'];
-const STATUSES_RECENT: CollectionStatus[] = ['submitted', 'validated', 'pending_sync'];
+const STATUSES_RECENT: CollectionStatus[] = ['submitted', 'submitted', 'validated'];
 
 /**
  * Banque de photos illustratives — Picsum (stable via seed).
@@ -105,7 +105,7 @@ export const mockCollections: Collection[] = (() => {
         agentId: site.agent,
         collectedAt: collectedIso,
         status,
-        syncedAt: status === 'pending_sync' ? null : daysAgo(days - 0.01),
+        syncedAt: daysAgo(days - 0.01),
         gps: { lat: 12.6 + (Math.random() - 0.5) * 0.5, lng: -7.95 + (Math.random() - 0.5) * 0.5, accuracy: 4 + Math.random() * 6 },
         context: {
           weather: weather.weather,
@@ -124,7 +124,16 @@ export const mockCollections: Collection[] = (() => {
           {
             indicatorId: 'water.ph',
             acquisition: 'in_situ',
-            value: site.id === 'site-dianeguela' ? 11.25 : site.id === 'site-atpek' ? 9.62 : 7.5 + Math.random() * 1.5,
+            value:
+              site.id === 'site-dianeguela'
+                ? 10.6 + Math.random() * 1.2 // chronique critique : 10.6–11.8
+                : site.id === 'site-atpek'
+                  ? 9.0 + Math.random() * 0.9 // surveillance : 9.0–9.9
+                  : site.id === 'site-galanimassiriw'
+                    ? 8.0 + Math.random() * 1.3 // variable : 8.0–9.3
+                    : site.id === 'site-djiguiyaso'
+                      ? 7.6 + Math.random() * 1.1 // 7.6–8.7
+                      : 7.4 + Math.random() * 1.0, // NDOMO référence : 7.4–8.4
             unit: '',
           },
           {
@@ -317,22 +326,6 @@ export const mockCollections: Collection[] = (() => {
       note: albumNotes[key],
     }));
     albumIdx += 1;
-  }
-
-  // Quelques collectes draft locales pour l'agent Bamako
-  for (let i = 0; i < 2; i++) {
-    counter += 1;
-    list.push({
-      id: `col-${String(counter).padStart(4, '0')}`,
-      siteId: i === 0 ? 'site-atpek' : 'site-galanimassiriw',
-      agentId: 'u-agent-bko',
-      collectedAt: daysAgo(0.05 + i * 0.1),
-      status: 'draft',
-      syncedAt: null,
-      gps: null,
-      measurements: [],
-      photos: [],
-    });
   }
 
   return list.sort(

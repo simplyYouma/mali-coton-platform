@@ -41,13 +41,13 @@
 
 /* variants */
 .variant-primary {
-  background: var(--color-brand-rust);
+  background: var(--color-ink-night);
   color: #fff;
-  border-color: var(--color-brand-rust);
+  border-color: var(--color-ink-night);
 }
 .variant-primary:hover:not(:disabled):not([aria-busy='true']) {
-  background: var(--color-brand-rust-hover);
-  border-color: var(--color-brand-rust-hover);
+  background: #1a2542;
+  border-color: #1a2542;
 }
 
 .variant-secondary {

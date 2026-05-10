@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Filter, MapPin, Plus } from 'lucide-react';
+import { useMemo, useState, type MouseEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Filter, MapPin, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import {
   PageHeader,
   Button,
+  IconButton,
   Input,
   Select,
   Tabs,
@@ -13,8 +14,10 @@ import {
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useDeleteSite, useSites } from '../hooks/useSites';
-import { SiteCard } from '../components/SiteCard';
 import { SiteForm } from '../components/SiteForm';
+import { ConformityBadge } from '../components/ConformityBadge';
+import { SITE_TYPE_SHORT } from '../api/site.types';
+import { formatRelativeTime } from '@/lib/format';
 import type { Site } from '../api/site.types';
 import type { ConformityLevel } from '@/types/common';
 import styles from './SitesListPage.module.css';
@@ -86,9 +89,8 @@ export function SitesListPage() {
   return (
     <>
       <PageHeader
-        eyebrow={`${sites.length} site${sites.length > 1 ? 's' : ''} pilote${sites.length > 1 ? 's' : ''}`}
-        title="Sites de teintureries"
-        description="Cartographie et suivi des ateliers — ajoutez, modifiez ou retirez les sites du panel."
+        eyebrow={`${sites.length} site${sites.length > 1 ? 's' : ''}`}
+        title="Sites"
         actions={
           <>
             <Link to="/cartographie">
@@ -151,9 +153,9 @@ export function SitesListPage() {
       </section>
 
       {isLoading ? (
-        <div className={styles.grid}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} height={220} radius={14} />
+        <div className={styles.skeletonStack}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} height={56} radius={8} />
           ))}
         </div>
       ) : sites.length === 0 ? (
@@ -182,15 +184,30 @@ export function SitesListPage() {
           }
         />
       ) : (
-        <div className={styles.grid}>
-          {sites.map((site) => (
-            <SiteCard
-              key={site.id}
-              site={site}
-              onEdit={canManage ? openEdit : undefined}
-              onDelete={canManage ? handleDelete : undefined}
-            />
-          ))}
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Site</th>
+                <th>Type</th>
+                <th>Localisation</th>
+                <th>Effectif</th>
+                <th>Conformité</th>
+                <th>Dernière activité</th>
+                {canManage ? <th aria-label="Actions" /> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {sites.map((site) => (
+                <SiteRow
+                  key={site.id}
+                  site={site}
+                  onEdit={canManage ? openEdit : undefined}
+                  onDelete={canManage ? handleDelete : undefined}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -198,5 +215,88 @@ export function SitesListPage() {
         <SiteForm open={formOpen} onClose={() => setFormOpen(false)} site={editing} />
       ) : null}
     </>
+  );
+}
+
+interface SiteRowProps {
+  site: Site;
+  onEdit?: (site: Site) => void;
+  onDelete?: (site: Site) => void;
+}
+
+function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
+  const navigate = useNavigate();
+  const showActions = onEdit || onDelete;
+  const goToSite = () => navigate(`/sites/${site.id}`);
+  const onKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      goToSite();
+    }
+  };
+  const stop = (handler: (s: Site) => void) => (e: MouseEvent) => {
+    e.stopPropagation();
+    handler(site);
+  };
+
+  return (
+    <tr
+      className={styles.row}
+      onClick={goToSite}
+      onKeyDown={onKey}
+      tabIndex={0}
+      role="link"
+      aria-label={`Détail du site ${site.shortName}`}
+    >
+      <td>
+        <span className={styles.siteText}>
+          <span className={styles.siteName}>
+            {site.shortName}
+            {site.isReference ? (
+              <Star size={11} className={styles.refStar} aria-label="Site de référence" />
+            ) : null}
+          </span>
+          <span className={styles.siteSub}>{site.workforce} membres · depuis {site.createdYear}</span>
+        </span>
+      </td>
+      <td>
+        <span className={styles.typePill}>{SITE_TYPE_SHORT[site.type]}</span>
+      </td>
+      <td>
+        <span className={styles.location}>
+          <MapPin size={12} aria-hidden="true" />
+          {site.location.commune}, {site.location.city}
+        </span>
+      </td>
+      <td className={styles.workforce}>{site.workforce}</td>
+      <td>
+        <ConformityBadge level={site.conformity} size="sm" />
+      </td>
+      <td className={styles.activity}>
+        {site.lastCollectionAt ? formatRelativeTime(site.lastCollectionAt) : '—'}
+      </td>
+      {showActions ? (
+        <td className={styles.actions} onClick={(e) => e.stopPropagation()}>
+          {onEdit ? (
+            <IconButton
+              aria-label={`Modifier ${site.shortName}`}
+              variant="ghost"
+              onClick={stop(onEdit)}
+            >
+              <Pencil size={14} />
+            </IconButton>
+          ) : null}
+          {onDelete ? (
+            <IconButton
+              aria-label={`Supprimer ${site.shortName}`}
+              variant="ghost"
+              onClick={stop(onDelete)}
+            >
+              <Trash2 size={14} />
+            </IconButton>
+          ) : null}
+        </td>
+      ) : null}
+    </tr>
   );
 }

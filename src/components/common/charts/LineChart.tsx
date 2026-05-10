@@ -45,19 +45,27 @@ export function LineChart({
         label: s.label,
         data: s.values,
         borderColor: color,
-        backgroundColor: fillArea ? hexToRgba(color, 0.08) : color,
+        backgroundColor: fillArea ? hexToRgba(color, 0.05) : color,
         fill: fillArea ? 'origin' : false,
         spanGaps: true,
+        pointBackgroundColor: color,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5,
+        borderWidth: 1.75,
       };
     });
     if (threshold) {
       datasets.push({
         label: threshold.label,
         data: labels.map(() => threshold.value),
-        borderColor: 'rgba(185, 28, 28, 0.7)',
-        backgroundColor: 'rgba(185, 28, 28, 0.05)',
-        borderDash: [6, 6],
+        borderColor: 'rgba(15, 23, 42, 0.45)',
+        backgroundColor: 'transparent',
+        borderDash: [4, 4],
+        borderWidth: 1.25,
         spanGaps: true,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        order: 99,
       });
     }
     return { labels, datasets };

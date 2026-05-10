@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   MapPin,
   Users,
-  Calendar,
   Star,
   Droplet,
   Mountain,
@@ -107,15 +106,73 @@ export function SiteDetailPage() {
     return map;
   }, []);
 
+  const siteMetrics = useMemo(() => {
+    const windowDays = 60;
+    const dayMs = 86_400_000;
+    const now = Date.now();
+    const cutoff = now - windowDays * dayMs;
+    const cutoffPrev = now - 2 * windowDays * dayMs;
+
+    const ordered = [...siteCollections].sort(
+      (a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime(),
+    );
+
+    const phSeries: number[] = [];
+    const pm25Series: number[] = [];
+    for (const c of ordered.slice(-12)) {
+      const ph = c.measurements.find((m) => m.indicatorId === 'water.ph')?.value;
+      const pm = c.measurements.find((m) => m.indicatorId === 'air.pm25')?.value;
+      if (typeof ph === 'number') phSeries.push(ph);
+      if (typeof pm === 'number') pm25Series.push(pm);
+    }
+
+    const latestPh = phSeries.at(-1) ?? null;
+    const latestPm25 = pm25Series.at(-1) ?? null;
+
+    /* Sparkline collectes : 6 buckets sur la fenêtre */
+    const buckets = 6;
+    const bucketMs = (windowDays * dayMs) / buckets;
+    const collectionsSpark = Array(buckets).fill(0) as number[];
+    let collectionsCount = 0;
+    let collectionsPrev = 0;
+    for (const c of siteCollections) {
+      const t = new Date(c.collectedAt).getTime();
+      if (t >= cutoff) {
+        collectionsCount += 1;
+        const idx = Math.min(buckets - 1, Math.floor((t - cutoff) / bucketMs));
+        collectionsSpark[idx] = (collectionsSpark[idx] ?? 0) + 1;
+      } else if (t >= cutoffPrev) {
+        collectionsPrev += 1;
+      }
+    }
+    const collectionsTrend =
+      collectionsPrev > 0
+        ? Math.round(((collectionsCount - collectionsPrev) / collectionsPrev) * 100)
+        : 0;
+
+    return {
+      windowDays,
+      collectionsCount,
+      collectionsPrev,
+      collectionsTrend,
+      collectionsSpark,
+      phSeries,
+      pm25Series,
+      latestPh,
+      latestPm25,
+    };
+  }, [siteCollections]);
+
   const photos = useMemo(() => {
-    /* Agrégation : toutes les photos des collectes du site, ordonnées par date */
-    const all: Array<{ url: string; collectionId: string; date: string }> = [];
+    /* Agrégation déduplicquée : une URL n'apparaît qu'une fois (la collecte la plus récente). */
+    const seen = new Map<string, { url: string; collectionId: string; date: string }>();
     siteCollections.forEach((c) => {
       c.photos.forEach((p) => {
-        all.push({ url: p.url, collectionId: c.id, date: c.collectedAt });
+        if (seen.has(p.url)) return;
+        seen.set(p.url, { url: p.url, collectionId: c.id, date: c.collectedAt });
       });
     });
-    return all;
+    return Array.from(seen.values());
   }, [siteCollections]);
 
   if (isLoading) {
@@ -194,48 +251,110 @@ export function SiteDetailPage() {
         </div>
       </header>
 
-      <section className={styles.summary}>
-        <div className={styles.summaryItem}>
-          <p className={styles.summaryLabel}>Localisation</p>
-          <p className={styles.summaryValue}>
-            <MapPin size={14} aria-hidden="true" />
+      {/* ── Info strip compact ── */}
+      <section className={styles.infoStrip} aria-label="Informations site">
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Localisation</span>
+          <span className={styles.infoValue}>
+            <MapPin size={12} aria-hidden="true" />
             {site.location.commune}, {site.location.city}
-          </p>
-          <p className={`${styles.summaryHint} mono`}>
-            {formatGps(site.coordinates.lat, site.coordinates.lng)}
-          </p>
+          </span>
         </div>
-        <div className={styles.summaryItem}>
-          <p className={styles.summaryLabel}>Effectif</p>
-          <p className={styles.summaryValue}>
-            <Users size={14} aria-hidden="true" />
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Effectif</span>
+          <span className={styles.infoValue}>
+            <Users size={12} aria-hidden="true" />
             {site.workforce} membres
-          </p>
-          <p className={styles.summaryHint}>
-            Statut juridique : {site.legalStatus === 'formel' ? 'Formel' : 'Informel'}
-          </p>
+          </span>
         </div>
-        <div className={styles.summaryItem}>
-          <p className={styles.summaryLabel}>Année de création</p>
-          <p className={styles.summaryValue}>
-            <Calendar size={14} aria-hidden="true" />
-            {site.createdYear}
-          </p>
-          <p className={styles.summaryHint}>
-            {siteCollections.length} collecte{siteCollections.length > 1 ? 's' : ''} enregistrée
-            {siteCollections.length > 1 ? 's' : ''}
-          </p>
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Statut</span>
+          <span className={styles.infoValue}>
+            {site.legalStatus === 'formel' ? 'Formel' : 'Informel'} · {site.createdYear}
+          </span>
         </div>
-        <div className={styles.summaryItem}>
-          <p className={styles.summaryLabel}>Conformité globale</p>
-          <p className={styles.summaryValue}>
-            <ConformityBadge level={site.conformity} size="md" withDot />
-          </p>
-          <p className={styles.summaryHint}>
-            Dernière collecte ·{' '}
-            {site.lastCollectionAt ? formatRelativeTime(site.lastCollectionAt) : '—'}
-          </p>
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>GPS</span>
+          <span className={`${styles.infoValue} mono`}>
+            {formatGps(site.coordinates.lat, site.coordinates.lng)}
+          </span>
         </div>
+      </section>
+
+      {/* ── Cartes metrics avec sparklines ── */}
+      <section className={styles.metricGrid} aria-label="Indicateurs clés">
+        <MetricCard
+          label="Conformité"
+          value={
+            site.conformity === 'conforming'
+              ? 'Conforme'
+              : site.conformity === 'warning'
+                ? 'À surveiller'
+                : 'Hors seuil'
+          }
+          tone={
+            site.conformity === 'conforming'
+              ? 'ok'
+              : site.conformity === 'warning'
+                ? 'warn'
+                : 'crit'
+          }
+          caption={
+            site.lastCollectionAt
+              ? `dernière · ${formatRelativeTime(site.lastCollectionAt)}`
+              : 'aucune collecte'
+          }
+        />
+        <MetricCard
+          label={`Collectes ${siteMetrics.windowDays} j`}
+          value={String(siteMetrics.collectionsCount)}
+          caption={
+            siteMetrics.collectionsTrend === 0
+              ? `précédent · ${siteMetrics.collectionsPrev}`
+              : `${siteMetrics.collectionsTrend > 0 ? '+' : ''}${siteMetrics.collectionsTrend}% vs ${siteMetrics.windowDays} j`
+          }
+          spark={siteMetrics.collectionsSpark}
+          sparkColor="var(--color-primary)"
+        />
+        <MetricCard
+          label="pH eaux usées"
+          value={
+            siteMetrics.latestPh != null ? siteMetrics.latestPh.toFixed(2) : '—'
+          }
+          tone={
+            siteMetrics.latestPh == null
+              ? undefined
+              : siteMetrics.latestPh > 8.5 || siteMetrics.latestPh < 6.5
+                ? 'crit'
+                : siteMetrics.latestPh > 8.2 || siteMetrics.latestPh < 6.8
+                  ? 'warn'
+                  : 'ok'
+          }
+          caption={`OMS 6,5 – 8,5`}
+          spark={siteMetrics.phSeries}
+          sparkColor="var(--chart-2)"
+        />
+        <MetricCard
+          label="PM2,5 air"
+          value={
+            siteMetrics.latestPm25 != null
+              ? `${siteMetrics.latestPm25.toFixed(0)}`
+              : '—'
+          }
+          unit={siteMetrics.latestPm25 != null ? 'µg/m³' : undefined}
+          tone={
+            siteMetrics.latestPm25 == null
+              ? undefined
+              : siteMetrics.latestPm25 > 25
+                ? 'crit'
+                : siteMetrics.latestPm25 > 20
+                  ? 'warn'
+                  : 'ok'
+          }
+          caption="OMS 25 µg/m³ · 24 h"
+          spark={siteMetrics.pm25Series}
+          sparkColor="var(--chart-5)"
+        />
       </section>
 
       <Tabs
@@ -268,7 +387,7 @@ export function SiteDetailPage() {
                       {d.icon}
                     </span>
                     <span className={styles.domainLabel}>{d.label}</span>
-                    <ConformityBadge level={site.conformityByDomain[d.key]} size="sm" withDot />
+                    <ConformityBadge level={site.conformityByDomain[d.key]} size="sm" />
                   </li>
                 ))}
               </ul>
@@ -389,5 +508,58 @@ export function SiteDetailPage() {
         <SiteForm open={editOpen} onClose={() => setEditOpen(false)} site={site} />
       ) : null}
     </>
+  );
+}
+
+/* ─────────── Metric Card + Sparkline ─────────── */
+
+interface MetricCardProps {
+  label: string;
+  value: string;
+  unit?: string;
+  caption?: string;
+  tone?: 'ok' | 'warn' | 'crit';
+  spark?: number[];
+  sparkColor?: string;
+}
+
+function MetricCard({ label, value, unit, caption, tone, spark, sparkColor }: MetricCardProps) {
+  return (
+    <div className={styles.metricCard} data-tone={tone}>
+      <span className={styles.metricLabel}>{label}</span>
+      <div className={styles.metricValueRow}>
+        <span className={styles.metricValue}>{value}</span>
+        {unit ? <span className={styles.metricUnit}>{unit}</span> : null}
+      </div>
+      <div className={styles.metricFoot}>
+        {caption ? <span className={styles.metricCaption}>{caption}</span> : null}
+        {spark && spark.length > 1 ? (
+          <Sparkline values={spark} color={sparkColor ?? 'var(--color-primary)'} />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  if (values.length < 2) return null;
+  const w = 60;
+  const h = 22;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1);
+  const pts = values.map((v, i) => {
+    const x = i * step;
+    const y = h - ((v - min) / range) * (h - 2) - 1;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const path = `M${pts.join(' L')}`;
+  const area = `${path} L${w},${h} L0,${h} Z`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className={styles.sparkline} aria-hidden="true">
+      <path d={area} fill={color} fillOpacity="0.10" />
+      <path d={path} fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   );
 }

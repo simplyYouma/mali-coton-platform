@@ -147,12 +147,7 @@ export function MappingPage() {
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Vue géospatiale</span>
-          <h1 className={styles.heroTitle}>Cartographie des sites pilotes</h1>
-          <p className={styles.heroDescription}>
-            5 ateliers de teinturerie suivis à Bamako et Ségou — coloration des marqueurs selon
-            la conformité, surcouches activables pour visualiser collectes récentes et alertes
-            critiques.
-          </p>
+          <h1 className={styles.heroTitle}>Cartographie</h1>
         </div>
         <div className={styles.heroStats}>
           <div className={styles.heroStat}>
@@ -185,9 +180,6 @@ export function MappingPage() {
               <Layers size={14} aria-hidden="true" />
               <span>Filtre par domaine</span>
             </header>
-            <p className={styles.panelHint}>
-              Recolore chaque marqueur selon la conformité du domaine choisi.
-            </p>
             <div className={styles.chips}>
               {DOMAIN_OPTIONS.map((opt) => (
                 <button
@@ -217,9 +209,8 @@ export function MappingPage() {
               />
               <span className={styles.toggleBody}>
                 <span className={styles.toggleLabel}>
-                  Alertes actives <span className={styles.toggleDotDanger} aria-hidden="true" />
+                  Alertes actives
                 </span>
-                <span className={styles.toggleHint}>Halo rouge pulsé autour des sites concernés</span>
               </span>
             </label>
             <label className={styles.toggle}>
@@ -230,7 +221,6 @@ export function MappingPage() {
               />
               <span className={styles.toggleBody}>
                 <span className={styles.toggleLabel}>Collectes récentes (30 j)</span>
-                <span className={styles.toggleHint}>Points GPS des saisies terrain</span>
               </span>
             </label>
             <label className={styles.toggle}>
@@ -243,9 +233,6 @@ export function MappingPage() {
                 <span className={styles.toggleLabel}>
                   Cours d'eau proche
                   <Droplets size={11} aria-hidden="true" style={{ marginLeft: 4 }} />
-                </span>
-                <span className={styles.toggleHint}>
-                  Buffer 300 m sur les sites en aval d'un bras du Niger
                 </span>
               </span>
             </label>
@@ -383,7 +370,6 @@ export function MappingPage() {
                                 ? 'warning'
                                 : 'danger'
                           }
-                          dot
                         >
                           {domain === 'all' ? CONFORMITY_LABEL[lvl] : `${DOMAIN_OPTIONS.find((d) => d.value === domain)?.label} · ${CONFORMITY_LABEL[lvl]}`}
                         </Badge>

@@ -93,7 +93,7 @@ export function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
       </div>
 
       <footer className={styles.footer}>
-        <ConformityBadge level={site.conformity} size="sm" withDot />
+        <ConformityBadge level={site.conformity} size="sm" />
         <span className={styles.lastUpdate}>
           <Clock size={11} aria-hidden="true" />
           {site.lastCollectionAt ? formatRelativeTime(site.lastCollectionAt) : 'jamais'}

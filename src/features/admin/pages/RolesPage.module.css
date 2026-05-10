@@ -1,0 +1,141 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Légende ── */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}
+.legendHint {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ── Table ── */
+.tableWrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.cornerCell,
+.roleCell {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-semibold);
+  border-bottom: 1px solid var(--color-border);
+}
+.cornerCell {
+  text-align: left;
+  min-width: 240px;
+}
+.roleCell {
+  text-align: center;
+  min-width: 130px;
+}
+
+.groupRow td {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-semibold);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.moduleCell {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.permCell {
+  padding: 0;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+}
+.permCell[data-modified='true']::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-amber);
+}
+
+.cellBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.cellBtn:hover:not(:disabled) {
+  background: var(--color-surface-2);
+}
+.cellLocked {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+}
+.pillWrite {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.pillRead {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.pillNone {
+  background: var(--color-surface-2);
+  color: var(--color-text-disabled);
+  border-color: var(--color-border);
+}

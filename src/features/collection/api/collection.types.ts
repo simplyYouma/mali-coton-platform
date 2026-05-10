@@ -1,20 +1,18 @@
 import type { ConformityLevel, GpsPoint } from '@/types/common';
 
 /**
- * Statuts d'une collecte — alignés sur l'approche hybride CDC §7.2 + §5.2.3.
+ * Statuts d'une collecte sur la plateforme — workflow post-ingestion Kobo.
+ * (Les états « draft » / « pending_sync » sont gérés par Kobo côté terrain
+ * et n'apparaissent jamais sur la plateforme.)
  *
- * draft             : édition locale en cours, non soumise
- * pending_sync      : prête à être envoyée, en attente de connectivité
- * submitted         : reçue côté serveur, sans prélèvement labo
- * awaiting_lab      : reçue côté serveur, ≥1 prélèvement labo en attente de bordereau
+ * submitted         : reçue depuis Kobo, sans prélèvement labo
+ * awaiting_lab      : reçue, ≥1 prélèvement labo en attente de bordereau
  * lab_complete      : tous bordereaux reçus, en attente validation superviseur
- * needs_correction  : superviseur a demandé une correction ciblée à l'agent (cf. CDC §5.2.3 « Corriger »)
+ * needs_correction  : superviseur a demandé une correction (l'agent re-saisit via Kobo)
  * validated         : validée par le superviseur (transmission définitive)
  * rejected          : rejetée par le superviseur (motif obligatoire)
  */
 export type CollectionStatus =
-  | 'draft'
-  | 'pending_sync'
   | 'submitted'
   | 'awaiting_lab'
   | 'lab_complete'
@@ -113,8 +111,6 @@ export interface Collection {
 }
 
 export const STATUS_LABEL: Record<CollectionStatus, string> = {
-  draft: 'Brouillon',
-  pending_sync: 'En attente de synchro',
   submitted: 'Soumise',
   awaiting_lab: 'Bordereau labo attendu',
   lab_complete: 'Bordereaux reçus',
@@ -127,8 +123,6 @@ export const STATUS_VARIANT: Record<
   CollectionStatus,
   'neutral' | 'info' | 'warning' | 'success' | 'danger'
 > = {
-  draft: 'neutral',
-  pending_sync: 'warning',
   submitted: 'info',
   awaiting_lab: 'warning',
   lab_complete: 'info',

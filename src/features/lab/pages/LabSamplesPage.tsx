@@ -300,7 +300,7 @@ function SampleDetail({
 
       {readOnly ? (
         <div className={styles.transmittedBlock}>
-          <Badge variant="success" size="sm" dot>
+          <Badge variant="success" size="sm">
             Bordereau transmis
           </Badge>
           <span className={styles.transmittedValue}>

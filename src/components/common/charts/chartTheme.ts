@@ -103,21 +103,28 @@ export function lineChartDefaults(): ChartOptions<'line'> {
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' },
     plugins: {
-      legend: { position: 'bottom' },
+      legend: {
+        position: 'bottom',
+        labels: { boxWidth: 8, boxHeight: 8, padding: 14, font: { size: 11 } },
+      },
+      tooltip: { mode: 'index', intersect: false },
     },
     scales: {
       x: {
         grid: { display: false },
-        ticks: { maxRotation: 0 },
+        border: { display: false },
+        ticks: { maxRotation: 0, color: 'rgba(0,0,0,0.42)', font: { size: 10 } },
       },
       y: {
-        grid: { color: 'rgba(0,0,0,0.05)' },
+        grid: { color: 'rgba(0,0,0,0.04)', tickLength: 0 },
+        border: { display: false },
         beginAtZero: false,
+        ticks: { color: 'rgba(0,0,0,0.42)', font: { size: 10 }, padding: 8 },
       },
     },
     elements: {
-      line: { tension: 0.32, borderWidth: 2 },
-      point: { radius: 0, hoverRadius: 5 },
+      line: { tension: 0.4, borderWidth: 2, capBezierPoints: true },
+      point: { radius: 0, hoverRadius: 4, hitRadius: 8 },
     },
   };
 }

@@ -188,8 +188,7 @@ export function IndicatorsPage() {
     <div className={styles.page}>
       <PageHeader
         eyebrow="Administration"
-        title="Questionnaire de collecte"
-        description="Référentiel des indicateurs proposés aux agents — activez, modifiez ou ajoutez vos propres indicateurs custom par domaine."
+        title="Indicateurs"
         actions={
           <Button variant="primary" iconLeft={<Plus size={16} />} onClick={openCreate}>
             Nouvel indicateur

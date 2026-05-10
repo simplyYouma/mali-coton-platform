@@ -51,14 +51,14 @@
 .stat:last-child { border-right: none; }
 .statValue {
   font-family: var(--font-display);
-  font-size: 1.625rem;
+  font-size: var(--text-h1);
   font-weight: var(--weight-bold);
   letter-spacing: -0.03em;
   line-height: 1;
 }
 .stat[data-tone='critical'] .statValue { color: var(--color-danger); }
 .statLabel {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-muted);
@@ -97,7 +97,7 @@
   color: var(--color-primary-active);
 }
 .tabBadge {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   background: var(--color-surface-2);
   color: var(--color-text-muted);
   padding: 1px 8px;
@@ -206,7 +206,7 @@
   border-bottom: 1px solid var(--color-border);
 }
 .detailEyebrow {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--color-amber-hover);
@@ -254,7 +254,7 @@
 .kv:nth-child(2n) { border-right: none; }
 .kv:nth-last-child(-n+2) { border-bottom: none; }
 .kvLabel {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
@@ -313,7 +313,7 @@
 }
 .fileHint {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--text-2xs);
   color: var(--color-text-disabled);
   font-style: italic;
 }

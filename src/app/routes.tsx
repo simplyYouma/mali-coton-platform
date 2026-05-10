@@ -13,6 +13,7 @@ import {
 } from '@/features/collection';
 import {
   UsersPage,
+  RolesPage,
   ThresholdsPage,
   AuditLogsPage,
   IndicatorsPage,
@@ -88,6 +89,14 @@ export function AppRoutes() {
           element={
             <RoleGuard roles={['admin']}>
               <UsersPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/admin/roles"
+          element={
+            <RoleGuard roles={['admin']}>
+              <RolesPage />
             </RoleGuard>
           }
         />

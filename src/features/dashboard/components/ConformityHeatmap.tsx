@@ -85,20 +85,6 @@ export function ConformityHeatmap({
         ))}
       </div>
 
-      <div className={styles.legend} aria-label="Légende des niveaux de conformité">
-        <span className={styles.legendItem}>
-          <span className={clsx(styles.legendDot, styles.legendDotConforming)} aria-hidden="true" />
-          Conforme
-        </span>
-        <span className={styles.legendItem}>
-          <span className={clsx(styles.legendDot, styles.legendDotWarning)} aria-hidden="true" />
-          À surveiller
-        </span>
-        <span className={styles.legendItem}>
-          <span className={clsx(styles.legendDot, styles.legendDotCritical)} aria-hidden="true" />
-          Hors seuil
-        </span>
-      </div>
     </div>
   );
 }

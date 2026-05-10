@@ -43,6 +43,15 @@
   --color-secondary-hover: #0c1828;
   --color-secondary-soft: #e7ecf3;
 
+  /* Encres profondes — sidebars, surfaces sombres élégantes */
+  --color-ink: #16181d;            /* noir élégant légèrement chaud */
+  --color-ink-soft: #1d2027;       /* hover sur surface ink */
+  --color-ink-night: #0e1730;      /* bleu nuit profond — alternative */
+  --color-ink-text: #e6e7ea;       /* texte principal sur ink */
+  --color-ink-muted: #8a8d96;      /* texte secondaire sur ink */
+  --color-ink-faint: #4f525a;      /* labels uppercase, hairlines */
+  --color-ink-line: rgba(255, 255, 255, 0.06); /* hairline interne ink */
+
   /* Accents bonbons élégants — pour highlights et différenciation chart */
   --color-accent: #14b8a6; /* mint/teal — moderne, neutre */
   --color-accent-hover: #0d9488;
@@ -114,13 +123,19 @@
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --text-display: 2.5rem;
-  --text-h1: 1.875rem;
-  --text-h2: 1.25rem;
-  --text-h3: 1rem;
-  --text-body: 0.875rem;
-  --text-sm: 0.8125rem;
-  --text-xs: 0.6875rem;
+  /* Échelle typographique — single source of truth */
+  --text-mega: 4.25rem;     /* hero numbers (conformité globale) */
+  --text-display: 2.5rem;   /* page hero titles */
+  --text-stat: 2.25rem;     /* statistique values (KPI, headline) */
+  --text-h1: 1.875rem;      /* section titles */
+  --text-card: 1.5rem;      /* card titles */
+  --text-h2: 1.25rem;       /* h2 — historique préservé */
+  --text-h3: 1rem;          /* h3 — historique préservé */
+  --text-md: 1rem;          /* body large */
+  --text-body: 0.875rem;    /* body */
+  --text-sm: 0.8125rem;     /* secondary */
+  --text-xs: 0.6875rem;     /* meta / mono */
+  --text-2xs: 0.625rem;     /* uppercase labels */
 
   --leading-tight: 1.1;
   --leading-snug: 1.3;

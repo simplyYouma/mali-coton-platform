@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { PanelLeftClose, PanelLeftOpen, LifeBuoy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LifeBuoy } from 'lucide-react';
 import clsx from 'clsx';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import styles from './Sidebar.module.css';
@@ -27,7 +27,7 @@ export interface SidebarProps {
 
 export function Sidebar({
   sections,
-  workspaceName = 'Mali Coton',
+  workspaceName = 'PASET Mali',
   workspacePlan = 'Suivi socio-environnemental',
 }: SidebarProps) {
   const { collapsed, toggle } = useSidebar();
@@ -40,11 +40,9 @@ export function Sidebar({
     >
       <header className={styles.workspace}>
         <div className={styles.workspaceButton}>
-          <img
-            src="/logos/logo_pnud.png"
-            alt="PNUD"
-            className={styles.brandLogo}
-          />
+          <span className={styles.brandMark} aria-hidden="true">
+            P
+          </span>
           {!collapsed ? (
             <span className={styles.workspaceMeta}>
               <span className={styles.workspaceName}>{workspaceName}</span>
@@ -58,7 +56,7 @@ export function Sidebar({
           aria-label={collapsed ? 'Déplier la barre latérale' : 'Replier la barre latérale'}
           className={styles.collapseToggle}
         >
-          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </header>
 

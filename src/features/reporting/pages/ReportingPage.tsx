@@ -207,11 +207,6 @@ export function ReportingPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Reporting automatisé</span>
           <h1 className={styles.heroTitle}>Rapports</h1>
-          <p className={styles.heroDescription}>
-            Génération automatique des livrables — mensuel, trimestriel, final. Le contenu est
-            composé à partir des données validées (collectes, alertes, bordereaux labo) ; chaque
-            phrase factuelle est traçable par un identifiant de règle.
-          </p>
         </div>
       </header>
 
@@ -310,7 +305,7 @@ export function ReportingPage() {
             </p>
           </div>
           {aggregate ? (
-            <Badge variant="info" size="sm" dot>
+            <Badge variant="info" size="sm">
               {aggregate.collections.length} collectes incluses
             </Badge>
           ) : null}

@@ -133,8 +133,7 @@ export function LabResultsPage() {
     <div className={styles.page}>
       <PageHeader
         eyebrow={`Collecte ${collection.id.slice(0, 8)}`}
-        title="Saisie des résultats laboratoire"
-        description="Enregistrez les valeurs reçues du labo pour chaque échantillon. La conformité est calculée automatiquement contre les seuils en vigueur."
+        title="Résultats laboratoire"
         actions={
           <Button
             variant="ghost"
@@ -221,10 +220,7 @@ export function LabResultsPage() {
                       onChange={(e) => updateEntry(m.indicatorId, { receivedAt: e.target.value })}
                     />
                   </FormField>
-                  <FormField
-                    label="URL du bordereau (optionnel)"
-                    hint="Lien vers le PDF stocké côté plateforme — sera saisi en Phase 2 via upload"
-                  >
+                  <FormField label="URL du bordereau (optionnel)">
                     <Input
                       type="url"
                       placeholder="https://…"

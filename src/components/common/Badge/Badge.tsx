@@ -8,14 +8,12 @@ export type BadgeSize = 'sm' | 'md';
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
   size?: BadgeSize;
-  dot?: boolean;
   children: ReactNode;
 }
 
 export function Badge({
   variant = 'neutral',
   size = 'md',
-  dot = false,
   className,
   children,
   ...rest
@@ -30,7 +28,6 @@ export function Badge({
       )}
       {...rest}
     >
-      {dot ? <span className={styles.dot} aria-hidden="true" /> : null}
       {children}
     </span>
   );

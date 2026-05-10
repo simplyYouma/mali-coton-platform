@@ -25,9 +25,9 @@ import styles from './CollectionsListPage.module.css';
 
 const TABS: Array<{ value: 'all' | CollectionStatus; label: string }> = [
   { value: 'all', label: 'Toutes' },
-  { value: 'draft', label: STATUS_LABEL.draft },
-  { value: 'pending_sync', label: STATUS_LABEL.pending_sync },
   { value: 'submitted', label: STATUS_LABEL.submitted },
+  { value: 'awaiting_lab', label: STATUS_LABEL.awaiting_lab },
+  { value: 'lab_complete', label: STATUS_LABEL.lab_complete },
   { value: 'needs_correction', label: STATUS_LABEL.needs_correction },
   { value: 'validated', label: STATUS_LABEL.validated },
   { value: 'rejected', label: STATUS_LABEL.rejected },

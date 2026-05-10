@@ -18,13 +18,20 @@ const ACTION_LABEL: Record<string, string> = {
   'user.create': 'Création utilisateur',
   'user.update': 'Modification utilisateur',
   'user.delete': 'Suppression utilisateur',
+  'role.update': 'Modification rôle',
   'site.create': 'Création site',
   'site.update': 'Modification site',
+  'collection.import': 'Import collecte',
   'collection.submit': 'Soumission collecte',
   'collection.validate': 'Validation collecte',
   'collection.reject': 'Rejet collecte',
+  'collection.correction_requested': 'Demande de correction',
   'collection.lab_result': 'Résultat labo saisi',
+  'sample.transmitted': 'Bordereau labo transmis',
+  'report.generated': 'Rapport généré',
   'threshold.update': 'Modification seuil',
+  'alert.acknowledged': 'Alerte prise en compte',
+  'alert.resolved': 'Alerte résolue',
 };
 
 const ACTION_OPTIONS = [
@@ -41,10 +48,15 @@ const RESOURCE_OPTIONS = [
   { value: 'auth', label: 'Authentification' },
 ];
 
-const ROLE_VARIANT: Record<AuditLogEntry['actorRole'], 'success' | 'info' | 'warning'> = {
+const ROLE_VARIANT: Record<
+  AuditLogEntry['actorRole'],
+  'success' | 'info' | 'warning' | 'neutral'
+> = {
   admin: 'warning',
   superviseur: 'info',
   agent: 'success',
+  lab: 'info',
+  visitor: 'neutral',
 };
 
 export function AuditLogsPage() {
@@ -57,11 +69,7 @@ export function AuditLogsPage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        eyebrow="Administration"
-        title="Journal d'audit"
-        description="Trace complète des actions sur la plateforme — auditabilité légale et conformité à la Loi malienne sur la protection des données."
-      />
+      <PageHeader eyebrow="Administration" title="Journal d'audit" />
 
       <div className={styles.toolbar}>
         <Select

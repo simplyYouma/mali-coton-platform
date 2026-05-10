@@ -223,12 +223,8 @@ export function AnalyticsPage() {
     <div className={styles.page}>
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
-          <span className={styles.heroEyebrow}>Phase 2 · Aperçu</span>
-          <h1 className={styles.heroTitle}>Analytics avancés</h1>
-          <p className={styles.heroDescription}>
-            Tendances inter-sites et indice composite environnement-social. Branchez un indicateur,
-            comparez les sites pilotes, isolez les écarts.
-          </p>
+          <span className={styles.heroEyebrow}>Tendances inter-sites</span>
+          <h1 className={styles.heroTitle}>Analytics</h1>
         </div>
       </header>
 

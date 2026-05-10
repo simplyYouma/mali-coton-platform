@@ -108,8 +108,8 @@ function CoverSection({
     <section className={`${styles.page} ${styles.coverPage}`}>
       <header className={styles.coverHeader}>
         <div className={styles.coverBrand}>
-          <span className={styles.coverBrandPrimary}>Mali Coton</span>
-          <span className={styles.coverBrandSecondary}>PNUD · UNDP-MLI-00492</span>
+          <span className={styles.coverBrandPrimary}>PASET Mali</span>
+          <span className={styles.coverBrandSecondary}>Suivi socio-environnemental</span>
         </div>
         <span className={styles.coverEyebrow}>Document officiel</span>
       </header>

@@ -101,7 +101,7 @@
   gap: 4px;
   padding: 1px 7px;
   border-radius: var(--radius-pill);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   background: var(--color-accent-soft);
   color: var(--color-accent-hover);
   font-weight: var(--weight-semibold);
