@@ -141,6 +141,13 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  max-height: calc(100vh - 220px);
+  min-height: 0;
+}
+@media (max-width: 1024px) {
+  .list {
+    max-height: 640px;
+  }
 }
 .listHeader {
   display: flex;
@@ -162,6 +169,19 @@
 .listScroll {
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.listScroll::-webkit-scrollbar {
+  width: 6px;
+}
+.listScroll::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+.listScroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .row {
@@ -277,6 +297,13 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  max-height: calc(100vh - 220px);
+  min-height: 0;
+}
+@media (max-width: 1024px) {
+  .detail {
+    max-height: none;
+  }
 }
 .detailHead {
   display: flex;
