@@ -1,7 +1,52 @@
 import { http, HttpResponse, delay } from 'msw';
 import { mockCollections } from '../fixtures/collections';
-import { hasPendingLabSamples, type Collection } from '@/features/collection/api/collection.types';
+import { mockUsers } from '../fixtures/users';
+import {
+  hasPendingLabSamples,
+  type Collection,
+  type CollectionNotification,
+} from '@/features/collection/api/collection.types';
 import { uuid } from '@/lib/uuid';
+
+/**
+ * Génère les notifications mock à envoyer à l'agent suite à une action
+ * superviseur (correction demandée / rejet / validation). Sans serveur SMTP
+ * ni passerelle SMS, on consigne juste les envois — c'est le bon réflexe pour
+ * une maquette : le contrat de notification est tracé, le contenu reste à
+ * générer par la couche transport en prod.
+ */
+function buildNotifications(
+  agentId: string,
+  kind: CollectionNotification['kind'],
+): CollectionNotification[] {
+  const agent = mockUsers.find((u) => u.id === agentId);
+  if (!agent) return [];
+  const now = new Date().toISOString();
+  const notifs: CollectionNotification[] = [];
+  if (agent.email) {
+    notifs.push({
+      id: uuid(),
+      channel: 'email',
+      recipient: agent.email,
+      recipientUserId: agent.id,
+      kind,
+      sentAt: now,
+      ref: `msg-${uuid().slice(0, 8)}@plateforme.pnud.org`,
+    });
+  }
+  if (agent.phone) {
+    notifs.push({
+      id: uuid(),
+      channel: 'sms',
+      recipient: agent.phone,
+      recipientUserId: agent.id,
+      kind,
+      sentAt: now,
+      ref: `SMS-${uuid().slice(0, 6).toUpperCase()}`,
+    });
+  }
+  return notifs;
+}
 
 const seenIdempotencyKeys = new Set<string>();
 
@@ -147,6 +192,17 @@ export const collectionsHandlers = [
     }
     const patch = (await request.json()) as Partial<Collection>;
     Object.assign(item, patch, { syncedAt: new Date().toISOString() });
+
+    // Génère la notification mock à l'agent en fonction de l'action superviseur.
+    let kind: CollectionNotification['kind'] | null = null;
+    if (patch.status === 'needs_correction' && patch.correctionRequest) kind = 'correction_requested';
+    else if (patch.status === 'rejected') kind = 'rejected';
+    else if (patch.status === 'validated') kind = 'validated';
+    if (kind) {
+      const newNotifs = buildNotifications(item.agentId, kind);
+      item.notifications = [...(item.notifications ?? []), ...newNotifs];
+    }
+
     return HttpResponse.json(item);
   }),
 ];

@@ -81,8 +81,55 @@ export interface ConditionalContext {
   observations?: string;
 }
 
+/**
+ * Une révision = un état antérieur de la collecte (avant ré-soumission Kobo).
+ * Chaque ré-soumission Kobo conserve le `koboSubmissionUuid` d'origine mais
+ * incrémente la version — c'est ainsi qu'on relie sans ambiguïté la
+ * collecte renvoyée pour correction et sa version corrigée.
+ */
+export interface CollectionRevision {
+  version: number;
+  submittedAt: string;
+  /** Empreinte de l'état (mesures + photos) au moment de la révision. */
+  measurementsCount: number;
+  photosCount: number;
+  /** Cause de la révision : correction demandée par le superviseur. */
+  reason?: 'correction_requested' | 'rejected_resubmit';
+  /** Auteur de la demande qui a déclenché cette révision. */
+  triggeredBy?: string;
+}
+
+/**
+ * Notification mock — trace ce que le système a envoyé à l'agent
+ * (la plateforme n'expose rien à l'agent ; tout transite par e-mail / SMS).
+ */
+export interface CollectionNotification {
+  id: string;
+  channel: 'email' | 'sms';
+  /** Adresse e-mail ou numéro de téléphone destinataire (snapshot). */
+  recipient: string;
+  /** Identité de l'agent destinataire au moment de l'envoi. */
+  recipientUserId: string;
+  /** Catégorie déterministe — le contenu est généré côté UI. */
+  kind: 'correction_requested' | 'rejected' | 'validated';
+  sentAt: string;
+  /** Référence libre (numéro de ticket SMS, message-id e-mail). */
+  ref?: string;
+}
+
 export interface Collection {
   id: string;
+  /**
+   * UUID stable côté Kobo Toolbox (champ `_uuid` de la soumission).
+   * Reste IDENTIQUE entre la première soumission et toutes les ré-soumissions
+   * suivantes après correction — c'est ce qui prouve que c'est la même collecte.
+   */
+  koboSubmissionUuid: string;
+  /**
+   * Version Kobo de la soumission (1, 2, 3…). Incrémentée à chaque
+   * ré-soumission. Permet de tracer combien de fois l'agent a corrigé.
+   */
+  koboVersion: number;
   siteId: string;
   agentId: string;
   collectedAt: string;
@@ -106,6 +153,10 @@ export interface Collection {
     /** Commentaire libre du superviseur — ce qui doit être corrigé concrètement. */
     notes: string;
   };
+  /** Historique des versions Kobo précédentes (n'inclut pas la version actuelle). */
+  revisions?: CollectionRevision[];
+  /** Journal mock des notifications envoyées à l'agent (e-mail / SMS). */
+  notifications?: CollectionNotification[];
   /** Marqué true par l'agent en étape 6, vaut "Je certifie l'exactitude des données". */
   agentCertified?: boolean;
 }

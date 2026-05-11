@@ -15,6 +15,14 @@ export interface AuthenticatedUser {
   role: UserRole;
   assignedSiteIds: string[];
   locale: Locale;
+  /** Numéro mobile au format E.164 — utilisé pour les notifications SMS. */
+  phone?: string;
+  /**
+   * Identifiant de l'utilisateur dans Kobo Toolbox. C'est ce champ qui
+   * permet d'associer une soumission Kobo (qui ne connaît que cet identifiant)
+   * à un agent du référentiel plateforme.
+   */
+  koboUsername?: string;
 }
 
 export interface ApiError {

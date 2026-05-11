@@ -12,6 +12,8 @@ export const mockUsers: MockUser[] = [
     role: 'admin',
     assignedSiteIds: [],
     locale: 'fr',
+    phone: '+22376001122',
+    koboUsername: 'awa.diarra',
     password: 'demo',
   },
   {
@@ -21,6 +23,8 @@ export const mockUsers: MockUser[] = [
     role: 'superviseur',
     assignedSiteIds: ['site-atpek', 'site-dianeguela', 'site-galanimassiriw', 'site-djiguiyaso', 'site-ndomo'],
     locale: 'fr',
+    phone: '+22376554477',
+    koboUsername: 'm.coulibaly',
     password: 'demo',
   },
   {
@@ -30,6 +34,8 @@ export const mockUsers: MockUser[] = [
     role: 'agent',
     assignedSiteIds: ['site-atpek', 'site-dianeguela', 'site-galanimassiriw', 'site-djiguiyaso'],
     locale: 'fr',
+    phone: '+22376112233',
+    koboUsername: 'aicha.toure',
     password: 'demo',
   },
   {
@@ -39,6 +45,8 @@ export const mockUsers: MockUser[] = [
     role: 'agent',
     assignedSiteIds: ['site-ndomo'],
     locale: 'fr',
+    phone: '+22376998877',
+    koboUsername: 'issa.traore',
     password: 'demo',
   },
   {
@@ -48,6 +56,7 @@ export const mockUsers: MockUser[] = [
     role: 'lab',
     assignedSiteIds: [],
     locale: 'fr',
+    phone: '+22320225566',
     password: 'demo',
   },
   {

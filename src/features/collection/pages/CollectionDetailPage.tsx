@@ -3,15 +3,22 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Beaker,
+  Bell,
   CheckCircle2,
   ClipboardCheck,
   Clock,
   FlaskConical,
+  Hash,
   History,
+  Mail,
   MapPin,
+  MessageSquare,
   Pencil,
+  Phone,
+  RefreshCw,
   Send,
   Smartphone,
+  User as UserIcon,
   XCircle,
 } from 'lucide-react';
 import {
@@ -29,10 +36,12 @@ import { mockUsers } from '@/mocks/fixtures/users';
 import { formatDateTime, formatGps, formatRelativeTime } from '@/lib/format';
 import type {
   Collection,
+  CollectionNotification,
   CollectionStatus,
   IndicatorDomain,
   Measurement,
 } from '../api/collection.types';
+import type { Site } from '@/features/sites/api/site.types';
 import { STATUS_LABEL, STATUS_VARIANT } from '../api/collection.types';
 import { findRule } from '../lib/indicatorRules';
 import { PhotoLightbox } from '../components/PhotoLightbox';
@@ -257,6 +266,14 @@ export function CollectionDetailPage() {
               {STATUS_LABEL[collection.status]}
             </Badge>
             · #{collection.id.slice(-6).toUpperCase()}
+            {collection.koboVersion > 1 ? (
+              <>
+                {' '}·{' '}
+                <span className={styles.heroVersion} title="Nombre de soumissions Kobo">
+                  Kobo v{collection.koboVersion}
+                </span>
+              </>
+            ) : null}
           </span>
           <h1 className={styles.heroTitle}>
             {site ? site.shortName : 'Collecte'} —{' '}
@@ -401,6 +418,23 @@ export function CollectionDetailPage() {
       </section>
 
       <CollectionTimelineSection collection={collection} usersById={usersById} />
+
+      <CollectionIdentityAndContact
+        collection={collection}
+        agent={mockUsers.find((u) => u.id === collection.agentId) ?? null}
+        site={site}
+      />
+
+      {collection.notifications && collection.notifications.length > 0 ? (
+        <CollectionNotificationsLog notifications={collection.notifications} />
+      ) : null}
+
+      {collection.revisions && collection.revisions.length > 0 ? (
+        <CollectionRevisionsHistory
+          collection={collection}
+          usersById={usersById}
+        />
+      ) : null}
 
       {grouped ? (
         <section className={styles.section} aria-label="Mesures par domaine">
@@ -693,11 +727,13 @@ export function CollectionDetailPage() {
 
 const TONE_ICON: Record<TimelineEvent['tone'], ReactNode> = {
   kobo: <Smartphone size={12} aria-hidden="true" />,
+  kobo_resubmit: <RefreshCw size={12} aria-hidden="true" />,
   sample: <Send size={12} aria-hidden="true" />,
   lab: <FlaskConical size={12} aria-hidden="true" />,
   sup_validate: <CheckCircle2 size={12} aria-hidden="true" />,
   sup_reject: <XCircle size={12} aria-hidden="true" />,
   sup_correction: <Pencil size={12} aria-hidden="true" />,
+  notification: <Bell size={12} aria-hidden="true" />,
 };
 
 interface CollectionTimelineSectionProps {
@@ -744,6 +780,244 @@ function CollectionTimelineSection({ collection, usersById }: CollectionTimeline
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+interface IdentityProps {
+  collection: Collection;
+  agent: { fullName: string; email: string; phone?: string; koboUsername?: string } | null;
+  site: Site | undefined;
+}
+
+function CollectionIdentityAndContact({ collection, agent, site }: IdentityProps) {
+  return (
+    <section className={styles.section} aria-label="Identité et contact agent">
+      <div className={styles.sectionHead}>
+        <div>
+          <h2 className={styles.sectionTitle}>
+            <Hash size={14} aria-hidden="true" /> Identité Kobo & contact agent
+          </h2>
+          <p className={styles.sectionSubtitle}>
+            L'UUID Kobo est l'identifiant stable de la collecte : il reste
+            identique entre la première soumission et toutes les versions
+            corrigées. Le superviseur contacte l'agent via les coordonnées
+            saisies au référentiel.
+          </p>
+        </div>
+      </div>
+      <div className={styles.identityGrid}>
+        <div className={styles.identityCard}>
+          <span className={styles.identityCardEyebrow}>Identité technique</span>
+          <dl className={styles.identityList}>
+            <div className={styles.identityRow}>
+              <dt>UUID Kobo</dt>
+              <dd>
+                <code className={styles.identityCode}>{collection.koboSubmissionUuid}</code>
+              </dd>
+            </div>
+            <div className={styles.identityRow}>
+              <dt>Version Kobo</dt>
+              <dd>
+                v{collection.koboVersion}
+                {collection.koboVersion > 1 ? (
+                  <span className={styles.identityHint}>
+                    {' '}· ré-soumission après correction
+                  </span>
+                ) : (
+                  <span className={styles.identityHint}> · première soumission</span>
+                )}
+              </dd>
+            </div>
+            <div className={styles.identityRow}>
+              <dt>ID interne</dt>
+              <dd>
+                <code className={styles.identityCode}>{collection.id}</code>
+              </dd>
+            </div>
+            {site ? (
+              <div className={styles.identityRow}>
+                <dt>Site</dt>
+                <dd>
+                  {site.shortName} · {site.location.commune}, {site.location.city}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </div>
+        <div className={styles.identityCard}>
+          <span className={styles.identityCardEyebrow}>Agent de terrain</span>
+          {agent ? (
+            <dl className={styles.identityList}>
+              <div className={styles.identityRow}>
+                <dt>
+                  <UserIcon size={12} aria-hidden="true" /> Nom
+                </dt>
+                <dd>{agent.fullName}</dd>
+              </div>
+              <div className={styles.identityRow}>
+                <dt>
+                  <Mail size={12} aria-hidden="true" /> E-mail
+                </dt>
+                <dd>
+                  <a href={`mailto:${agent.email}`} className={styles.identityLink}>
+                    {agent.email}
+                  </a>
+                </dd>
+              </div>
+              {agent.phone ? (
+                <div className={styles.identityRow}>
+                  <dt>
+                    <Phone size={12} aria-hidden="true" /> Mobile
+                  </dt>
+                  <dd>
+                    <a href={`tel:${agent.phone}`} className={styles.identityLink}>
+                      {agent.phone}
+                    </a>
+                  </dd>
+                </div>
+              ) : null}
+              {agent.koboUsername ? (
+                <div className={styles.identityRow}>
+                  <dt>
+                    <Smartphone size={12} aria-hidden="true" /> Compte Kobo
+                  </dt>
+                  <dd>
+                    <code className={styles.identityCode}>@{agent.koboUsername}</code>
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : (
+            <p className={styles.identityHint}>Agent introuvable au référentiel.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CollectionNotificationsLog({ notifications }: { notifications: CollectionNotification[] }) {
+  const sorted = [...notifications].sort(
+    (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+  );
+  return (
+    <section className={styles.section} aria-label="Notifications envoyées">
+      <div className={styles.sectionHead}>
+        <div>
+          <h2 className={styles.sectionTitle}>
+            <Bell size={14} aria-hidden="true" /> Notifications envoyées à l'agent
+          </h2>
+          <p className={styles.sectionSubtitle}>
+            L'agent ne consulte pas la plateforme : chaque décision du
+            superviseur lui parvient par e-mail et SMS, avec un identifiant
+            de message conservé pour audit.
+          </p>
+        </div>
+      </div>
+      <ul className={styles.notifList}>
+        {sorted.map((n) => (
+          <li key={n.id} className={styles.notifItem} data-kind={n.kind}>
+            <span className={styles.notifChannel} aria-hidden="true">
+              {n.channel === 'email' ? <Mail size={14} /> : <MessageSquare size={14} />}
+            </span>
+            <div className={styles.notifMain}>
+              <span className={styles.notifLabel}>
+                {n.kind === 'correction_requested'
+                  ? 'Demande de correction'
+                  : n.kind === 'rejected'
+                    ? 'Notification de rejet'
+                    : 'Notification de validation'}{' '}
+                · {n.channel === 'email' ? 'E-mail' : 'SMS'}
+              </span>
+              <span className={styles.notifMeta}>
+                Destinataire : <code>{n.recipient}</code>
+                {n.ref ? (
+                  <>
+                    {' '}· réf. <code>{n.ref}</code>
+                  </>
+                ) : null}
+              </span>
+            </div>
+            <span className={styles.notifDate}>
+              {formatDateTime(n.sentAt, 'dd MMM · HH:mm')}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+interface RevisionsHistoryProps {
+  collection: Collection;
+  usersById: Map<string, string>;
+}
+
+function CollectionRevisionsHistory({ collection, usersById }: RevisionsHistoryProps) {
+  const revisions = collection.revisions ?? [];
+  return (
+    <section className={styles.section} aria-label="Historique des versions Kobo">
+      <div className={styles.sectionHead}>
+        <div>
+          <h2 className={styles.sectionTitle}>
+            <RefreshCw size={14} aria-hidden="true" /> Historique des versions Kobo
+          </h2>
+          <p className={styles.sectionSubtitle}>
+            UUID partagé{' '}
+            <code className={styles.identityCode}>
+              {collection.koboSubmissionUuid}
+            </code>{' '}
+            — chaque ligne est une soumission successive de la même collecte
+            depuis Kobo.
+          </p>
+        </div>
+      </div>
+      <table className={styles.revisionsTable}>
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Soumise le</th>
+            <th>Mesures</th>
+            <th>Photos</th>
+            <th>Raison</th>
+          </tr>
+        </thead>
+        <tbody>
+          {revisions.map((r) => (
+            <tr key={`rev-${r.version}`}>
+              <td>v{r.version}</td>
+              <td>{formatDateTime(r.submittedAt, 'dd MMM yyyy · HH:mm')}</td>
+              <td>{r.measurementsCount}</td>
+              <td>{r.photosCount}</td>
+              <td>
+                {r.reason === 'correction_requested'
+                  ? `Correction demandée${r.triggeredBy ? ` par ${usersById.get(r.triggeredBy) ?? r.triggeredBy}` : ''}`
+                  : r.reason === 'rejected_resubmit'
+                    ? 'Ré-soumission après rejet'
+                    : '—'}
+              </td>
+            </tr>
+          ))}
+          <tr className={styles.revisionsCurrent}>
+            <td>
+              <strong>v{collection.koboVersion}</strong>
+            </td>
+            <td>
+              {collection.syncedAt
+                ? formatDateTime(collection.syncedAt, 'dd MMM yyyy · HH:mm')
+                : '—'}
+            </td>
+            <td>{collection.measurements.length}</td>
+            <td>{collection.photos.length}</td>
+            <td>
+              <Badge size="sm" variant="info">
+                Version actuelle
+              </Badge>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   );
 }

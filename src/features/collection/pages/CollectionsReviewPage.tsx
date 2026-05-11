@@ -4,9 +4,11 @@ import {
   Beaker,
   Calendar,
   Check,
+  CheckCheck,
   ClipboardCheck,
   ExternalLink,
   Inbox,
+  ListChecks,
   MapPin,
   Pencil,
   User,
@@ -60,6 +62,55 @@ export function CollectionsReviewPage() {
   const [validationNotes, setValidationNotes] = useState('');
   const [correctionNotes, setCorrectionNotes] = useState('');
   const [correctionTargetSteps, setCorrectionTargetSteps] = useState<string[]>([]);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelection, setBulkSelection] = useState<Set<string>>(new Set());
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const bulkEligibleIds = useMemo(
+    () => new Set(items.filter((c) => c.status === 'lab_complete' || c.status === 'submitted').map((c) => c.id)),
+    [items],
+  );
+
+  const toggleBulkRow = (id: string) => {
+    setBulkSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setBulkSelection((prev) =>
+      prev.size === bulkEligibleIds.size ? new Set() : new Set(bulkEligibleIds),
+    );
+  };
+
+  const handleBulkValidate = async () => {
+    if (!user || bulkSelection.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(bulkSelection);
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      try {
+        await validateMut.mutateAsync({ id, validatedBy: user.id });
+        ok += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+    setBulkBusy(false);
+    setBulkConfirmOpen(false);
+    setBulkSelection(new Set());
+    setBulkMode(false);
+    if (fail === 0) {
+      toast.success(`${ok} collecte${ok > 1 ? 's' : ''} validée${ok > 1 ? 's' : ''} en lot — agents notifiés.`);
+    } else {
+      toast.warning(`${ok} validée${ok > 1 ? 's' : ''}, ${fail} en échec — réessayez sur les collectes restantes.`);
+    }
+  };
 
   const selected = useMemo(
     () => items.find((c) => c.id === selectedId) ?? items[0] ?? null,
@@ -159,11 +210,64 @@ export function CollectionsReviewPage() {
         </div>
       </header>
 
+      {bulkMode && bulkSelection.size > 0 ? (
+        <div className={styles.bulkBar} role="region" aria-label="Actions en lot">
+          <div className={styles.bulkBarLeft}>
+            <ListChecks size={16} aria-hidden="true" />
+            <span className={styles.bulkBarLabel}>
+              {bulkSelection.size} collecte{bulkSelection.size > 1 ? 's' : ''} sélectionnée{bulkSelection.size > 1 ? 's' : ''}
+            </span>
+            <button
+              type="button"
+              className={styles.bulkLink}
+              onClick={toggleSelectAll}
+            >
+              {bulkSelection.size === bulkEligibleIds.size
+                ? 'Tout désélectionner'
+                : `Sélectionner les ${bulkEligibleIds.size} éligibles`}
+            </button>
+          </div>
+          <div className={styles.bulkBarActions}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setBulkSelection(new Set());
+                setBulkMode(false);
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              iconLeft={<CheckCheck size={14} />}
+              onClick={() => setBulkConfirmOpen(true)}
+              disabled={bulkBusy}
+            >
+              Valider les {bulkSelection.size} sélectionnée{bulkSelection.size > 1 ? 's' : ''}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className={styles.split}>
         <aside className={styles.listPanel} aria-label="Collectes en attente de validation">
           <header className={styles.listHeader}>
             <span className={styles.listTitle}>En attente</span>
-            <span className={styles.listCount}>{items.length}</span>
+            <div className={styles.listHeaderRight}>
+              <span className={styles.listCount}>{items.length}</span>
+              <button
+                type="button"
+                className={`${styles.bulkToggle} ${bulkMode ? styles.bulkToggleActive : ''}`}
+                onClick={() => {
+                  setBulkMode((v) => !v);
+                  setBulkSelection(new Set());
+                }}
+                title={bulkMode ? 'Quitter le mode lot' : 'Sélectionner plusieurs collectes'}
+              >
+                <ListChecks size={14} aria-hidden="true" />
+                {bulkMode ? 'Quitter le lot' : 'Mode lot'}
+              </button>
+            </div>
           </header>
           <div className={styles.listScroll}>
             {isLoading ? (
@@ -184,29 +288,48 @@ export function CollectionsReviewPage() {
                 const isActive = (selected?.id ?? items[0]?.id) === c.id;
                 const isLab = c.status === 'lab_complete';
                 const Icon = isLab ? Beaker : Inbox;
+                const isSelected = bulkSelection.has(c.id);
+                const isEligible = bulkEligibleIds.has(c.id);
                 return (
-                  <button
+                  <div
                     key={c.id}
-                    type="button"
-                    onClick={() => setSelectedId(c.id)}
                     className={`${styles.row} ${isActive ? styles.rowActive : ''}`}
                     data-tone={isLab ? 'accent' : 'primary'}
+                    data-bulk={bulkMode ? 'on' : 'off'}
                   >
-                    <span className={styles.rowIcon} aria-hidden="true">
-                      <Icon size={14} />
-                    </span>
-                    <div className={styles.rowMain}>
-                      <span className={styles.rowSite}>
-                        {site?.shortName ?? c.siteId}
+                    {bulkMode ? (
+                      <label className={styles.rowCheckbox} onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={!isEligible}
+                          onChange={() => toggleBulkRow(c.id)}
+                          aria-label={`Sélectionner ${site?.shortName ?? c.siteId}`}
+                        />
+                      </label>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(c.id)}
+                      className={styles.rowInner}
+                    >
+                      <span className={styles.rowIcon} aria-hidden="true">
+                        <Icon size={14} />
                       </span>
-                      <span className={styles.rowMeta}>
-                        {usersById.get(c.agentId) ?? c.agentId} · {STATUS_LABEL[c.status]}
+                      <div className={styles.rowMain}>
+                        <span className={styles.rowSite}>
+                          {site?.shortName ?? c.siteId}
+                        </span>
+                        <span className={styles.rowMeta}>
+                          {usersById.get(c.agentId) ?? c.agentId} · {STATUS_LABEL[c.status]}
+                          {c.koboVersion > 1 ? ` · Kobo v${c.koboVersion}` : ''}
+                        </span>
+                      </div>
+                      <span className={styles.rowDate}>
+                        {formatRelativeTime(c.collectedAt)}
                       </span>
-                    </div>
-                    <span className={styles.rowDate}>
-                      {formatRelativeTime(c.collectedAt)}
-                    </span>
-                  </button>
+                    </button>
+                  </div>
                 );
               })
             )}
@@ -301,6 +424,33 @@ export function CollectionsReviewPage() {
             onChange={setCorrectionTargetSteps}
           />
         </div>
+      </Modal>
+
+      <Modal
+        open={bulkConfirmOpen}
+        onClose={() => setBulkConfirmOpen(false)}
+        title={`Valider ${bulkSelection.size} collecte${bulkSelection.size > 1 ? 's' : ''} en lot`}
+        description="Toutes les collectes sélectionnées passeront en statut « Validée ». Chaque agent recevra une notification e-mail + SMS de validation. L'action est tracée individuellement dans le journal d'audit."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setBulkConfirmOpen(false)} disabled={bulkBusy}>
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleBulkValidate}
+              loading={bulkBusy}
+              iconLeft={<CheckCheck size={14} />}
+            >
+              Confirmer la validation en lot
+            </Button>
+          </>
+        }
+      >
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+          Les collectes en statut « À corriger » ou « Bordereau attendu » ne sont pas éligibles
+          et seront ignorées si présentes dans la sélection.
+        </p>
       </Modal>
 
       <Modal

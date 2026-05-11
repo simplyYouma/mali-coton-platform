@@ -1,4 +1,20 @@
-import type { Collection, CollectionStatus } from '@/features/collection/api/collection.types';
+import type {
+  Collection,
+  CollectionNotification,
+  CollectionStatus,
+} from '@/features/collection/api/collection.types';
+
+/**
+ * Génère un UUID v4 déterministe-en-apparence pour les soumissions Kobo.
+ * En prod c'est Kobo qui le forge — ici on en fabrique un stable par compteur
+ * pour que les fixtures restent identifiables à travers les rechargements.
+ */
+function koboUuid(seed: number): string {
+  const hex = (n: number, len: number) => n.toString(16).padStart(len, '0');
+  const a = hex(seed * 2654435761, 8).slice(-8);
+  const b = hex(seed * 40503, 4).slice(-4);
+  return `${a}-${b}-4${a.slice(0, 3)}-9${b.slice(0, 3)}-${hex(seed, 12).slice(-12)}`;
+}
 
 const SITES = [
   { id: 'site-atpek', agent: 'u-agent-bko' },
@@ -101,6 +117,8 @@ export const mockCollections: Collection[] = (() => {
       const includeValidationNote = isValidated && Math.random() < 0.55;
       list.push({
         id: `col-${String(counter).padStart(4, '0')}`,
+        koboSubmissionUuid: koboUuid(counter),
+        koboVersion: 1,
         siteId: site.id,
         agentId: site.agent,
         collectedAt: collectedIso,
@@ -259,13 +277,38 @@ export const mockCollections: Collection[] = (() => {
     counter += 1;
     const requestedAt = daysAgo(c.daysAgo - 0.4);
     const collectedIso = daysAgo(c.daysAgo);
+    const agentEmail = 'agent.bamako@sahel.com';
+    const agentPhone = '+22376112233';
+    const notifications: CollectionNotification[] = [
+      {
+        id: `notif-${counter}-mail`,
+        channel: 'email',
+        recipient: agentEmail,
+        recipientUserId: 'u-agent-bko',
+        kind: 'correction_requested',
+        sentAt: requestedAt,
+        ref: `msg-${counter}@plateforme.pnud.org`,
+      },
+      {
+        id: `notif-${counter}-sms`,
+        channel: 'sms',
+        recipient: agentPhone,
+        recipientUserId: 'u-agent-bko',
+        kind: 'correction_requested',
+        sentAt: requestedAt,
+        ref: `SMS-${counter}-OR`,
+      },
+    ];
     list.push({
       id: `col-${String(counter).padStart(4, '0')}`,
+      koboSubmissionUuid: koboUuid(counter),
+      koboVersion: 1,
       siteId: c.siteId,
       agentId: 'u-agent-bko',
       collectedAt: collectedIso,
       status: 'needs_correction',
       syncedAt: daysAgo(c.daysAgo - 0.05),
+      notifications,
       gps: c.siteId === 'site-ndomo'
         ? { lat: 12.95, lng: -7.42, accuracy: 38 } // hors site Ndomo
         : { lat: 12.6 + (Math.random() - 0.5) * 0.4, lng: -7.95 + (Math.random() - 0.5) * 0.4, accuracy: 5 },
@@ -288,6 +331,86 @@ export const mockCollections: Collection[] = (() => {
         notes: c.notes,
       },
       agentCertified: true,
+    });
+  }
+
+  // ─── Cas "boucle fermée" : collecte renvoyée pour correction puis ré-soumise
+  // par l'agent via Kobo (même UUID, version 2). Démontre que la plateforme
+  // reconnaît la collecte revenue corrigée — pas une nouvelle collecte.
+  {
+    counter += 1;
+    const reviseSeed = counter;
+    const originalRequestedAt = daysAgo(3.6);
+    const resubmittedAt = daysAgo(0.4);
+    const collectedIso = daysAgo(4);
+    list.push({
+      id: `col-${String(counter).padStart(4, '0')}`,
+      koboSubmissionUuid: koboUuid(reviseSeed),
+      koboVersion: 2,
+      siteId: 'site-atpek',
+      agentId: 'u-agent-bko',
+      collectedAt: collectedIso,
+      status: 'submitted',
+      syncedAt: resubmittedAt,
+      gps: { lat: 12.61, lng: -7.99, accuracy: 4 },
+      context: {
+        weather: 'sunny',
+        ambientTempC: 34,
+        hasNearbyWatercourse: false,
+        observations: "Reprise après correction superviseur : pH re-mesuré avec bandelette neuve, photo de l'écran pH-mètre jointe.",
+      },
+      measurements: [
+        { indicatorId: 'water.ph', acquisition: 'in_situ', value: 9.4, unit: '' },
+        { indicatorId: 'water.sulfates', acquisition: 'lab_received', value: 540, unit: 'mg/L' },
+        { indicatorId: 'air.pm25', acquisition: 'in_situ', value: 24, unit: 'µg/m³' },
+        { indicatorId: 'health.epi_usage', acquisition: 'in_situ', value: 60, unit: '%' },
+        { indicatorId: 'soil.ph', acquisition: 'in_situ', value: 7.2, unit: '' },
+      ],
+      photos: [
+        {
+          id: `photo-${counter}-1`,
+          url: photoUrl(PHOTO_SEEDS.vatsOverview),
+          takenAt: new Date(new Date(collectedIso).getTime() - 20 * 60_000).toISOString(),
+          note: 'Cuves de teinture — version corrigée',
+        },
+        {
+          id: `photo-${counter}-2`,
+          url: photoUrl(PHOTO_SEEDS.sampleLabel),
+          takenAt: new Date(new Date(collectedIso).getTime() - 8 * 60_000).toISOString(),
+          note: 'Photo de la lecture du pH-mètre (demandée par le superviseur)',
+        },
+      ],
+      agentCertified: true,
+      revisions: [
+        {
+          version: 1,
+          submittedAt: daysAgo(4.1),
+          measurementsCount: 4,
+          photosCount: 1,
+          reason: 'correction_requested',
+          triggeredBy: 'u-sup-1',
+        },
+      ],
+      notifications: [
+        {
+          id: `notif-${counter}-mail-1`,
+          channel: 'email',
+          recipient: 'agent.bamako@sahel.com',
+          recipientUserId: 'u-agent-bko',
+          kind: 'correction_requested',
+          sentAt: originalRequestedAt,
+          ref: `msg-${counter}-v1@plateforme.pnud.org`,
+        },
+        {
+          id: `notif-${counter}-sms-1`,
+          channel: 'sms',
+          recipient: '+22376112233',
+          recipientUserId: 'u-agent-bko',
+          kind: 'correction_requested',
+          sentAt: originalRequestedAt,
+          ref: `SMS-${counter}-v1`,
+        },
+      ],
     });
   }
 

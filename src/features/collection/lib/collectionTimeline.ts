@@ -5,7 +5,15 @@ export interface TimelineEvent {
   label: string;
   when: string;
   who?: string;
-  tone: 'kobo' | 'sample' | 'lab' | 'sup_validate' | 'sup_reject' | 'sup_correction';
+  tone:
+    | 'kobo'
+    | 'kobo_resubmit'
+    | 'sample'
+    | 'lab'
+    | 'sup_validate'
+    | 'sup_reject'
+    | 'sup_correction'
+    | 'notification';
   notes?: string;
 }
 
@@ -17,14 +25,54 @@ export interface TimelineEvent {
 export function buildCollectionTimeline(c: Collection): TimelineEvent[] {
   const events: TimelineEvent[] = [];
 
-  // 1. Soumission depuis Kobo
+  // 1. Soumissions Kobo successives — v1 puis ré-soumissions après correction
+  const firstSync = c.revisions?.[0]?.submittedAt ?? c.syncedAt ?? c.collectedAt;
   events.push({
     id: 'submitted',
-    label: 'Soumise depuis Kobo',
-    when: c.syncedAt ?? c.collectedAt,
+    label: 'Soumise depuis Kobo (v1)',
+    when: firstSync,
     who: c.agentId,
     tone: 'kobo',
   });
+  if (c.revisions && c.revisions.length > 0) {
+    // La version courante est c.koboVersion ; chaque entrée de revisions[] est
+    // une version antérieure. La ré-soumission actuelle (=koboVersion) a eu
+    // lieu à c.syncedAt.
+    events.push({
+      id: `kobo-resubmit-v${c.koboVersion}`,
+      label: `Ré-soumise depuis Kobo (v${c.koboVersion}) après correction`,
+      when: c.syncedAt ?? c.collectedAt,
+      who: c.agentId,
+      tone: 'kobo_resubmit',
+    });
+  }
+
+  // 1b. Notifications envoyées à l'agent (e-mail + SMS) — preuves de la boucle
+  if (c.notifications && c.notifications.length > 0) {
+    // Groupe par sentAt pour éviter de doubler email + sms côte à côte
+    const groups = new Map<string, typeof c.notifications>();
+    for (const n of c.notifications) {
+      const key = `${n.sentAt}|${n.kind}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(n);
+    }
+    for (const [key, group] of groups) {
+      const first = group[0]!;
+      const channels = group.map((n) => (n.channel === 'email' ? 'e-mail' : 'SMS')).join(' + ');
+      const kindLabel =
+        first.kind === 'correction_requested'
+          ? 'Notification correction envoyée à l\'agent'
+          : first.kind === 'rejected'
+            ? 'Notification rejet envoyée à l\'agent'
+            : 'Notification validation envoyée à l\'agent';
+      events.push({
+        id: `notif-${key}`,
+        label: `${kindLabel} (${channels})`,
+        when: first.sentAt,
+        tone: 'notification',
+      });
+    }
+  }
 
   // 2. Échantillons envoyés au labo
   const samples = c.measurements
