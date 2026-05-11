@@ -27,6 +27,8 @@ const usersStore: ManagedUser[] = mockUsers.map((u) => ({
   createdAt: '2026-01-10T08:00:00.000Z',
   lastLoginAt:
     u.id === 'u-agent-bko' ? new Date(Date.now() - 18 * 60_000).toISOString() : undefined,
+  phone: u.phone,
+  koboUsername: u.koboUsername,
 }));
 
 const thresholdsStore: ThresholdConfig[] = mockThresholds.map((t) => ({ ...t }));
@@ -67,6 +69,8 @@ export const adminHandlers = [
       locale: body.locale,
       isActive: true,
       createdAt: new Date().toISOString(),
+      phone: body.phone,
+      koboUsername: body.koboUsername,
     };
     usersStore.push(created);
     return HttpResponse.json(created, { status: 201 });

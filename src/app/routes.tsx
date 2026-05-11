@@ -20,6 +20,7 @@ import {
   RefDataPage,
 } from '@/features/admin';
 import { AlertsPage } from '@/features/alerts';
+import { TeamListPage, AgentDetailPage } from '@/features/team';
 import { MappingPage } from '@/features/mapping';
 import { AnalyticsPage } from '@/features/analytics';
 import { ReportingPage } from '@/features/reporting';
@@ -82,6 +83,22 @@ export function AppRoutes() {
           }
         />
         <Route path="/alertes" element={<AlertsPage />} />
+        <Route
+          path="/equipe"
+          element={
+            <RoleGuard roles={['admin', 'superviseur']}>
+              <TeamListPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/equipe/:id"
+          element={
+            <RoleGuard roles={['admin', 'superviseur']}>
+              <AgentDetailPage />
+            </RoleGuard>
+          }
+        />
         <Route path="/cartographie" element={<MappingPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/reporting" element={<ReportingPage />} />

@@ -11,6 +11,8 @@ export interface ManagedUser {
   isActive: boolean;
   createdAt: string;
   lastLoginAt?: string;
+  phone?: string;
+  koboUsername?: string;
 }
 
 export interface UserCreateInput {
@@ -19,6 +21,8 @@ export interface UserCreateInput {
   role: UserRole;
   assignedSiteIds: string[];
   locale: Locale;
+  phone?: string;
+  koboUsername?: string;
 }
 
 export interface UserUpdateInput extends Partial<UserCreateInput> {

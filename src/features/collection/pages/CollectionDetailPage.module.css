@@ -609,141 +609,55 @@
   text-transform: none;
 }
 
-/* ── Identité Kobo + contact agent ── */
-.identityGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-}
-.identityCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+/* ── Bande d'identité (UUID + Kobo + agent) — compacte ── */
+.identityStrip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-.identityCardEyebrow {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: var(--weight-bold);
-  color: var(--color-text-muted);
-}
-.identityList {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.identityRow {
-  display: grid;
-  grid-template-columns: 110px 1fr;
-  align-items: baseline;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-}
-.identityRow dt {
+  border-radius: var(--radius-pill);
+  width: max-content;
+  max-width: 100%;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+}
+.identityStripGroup {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  margin: 0;
+  gap: 6px;
 }
-.identityRow dd {
-  margin: 0;
+.identityStripLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+}
+.identityStripSep {
+  color: var(--color-border-strong);
+}
+.identityStripValue {
   color: var(--color-text);
-  word-break: break-word;
+  font-weight: var(--weight-semibold);
+}
+.identityStripLink {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: var(--weight-semibold);
+}
+.identityStripLink:hover {
+  text-decoration: underline;
 }
 .identityCode {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 1px 6px;
-}
-.identityHint {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-.identityLink {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-.identityLink:hover {
-  text-decoration: underline;
-}
-
-/* ── Journal de notifications ── */
-.notifList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.notifItem {
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-.notifChannel {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--color-surface-2);
-  color: var(--color-text-muted);
-}
-.notifItem[data-kind='correction_requested'] .notifChannel {
-  color: var(--color-amber-hover);
-  background: var(--color-amber-soft);
-}
-.notifItem[data-kind='rejected'] .notifChannel {
-  color: var(--color-danger);
-  background: var(--color-danger-bg);
-}
-.notifItem[data-kind='validated'] .notifChannel {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-}
-.notifMain {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.notifLabel {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--color-text);
-}
-.notifMeta {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-.notifMeta code {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-}
-.notifDate {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  white-space: nowrap;
 }
 
 /* ── Historique révisions Kobo ── */
@@ -774,8 +688,3 @@
   background: var(--color-surface-2);
 }
 
-@media (max-width: 768px) {
-  .identityGrid {
-    grid-template-columns: 1fr;
-  }
-}
