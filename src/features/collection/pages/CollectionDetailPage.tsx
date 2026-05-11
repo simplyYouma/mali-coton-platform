@@ -264,7 +264,7 @@ export function CollectionDetailPage() {
             {collection.koboVersion > 1 ? (
               <>
                 {' '}·{' '}
-                <span className={styles.heroVersion} title="Nombre de soumissions Kobo">
+                <span className={styles.heroVersion} title="Ré-soumission après correction">
                   Kobo v{collection.koboVersion}
                 </span>
               </>
@@ -752,14 +752,18 @@ function CollectionTimelineSection({ collection, usersById }: CollectionTimeline
             </span>
             <div className={styles.timelineContent}>
               <span className={styles.timelineEventLabel}>{ev.label}</span>
-              <span className={styles.timelineMeta}>
-                {formatDateTime(ev.when, 'dd MMM yyyy · HH:mm')}
-                {ev.who ? ` · ${usersById.get(ev.who) ?? ev.who}` : ''}
-              </span>
-              {ev.notes ? (
-                <p className={styles.timelineNotes}>« {ev.notes} »</p>
+              {ev.who ? (
+                <span className={styles.timelineMeta}>
+                  {usersById.get(ev.who) ?? ev.who}
+                </span>
               ) : null}
             </div>
+            <span className={styles.timelineDateChip}>
+              {formatDateTime(ev.when, 'dd MMM · HH:mm')}
+            </span>
+            {ev.notes ? (
+              <p className={styles.timelineNotes}>« {ev.notes} »</p>
+            ) : null}
           </li>
         ))}
       </ol>
@@ -777,24 +781,25 @@ function CollectionIdentityStrip({ collection, agent }: IdentityStripProps) {
     <div className={styles.identityStrip} aria-label="Identité collecte">
       <div className={styles.identityStripGroup}>
         <Hash size={12} aria-hidden="true" />
-        <span className={styles.identityStripLabel}>UUID</span>
         <code className={styles.identityCode} title={collection.koboSubmissionUuid}>
           {collection.koboSubmissionUuid.slice(0, 8)}…
         </code>
       </div>
-      <span className={styles.identityStripSep} aria-hidden="true">·</span>
-      <div className={styles.identityStripGroup}>
-        <RefreshCw size={12} aria-hidden="true" />
-        <span className={styles.identityStripLabel}>Kobo</span>
-        <span className={styles.identityStripValue}>v{collection.koboVersion}</span>
-      </div>
+      {collection.koboVersion > 1 ? (
+        <>
+          <span className={styles.identityStripSep} aria-hidden="true">·</span>
+          <div className={styles.identityStripGroup}>
+            <RefreshCw size={12} aria-hidden="true" />
+            <span className={styles.identityStripValue}>Kobo v{collection.koboVersion}</span>
+          </div>
+        </>
+      ) : null}
       {agent ? (
         <>
           <span className={styles.identityStripSep} aria-hidden="true">·</span>
           <div className={styles.identityStripGroup}>
             <UserIcon size={12} aria-hidden="true" />
-            <span className={styles.identityStripLabel}>Agent</span>
-            <Link to={`/equipe/${agent.id}`} className={styles.identityStripLink}>
+            <Link to={`/agents/${agent.id}`} className={styles.identityStripLink}>
               {agent.fullName}
             </Link>
           </div>

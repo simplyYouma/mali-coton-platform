@@ -157,7 +157,7 @@ export function AgentDetailPage() {
     try {
       await deleteMut.mutateAsync(agent.id);
       toast.success('Agent supprimé.');
-      navigate('/equipe');
+      navigate('/agents');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Échec de la suppression.');
     }
@@ -188,9 +188,9 @@ export function AgentDetailPage() {
           title="Agent introuvable"
           description="Cet agent n'existe pas ou a été supprimé."
           action={
-            <Link to="/equipe">
+            <Link to="/agents">
               <Button variant="ghost" iconLeft={<ArrowLeft size={14} />}>
-                Retour à l'équipe
+                Retour aux agents
               </Button>
             </Link>
           }
@@ -210,9 +210,9 @@ export function AgentDetailPage() {
 
   return (
     <div className={styles.page}>
-      <Link to="/equipe" className={styles.back}>
+      <Link to="/agents" className={styles.back}>
         <ArrowLeft size={14} aria-hidden="true" />
-        <span>Toute l'équipe</span>
+        <span>Tous les agents</span>
       </Link>
 
       <header className={styles.hero}>
@@ -345,9 +345,13 @@ export function AgentDetailPage() {
                       </Badge>
                     </td>
                     <td>
-                      <span className={styles.koboVersion}>
-                        <Smartphone size={11} aria-hidden="true" /> v{c.koboVersion}
-                      </span>
+                      {c.koboVersion > 1 ? (
+                        <span className={styles.koboVersion}>
+                          <Smartphone size={11} aria-hidden="true" /> v{c.koboVersion}
+                        </span>
+                      ) : (
+                        <span className={styles.koboVersionEmpty}>—</span>
+                      )}
                     </td>
                     <td>{c.photos.length}</td>
                     <td>

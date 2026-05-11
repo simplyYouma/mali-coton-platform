@@ -74,8 +74,8 @@ const ALL_NAV: NavSpec[] = [
     section: 'main',
   },
   {
-    to: '/equipe',
-    label: 'Équipe',
+    to: '/agents',
+    label: 'Agents',
     icon: <UsersRound size={18} />,
     roles: ['admin', 'superviseur'],
     section: 'main',

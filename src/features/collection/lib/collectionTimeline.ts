@@ -29,7 +29,7 @@ export function buildCollectionTimeline(c: Collection): TimelineEvent[] {
   const firstSync = c.revisions?.[0]?.submittedAt ?? c.syncedAt ?? c.collectedAt;
   events.push({
     id: 'submitted',
-    label: 'Soumise depuis Kobo (v1)',
+    label: 'Soumise depuis Kobo',
     when: firstSync,
     who: c.agentId,
     tone: 'kobo',

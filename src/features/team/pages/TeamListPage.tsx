@@ -1,12 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  Mail,
-  MapPin,
-  Phone,
   Plus,
   Search,
-  Smartphone,
   UserCheck,
   Users as UsersIcon,
 } from 'lucide-react';
@@ -24,7 +20,6 @@ import { useToast } from '@/app/providers/ToastProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useCreateUser, useUsers } from '@/features/admin/hooks/useAdmin';
-import type { ManagedUser } from '@/features/admin/api/admin.types';
 import styles from './TeamListPage.module.css';
 
 interface AgentFormState {
@@ -54,6 +49,7 @@ function initials(name: string): string {
 }
 
 export function TeamListPage() {
+  const navigate = useNavigate();
   const toast = useToast();
   const { data: usersPage, isLoading } = useUsers();
   const { data: sitesPage } = useSites();
@@ -113,7 +109,7 @@ export function TeamListPage() {
         phone: form.phone.trim() || undefined,
         koboUsername: form.koboUsername.trim() || undefined,
       });
-      toast.success('Agent ajouté — un e-mail d\'activation lui sera envoyé.');
+      toast.success('Agent ajouté.');
       setForm(EMPTY_FORM);
       setCreateOpen(false);
     } catch (err) {
@@ -133,73 +129,112 @@ export function TeamListPage() {
     <div className={styles.page}>
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
-          <span className={styles.heroEyebrow}>Référentiel agents</span>
-          <h1 className={styles.heroTitle}>Équipe de terrain</h1>
-          <p className={styles.heroSubtitle}>
-            Les agents ne consultent pas la plateforme — leurs coordonnées ici
-            servent à les notifier (e-mail / SMS) et à les relier aux soumissions Kobo.
-          </p>
+          <h1 className={styles.heroTitle}>Agents</h1>
+          <span className={styles.heroCount}>
+            {agents.length} actif{agents.length > 1 ? 's' : ''}
+          </span>
         </div>
         <div className={styles.heroRight}>
-          <div className={styles.heroStat}>
-            <span className={styles.heroStatValue}>{agents.length}</span>
-            <span className={styles.heroStatLabel}>
-              agent{agents.length > 1 ? 's' : ''} actif{agents.length > 1 ? 's' : ''}
-            </span>
+          <div className={styles.search}>
+            <Search size={14} aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher…"
+              aria-label="Rechercher un agent"
+            />
           </div>
           <Button
             variant="primary"
             iconLeft={<Plus size={14} />}
             onClick={() => setCreateOpen(true)}
           >
-            Ajouter un agent
+            Ajouter
           </Button>
         </div>
       </header>
 
-      <div className={styles.toolbar}>
-        <div className={styles.search}>
-          <Search size={14} aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher par nom, e-mail ou compte Kobo…"
-            aria-label="Rechercher un agent"
-          />
-        </div>
-      </div>
-
       {isLoading ? (
-        <div className={styles.grid}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} height={140} radius={12} />
-          ))}
+        <div className={styles.skeletonBlock}>
+          <Skeleton height={48} />
+          <Skeleton height={48} />
+          <Skeleton height={48} />
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<UsersIcon size={32} />}
           title="Aucun agent"
-          description="Ajoutez un premier agent pour démarrer le suivi terrain."
+          description={query ? 'Aucun agent ne correspond à la recherche.' : 'Ajoutez un premier agent.'}
         />
       ) : (
-        <ul className={styles.grid}>
-          {filtered.map((a) => (
-            <AgentCard
-              key={a.id}
-              agent={a}
-              collectionsCount={collectionsByAgent.get(a.id) ?? 0}
-              sitesById={sitesById}
-            />
-          ))}
-        </ul>
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Contact</th>
+                <th>Sites</th>
+                <th className={styles.tdNumber}>Collectes</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((a) => {
+                const count = collectionsByAgent.get(a.id) ?? 0;
+                const sites = a.assignedSiteIds.map((id) => sitesById.get(id) ?? id);
+                return (
+                  <tr
+                    key={a.id}
+                    onClick={() => navigate(`/agents/${a.id}`)}
+                    className={styles.row}
+                  >
+                    <td>
+                      <div className={styles.agent}>
+                        <span className={styles.avatar} aria-hidden="true">
+                          {initials(a.fullName)}
+                        </span>
+                        <div className={styles.agentMain}>
+                          <span className={styles.agentName}>{a.fullName}</span>
+                          {a.koboUsername ? (
+                            <span className={styles.agentKobo}>@{a.koboUsername}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className={styles.contact}>
+                        <span className={styles.contactMail}>{a.email}</span>
+                        {a.phone ? (
+                          <span className={styles.contactPhone}>{a.phone}</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td>
+                      {sites.length === 0 ? (
+                        <span className={styles.muted}>—</span>
+                      ) : (
+                        <span className={styles.sites}>{sites.join(' · ')}</span>
+                      )}
+                    </td>
+                    <td className={styles.tdNumber}>{count}</td>
+                    <td>
+                      <Badge variant={a.isActive ? 'success' : 'neutral'} size="sm">
+                        {a.isActive ? 'Actif' : 'Désactivé'}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <Modal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         title="Ajouter un agent"
-        description="Les champs seront utilisés pour le notifier (e-mail / SMS) et l'associer à ses soumissions Kobo."
         width={560}
         footer={
           <>
@@ -212,7 +247,7 @@ export function TeamListPage() {
               loading={createMut.isPending}
               iconLeft={<UserCheck size={14} />}
             >
-              Créer l'agent
+              Créer
             </Button>
           </>
         }
@@ -233,14 +268,14 @@ export function TeamListPage() {
               placeholder="prenom.nom@sahel.com"
             />
           </FormField>
-          <FormField label="Mobile (E.164)">
+          <FormField label="Mobile">
             <Input
               value={form.phone}
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
               placeholder="+22376112233"
             />
           </FormField>
-          <FormField label="Compte Kobo" hint="Identifiant utilisé par l'agent dans Kobo Toolbox.">
+          <FormField label="Compte Kobo">
             <Input
               value={form.koboUsername}
               onChange={(e) => setForm((f) => ({ ...f, koboUsername: e.target.value }))}
@@ -264,69 +299,5 @@ export function TeamListPage() {
         </div>
       </Modal>
     </div>
-  );
-}
-
-interface AgentCardProps {
-  agent: ManagedUser;
-  collectionsCount: number;
-  sitesById: Map<string, string>;
-}
-
-function AgentCard({ agent, collectionsCount, sitesById }: AgentCardProps) {
-  return (
-    <li>
-      <Link to={`/equipe/${agent.id}`} className={styles.card}>
-        <header className={styles.cardHead}>
-          <span className={styles.avatar} aria-hidden="true">
-            {initials(agent.fullName)}
-          </span>
-          <div className={styles.cardTitleBlock}>
-            <span className={styles.cardName}>{agent.fullName}</span>
-            <span className={styles.cardSubtitle}>
-              {agent.koboUsername ? `@${agent.koboUsername}` : 'Sans compte Kobo'}
-            </span>
-          </div>
-          <Badge variant={agent.isActive ? 'success' : 'neutral'} size="sm">
-            {agent.isActive ? 'Actif' : 'Désactivé'}
-          </Badge>
-        </header>
-        <dl className={styles.cardMeta}>
-          <div className={styles.cardMetaRow}>
-            <dt>
-              <Mail size={12} aria-hidden="true" />
-            </dt>
-            <dd>{agent.email}</dd>
-          </div>
-          {agent.phone ? (
-            <div className={styles.cardMetaRow}>
-              <dt>
-                <Phone size={12} aria-hidden="true" />
-              </dt>
-              <dd>{agent.phone}</dd>
-            </div>
-          ) : null}
-          <div className={styles.cardMetaRow}>
-            <dt>
-              <MapPin size={12} aria-hidden="true" />
-            </dt>
-            <dd>
-              {agent.assignedSiteIds.length === 0
-                ? 'Aucun site'
-                : agent.assignedSiteIds
-                    .map((id) => sitesById.get(id) ?? id)
-                    .join(' · ')}
-            </dd>
-          </div>
-        </dl>
-        <footer className={styles.cardFooter}>
-          <span className={styles.cardFooterStat}>
-            <Smartphone size={12} aria-hidden="true" />
-            {collectionsCount} collecte{collectionsCount > 1 ? 's' : ''}
-          </span>
-          <span className={styles.cardFooterAction}>Voir la fiche →</span>
-        </footer>
-      </Link>
-    </li>
   );
 }

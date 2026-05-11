@@ -1,7 +1,7 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
   max-width: 1180px;
   width: 100%;
   margin: 0 auto;
@@ -9,24 +9,16 @@
 
 .hero {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-5);
-  padding-bottom: var(--space-4);
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
 .heroLeft {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  max-width: 60ch;
-}
-.heroEyebrow {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--color-text-muted);
-  font-weight: var(--weight-medium);
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
 }
 .heroTitle {
   font-family: var(--font-display);
@@ -34,51 +26,28 @@
   font-weight: var(--weight-bold);
   color: var(--color-text);
   letter-spacing: -0.02em;
-  line-height: 1.05;
+  line-height: 1;
   margin: 0;
 }
-.heroSubtitle {
+.heroCount {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  margin: 0;
 }
 .heroRight {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-4);
-}
-.heroStat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-.heroStatValue {
-  font-size: var(--text-stat);
-  font-weight: var(--weight-bold);
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.heroStatLabel {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  margin-top: 2px;
+  gap: var(--space-2);
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
 .search {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 6px 10px;
+  padding: 6px 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
-  width: 360px;
+  width: 280px;
   max-width: 100%;
   color: var(--color-text-muted);
 }
@@ -99,45 +68,64 @@
   color: var(--color-text-muted);
 }
 
-.grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--space-4);
-}
-
-.card {
+.skeletonBlock {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-2);
+}
+
+.tableWrapper {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  text-decoration: none;
-  color: inherit;
-  transition:
-    border-color var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+  overflow: hidden;
 }
-.card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 18px -10px rgba(15, 23, 42, 0.18);
-  transform: translateY(-1px);
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.table th {
+  text-align: left;
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-bold);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+}
+.table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.row {
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.row:hover {
+  background: var(--color-surface-2);
 }
 
-.cardHead {
-  display: grid;
-  grid-template-columns: 40px 1fr auto;
+.tdNumber {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-3);
 }
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--color-primary-soft);
   color: var(--color-primary);
@@ -147,79 +135,48 @@
   font-weight: var(--weight-bold);
   font-size: var(--text-sm);
   letter-spacing: 0.05em;
+  flex-shrink: 0;
 }
-.cardTitleBlock {
+.agentMain {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
-.cardName {
-  font-size: var(--text-card);
+.agentName {
   font-weight: var(--weight-semibold);
   color: var(--color-text);
   letter-spacing: -0.01em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.cardSubtitle {
+.agentKobo {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
 }
 
-.cardMeta {
-  margin: 0;
+.contact {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
 }
-.cardMetaRow {
-  display: grid;
-  grid-template-columns: 16px 1fr;
-  gap: var(--space-2);
-  align-items: center;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-.cardMetaRow dt {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  margin: 0;
-}
-.cardMetaRow dd {
-  margin: 0;
+.contactMail {
   color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+.contactPhone {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
-.cardFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: var(--space-2);
-  padding-top: var(--space-3);
-  border-top: 1px dashed var(--color-border);
+.sites {
+  color: var(--color-text-muted);
   font-size: var(--text-xs);
 }
-.cardFooterStat {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.cardFooterAction {
-  color: var(--color-primary);
-  font-weight: var(--weight-semibold);
+.muted {
+  color: var(--color-text-disabled);
 }
 
-/* ── Form modale ── */
+/* ── Form ── */
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -248,9 +205,7 @@
   .heroRight {
     justify-content: space-between;
   }
-  .formGrid {
-    grid-template-columns: 1fr;
-  }
+  .formGrid,
   .checklist {
     grid-template-columns: 1fr;
   }

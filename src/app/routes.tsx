@@ -84,7 +84,7 @@ export function AppRoutes() {
         />
         <Route path="/alertes" element={<AlertsPage />} />
         <Route
-          path="/equipe"
+          path="/agents"
           element={
             <RoleGuard roles={['admin', 'superviseur']}>
               <TeamListPage />
@@ -92,7 +92,7 @@ export function AppRoutes() {
           }
         />
         <Route
-          path="/equipe/:id"
+          path="/agents/:id"
           element={
             <RoleGuard roles={['admin', 'superviseur']}>
               <AgentDetailPage />
