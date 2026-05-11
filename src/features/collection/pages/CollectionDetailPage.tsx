@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,8 +6,12 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock,
+  FlaskConical,
+  History,
   MapPin,
   Pencil,
+  Send,
+  Smartphone,
   XCircle,
 } from 'lucide-react';
 import {
@@ -24,6 +28,7 @@ import { useSites } from '@/features/sites/hooks/useSites';
 import { mockUsers } from '@/mocks/fixtures/users';
 import { formatDateTime, formatGps, formatRelativeTime } from '@/lib/format';
 import type {
+  Collection,
   CollectionStatus,
   IndicatorDomain,
   Measurement,
@@ -33,6 +38,7 @@ import { findRule } from '../lib/indicatorRules';
 import { PhotoLightbox } from '../components/PhotoLightbox';
 import { CorrectionStepsPicker } from '../components/CorrectionStepsPicker';
 import { correctionStepLabel } from '../lib/correctionSteps';
+import { buildCollectionTimeline, type TimelineEvent } from '../lib/collectionTimeline';
 import { useCollection } from '../hooks/useCollections';
 import { useLabs } from '../hooks/useLabs';
 import {
@@ -139,6 +145,12 @@ export function CollectionDetailPage() {
     (labs ?? []).forEach((l) => map.set(l.id, `${l.name} — ${l.city}`));
     return map;
   }, [labs]);
+
+  const usersById = useMemo(() => {
+    const map = new Map<string, string>();
+    mockUsers.forEach((u) => map.set(u.id, u.fullName));
+    return map;
+  }, []);
 
   const grouped = useMemo(
     () => (collection ? groupByDomain(collection.measurements) : null),
@@ -387,6 +399,8 @@ export function CollectionDetailPage() {
           </span>
         </div>
       </section>
+
+      <CollectionTimelineSection collection={collection} usersById={usersById} />
 
       {grouped ? (
         <section className={styles.section} aria-label="Mesures par domaine">
@@ -674,5 +688,62 @@ export function CollectionDetailPage() {
         onClose={() => setLightboxIndex(null)}
       />
     </div>
+  );
+}
+
+const TONE_ICON: Record<TimelineEvent['tone'], ReactNode> = {
+  kobo: <Smartphone size={12} aria-hidden="true" />,
+  sample: <Send size={12} aria-hidden="true" />,
+  lab: <FlaskConical size={12} aria-hidden="true" />,
+  sup_validate: <CheckCircle2 size={12} aria-hidden="true" />,
+  sup_reject: <XCircle size={12} aria-hidden="true" />,
+  sup_correction: <Pencil size={12} aria-hidden="true" />,
+};
+
+interface CollectionTimelineSectionProps {
+  collection: Collection;
+  usersById: Map<string, string>;
+}
+
+function CollectionTimelineSection({ collection, usersById }: CollectionTimelineSectionProps) {
+  const events = useMemo(() => buildCollectionTimeline(collection), [collection]);
+  if (events.length === 0) return null;
+
+  return (
+    <section className={styles.section} aria-label="Chronologie">
+      <div className={styles.sectionHead}>
+        <div>
+          <h2 className={styles.sectionTitle}>
+            <History size={14} aria-hidden="true" /> Chronologie de la collecte
+          </h2>
+          <p className={styles.sectionSubtitle}>
+            Reconstituée à partir des dates de soumission, d'envoi labo, de
+            validation et de correction. L'agent n'accède pas à la plateforme :
+            chaque demande de correction lui est notifiée par e-mail / SMS, il
+            re-soumet via Kobo, et la collecte est ré-ingérée avec le même
+            identifiant.
+          </p>
+        </div>
+      </div>
+      <ol className={styles.timelineList}>
+        {events.map((ev) => (
+          <li key={ev.id} className={styles.timelineItem} data-tone={ev.tone}>
+            <span className={styles.timelineDot} aria-hidden="true">
+              {TONE_ICON[ev.tone]}
+            </span>
+            <div className={styles.timelineContent}>
+              <span className={styles.timelineEventLabel}>{ev.label}</span>
+              <span className={styles.timelineMeta}>
+                {formatDateTime(ev.when, 'dd MMM yyyy · HH:mm')}
+                {ev.who ? ` · ${usersById.get(ev.who) ?? ev.who}` : ''}
+              </span>
+              {ev.notes ? (
+                <p className={styles.timelineNotes}>« {ev.notes} »</p>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
