@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Beaker,
   CheckCircle2,
+  Clock,
   CloudOff,
   Eye,
   ShieldAlert,
@@ -29,6 +30,8 @@ import {
   useAlerts,
   useResolveAlert,
 } from '../hooks/useAlerts';
+import { formatAlertSummary } from '../lib/alertSummary';
+import { mockUsers } from '@/mocks/fixtures/users';
 import styles from './AlertsPage.module.css';
 
 const SEVERITY_OPTIONS = [
@@ -89,22 +92,54 @@ export function AlertsPage() {
     return map;
   }, [sitesPage]);
 
-  const items = data?.items ?? [];
+  /* Filtre par sites assignés au superviseur — l'admin et le visiteur voient tout */
+  const scopedItems = useMemo(() => {
+    const raw = data?.items ?? [];
+    if (!user) return raw;
+    if (user.role === 'admin' || user.role === 'visitor') return raw;
+    if (user.assignedSiteIds.length === 0) return raw;
+    return raw.filter((a) => !a.siteId || user.assignedSiteIds.includes(a.siteId));
+  }, [data, user]);
+
+  /* Filtre échéance : alertes actives >24h sans prise en compte */
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const items = useMemo(() => {
+    if (!showOverdueOnly) return scopedItems;
+    const now = Date.now();
+    return scopedItems.filter((a) => {
+      if (a.status !== 'active') return false;
+      return now - new Date(a.raisedAt).getTime() > 24 * 3600_000;
+    });
+  }, [scopedItems, showOverdueOnly]);
+
+  const overdueCount = useMemo(() => {
+    const now = Date.now();
+    return scopedItems.filter(
+      (a) => a.status === 'active' && now - new Date(a.raisedAt).getTime() > 24 * 3600_000,
+    ).length;
+  }, [scopedItems]);
+
   const selected = useMemo(
     () => items.find((a) => a.id === selectedId) ?? items[0] ?? null,
     [items, selectedId],
   );
 
+  const userNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    mockUsers.forEach((u) => m.set(u.id, u.fullName));
+    return m;
+  }, []);
+
   const stats = useMemo(() => {
-    const critical = items.filter(
+    const critical = scopedItems.filter(
       (a) => a.status === 'active' && a.severity === 'critical',
     ).length;
-    const warning = items.filter(
+    const warning = scopedItems.filter(
       (a) => a.status === 'active' && a.severity === 'warning',
     ).length;
-    const resolved = items.filter((a) => a.status === 'resolved').length;
-    return { critical, warning, resolved, total: items.length };
-  }, [items]);
+    const resolved = scopedItems.filter((a) => a.status === 'resolved').length;
+    return { critical, warning, resolved, total: scopedItems.length };
+  }, [scopedItems]);
 
   const update = (patch: Partial<AlertFilter>) => setFilter((f) => ({ ...f, ...patch }));
 
@@ -181,6 +216,17 @@ export function AlertsPage() {
             aria-label="Filtrer par catégorie"
           />
         </div>
+        <button
+          type="button"
+          className={`${styles.overdueToggle} ${showOverdueOnly ? styles.overdueToggleActive : ''}`}
+          onClick={() => setShowOverdueOnly((v) => !v)}
+          aria-pressed={showOverdueOnly}
+          title="Afficher uniquement les alertes actives sans prise en compte depuis > 24 h"
+        >
+          <Clock size={12} />
+          Échéance dépassée
+          {overdueCount > 0 ? <span className={styles.overdueBadge}>{overdueCount}</span> : null}
+        </button>
       </div>
 
       {isLoading ? (
@@ -218,7 +264,7 @@ export function AlertsPage() {
                     </span>
                     <div className={styles.rowMain}>
                       <span className={styles.rowTitle}>{alert.title}</span>
-                      <span className={styles.rowSummary}>{alert.summary}</span>
+                      <span className={styles.rowSummary}>{formatAlertSummary(alert)}</span>
                       <div className={styles.rowMeta}>
                         <span className={styles.rowSiteName}>
                           {siteName ?? CATEGORY_LABEL[alert.category]}
@@ -248,6 +294,7 @@ export function AlertsPage() {
                 onResolve={handleResolve}
                 ackLoading={ackMut.isPending}
                 resolveLoading={resolveMut.isPending}
+                userNameById={userNameById}
               />
             )}
           </section>
@@ -265,6 +312,7 @@ interface AlertDetailProps {
   onResolve: () => void;
   ackLoading: boolean;
   resolveLoading: boolean;
+  userNameById: Map<string, string>;
 }
 
 function AlertDetail({
@@ -275,6 +323,7 @@ function AlertDetail({
   onResolve,
   ackLoading,
   resolveLoading,
+  userNameById,
 }: AlertDetailProps) {
   return (
     <>
@@ -299,7 +348,7 @@ function AlertDetail({
             <span>résolue {formatRelativeTime(alert.resolvedAt)}</span>
           ) : null}
         </div>
-        <p className={styles.detailDescription}>{alert.summary}</p>
+        <p className={styles.detailDescription}>{formatAlertSummary(alert)}</p>
       </header>
 
       <div className={styles.detailBody}>
@@ -336,6 +385,7 @@ function AlertDetail({
           </section>
         ) : null}
 
+        <AlertTimeline alert={alert} userNameById={userNameById} />
       </div>
 
       {canAct && alert.status !== 'resolved' ? (
@@ -361,5 +411,61 @@ function AlertDetail({
         </footer>
       ) : null}
     </>
+  );
+}
+
+interface AlertTimelineProps {
+  alert: AlertEntry;
+  userNameById: Map<string, string>;
+}
+
+function AlertTimeline({ alert, userNameById }: AlertTimelineProps) {
+  const events: Array<{
+    label: string;
+    when: string;
+    who?: string;
+    tone: 'raised' | 'ack' | 'resolved';
+  }> = [];
+
+  events.push({
+    label: 'Alerte levée',
+    when: alert.raisedAt,
+    tone: 'raised',
+  });
+  if (alert.acknowledgedAt) {
+    events.push({
+      label: 'Prise en compte',
+      when: alert.acknowledgedAt,
+      who: alert.acknowledgedBy ? userNameById.get(alert.acknowledgedBy) ?? alert.acknowledgedBy : undefined,
+      tone: 'ack',
+    });
+  }
+  if (alert.resolvedAt) {
+    events.push({
+      label: 'Résolue',
+      when: alert.resolvedAt,
+      who: alert.resolvedBy ? userNameById.get(alert.resolvedBy) ?? alert.resolvedBy : undefined,
+      tone: 'resolved',
+    });
+  }
+
+  return (
+    <section className={styles.timeline} aria-label="Historique de l'alerte">
+      <span className={styles.timelineLabel}>Historique</span>
+      <ol className={styles.timelineList}>
+        {events.map((e, i) => (
+          <li key={i} className={styles.timelineItem} data-tone={e.tone}>
+            <span className={styles.timelineDot} aria-hidden="true" />
+            <div className={styles.timelineContent}>
+              <span className={styles.timelineEventLabel}>{e.label}</span>
+              <span className={styles.timelineMeta}>
+                {formatDateTime(e.when, 'dd MMM HH:mm')}
+                {e.who ? ` · ${e.who}` : ''}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
