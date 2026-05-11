@@ -35,8 +35,14 @@ import type {
   Collection,
   CollectionStatus,
   IndicatorDomain,
+  LabSample,
   Measurement,
 } from '../api/collection.types';
+import {
+  LAB_SAMPLE_STATUS_LABEL,
+  LAB_SAMPLE_STATUS_VARIANT,
+} from '../api/collection.types';
+import { useRejectBordereau } from '../hooks/useCollectionMutations';
 import { STATUS_LABEL, STATUS_VARIANT } from '../api/collection.types';
 import { findRule } from '../lib/indicatorRules';
 import { PhotoLightbox } from '../components/PhotoLightbox';
@@ -92,11 +98,6 @@ function groupByDomain(measurements: Measurement[]) {
 
 function isLabPending(m: Measurement): boolean {
   return m.acquisition === 'lab_pending';
-}
-
-function isOverdue(expectedBy?: string): boolean {
-  if (!expectedBy) return false;
-  return new Date(expectedBy).getTime() < Date.now();
 }
 
 /** Formate une valeur de mesure en limitant les décimales (max 2). */
@@ -484,49 +485,11 @@ export function CollectionDetailPage() {
         </section>
       ) : null}
 
-      {labPendingMeasurements.length > 0 ? (
-        <section className={styles.section} aria-label="Bordereaux laboratoire">
-          <div className={styles.sectionHead}>
-            <div>
-              <h2 className={styles.sectionTitle}>
-                Bordereaux laboratoire — {labPendingMeasurements.length} en attente
-              </h2>
-              <p className={styles.sectionSubtitle}>
-                Délai contractuel défini avec chaque laboratoire agréé. Les retards sont signalés en rouge.
-              </p>
-            </div>
-          </div>
-          <table className={styles.labTable}>
-            <thead>
-              <tr>
-                <th>Indicateur</th>
-                <th>ID échantillon</th>
-                <th>Laboratoire</th>
-                <th>Envoyé le</th>
-                <th>Délai attendu</th>
-              </tr>
-            </thead>
-            <tbody>
-              {labPendingMeasurements.map((m) => {
-                const rule = findRule(m.indicatorId);
-                const overdue = isOverdue(m.sample?.expectedBy);
-                return (
-                  <tr key={m.indicatorId}>
-                    <td>{rule?.label ?? m.indicatorId}</td>
-                    <td><code>{m.sample?.sampleId ?? '—'}</code></td>
-                    <td>{m.sample?.labId ? labsById.get(m.sample.labId) ?? m.sample.labId : '—'}</td>
-                    <td>{m.sample?.sentAt ? formatDateTime(m.sample.sentAt) : '—'}</td>
-                    <td className={overdue ? styles.labOverdue : undefined}>
-                      {m.sample?.expectedBy ? formatDateTime(m.sample.expectedBy) : '—'}
-                      {overdue ? ' · en retard' : ''}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
-      ) : null}
+      <FlaconsSection
+        collection={collection}
+        labsById={labsById}
+        canReject={role === 'superviseur' || role === 'admin'}
+      />
 
       {collection.photos.length > 0 ? (
         <section className={styles.section} aria-label="Photos">
@@ -870,6 +833,167 @@ function CollectionRevisionsHistory({ collection, usersById }: RevisionsHistoryP
           </tr>
         </tbody>
       </table>
+    </section>
+  );
+}
+
+interface FlaconsSectionProps {
+  collection: Collection;
+  labsById: Map<string, string>;
+  canReject: boolean;
+}
+
+function FlaconsSection({ collection, labsById, canReject }: FlaconsSectionProps) {
+  const toast = useToast();
+  const { user } = useAuth();
+  const rejectMut = useRejectBordereau();
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
+
+  const flacons = useMemo(() => {
+    const grouped = new Map<string, { sample: LabSample; measurements: Measurement[] }>();
+    for (const m of collection.measurements) {
+      if (!m.sample) continue;
+      const key = m.sample.containerId;
+      if (!grouped.has(key)) grouped.set(key, { sample: m.sample, measurements: [] });
+      grouped.get(key)!.measurements.push(m);
+    }
+    return Array.from(grouped.entries()).map(([containerId, v]) => ({
+      containerId,
+      ...v,
+    }));
+  }, [collection]);
+
+  if (flacons.length === 0) return null;
+
+  const handleReject = async () => {
+    if (!user || !rejectingId) return;
+    if (!reason.trim()) {
+      toast.error('Précisez le motif de la ré-analyse demandée.');
+      return;
+    }
+    try {
+      await rejectMut.mutateAsync({
+        collectionId: collection.id,
+        containerId: rejectingId,
+        rejectedBy: user.id,
+        reason: reason.trim(),
+      });
+      toast.warning('Bordereau renvoyé au labo pour ré-analyse.');
+      setRejectingId(null);
+      setReason('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Échec de l\'action.');
+    }
+  };
+
+  return (
+    <section className={styles.section} aria-label="Flacons laboratoire">
+      <div className={styles.sectionHead}>
+        <div>
+          <h2 className={styles.sectionTitle}>
+            <Beaker size={14} aria-hidden="true" /> Flacons laboratoire
+          </h2>
+        </div>
+      </div>
+      <div className={styles.flaconList}>
+        {flacons.map(({ containerId, sample, measurements }) => {
+          const labLabel = labsById.get(sample.labId) ?? sample.labId;
+          const canSupReject =
+            canReject &&
+            (sample.status === 'bordereau_returned' || sample.status === 'accepted');
+          return (
+            <article key={containerId} className={styles.flacon} data-status={sample.status}>
+              <header className={styles.flaconHead}>
+                <div className={styles.flaconTitleBlock}>
+                  <code className={styles.flaconSampleId}>{sample.sampleId}</code>
+                  <span className={styles.flaconLab}>{labLabel}</span>
+                </div>
+                <Badge size="sm" variant={LAB_SAMPLE_STATUS_VARIANT[sample.status]}>
+                  {LAB_SAMPLE_STATUS_LABEL[sample.status]}
+                </Badge>
+              </header>
+              <ul className={styles.flaconIndicators}>
+                {measurements.map((m) => {
+                  const rule = findRule(m.indicatorId);
+                  return (
+                    <li key={m.indicatorId}>
+                      <span>{rule?.label ?? m.indicatorId}</span>
+                      <strong>
+                        {m.value != null ? (
+                          <>
+                            {formatMeasureValue(m.value)}
+                            {rule?.unit ? ` ${rule.unit}` : ''}
+                          </>
+                        ) : (
+                          <span className={styles.flaconPending}>en attente</span>
+                        )}
+                      </strong>
+                    </li>
+                  );
+                })}
+              </ul>
+              <footer className={styles.flaconFooter}>
+                <span className={styles.flaconMeta}>
+                  Envoyé {formatRelativeTime(sample.sentAt)}
+                  {sample.analyzedAt ? ` · rendu ${formatRelativeTime(sample.analyzedAt)}` : ''}
+                  {sample.bordereauRef ? ` · réf. ${sample.bordereauRef}` : ''}
+                </span>
+                {canSupReject ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setRejectingId(containerId);
+                      setReason('');
+                    }}
+                  >
+                    Renvoyer au labo
+                  </Button>
+                ) : null}
+              </footer>
+              {sample.refusalReason ? (
+                <p className={styles.flaconNote} data-tone="danger">
+                  Refusé : {sample.refusalReason}
+                </p>
+              ) : null}
+              {sample.rejectionReason ? (
+                <p className={styles.flaconNote} data-tone="warning">
+                  Ré-analyse demandée : {sample.rejectionReason}
+                </p>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+
+      <Modal
+        open={rejectingId !== null}
+        onClose={() => setRejectingId(null)}
+        title="Renvoyer le bordereau pour ré-analyse"
+        description="Le flacon repart vers le laboratoire. Précisez ce qui motive la demande (valeur aberrante, suspicion de contamination croisée…)."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRejectingId(null)}>
+              Annuler
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleReject}
+              loading={rejectMut.isPending}
+            >
+              Confirmer la demande
+            </Button>
+          </>
+        }
+      >
+        <Textarea
+          rows={4}
+          placeholder="Ex : valeur sulfates incohérente vs historique du site, demande de ré-analyse en duplicate."
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+      </Modal>
     </section>
   );
 }

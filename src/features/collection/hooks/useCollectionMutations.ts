@@ -1,9 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  markSampleReceived,
   patchMeasurement,
+  rejectBordereau,
   rejectCollection,
+  refuseSample,
   requestCorrection,
+  transmitBordereau,
   validateCollection,
+  type ReceiveSampleInput,
+  type RefuseSampleInput,
+  type RejectBordereauInput,
+  type TransmitBordereauInput,
 } from '../api/collections';
 import type { Measurement } from '../api/collection.types';
 
@@ -73,6 +81,50 @@ export function usePatchMeasurement() {
   return useMutation({
     mutationFn: ({ collectionId, indicatorId, patch }: PatchMeasurementInput) =>
       patchMeasurement(collectionId, indicatorId, patch),
+    onSuccess: (collection) => {
+      qc.invalidateQueries({ queryKey: ['collections'] });
+      qc.setQueryData(['collections', collection.id], collection);
+    },
+  });
+}
+
+export function useMarkSampleReceived() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ReceiveSampleInput) => markSampleReceived(input),
+    onSuccess: (collection) => {
+      qc.invalidateQueries({ queryKey: ['collections'] });
+      qc.setQueryData(['collections', collection.id], collection);
+    },
+  });
+}
+
+export function useRefuseSample() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RefuseSampleInput) => refuseSample(input),
+    onSuccess: (collection) => {
+      qc.invalidateQueries({ queryKey: ['collections'] });
+      qc.setQueryData(['collections', collection.id], collection);
+    },
+  });
+}
+
+export function useTransmitBordereau() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TransmitBordereauInput) => transmitBordereau(input),
+    onSuccess: (collection) => {
+      qc.invalidateQueries({ queryKey: ['collections'] });
+      qc.setQueryData(['collections', collection.id], collection);
+    },
+  });
+}
+
+export function useRejectBordereau() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RejectBordereauInput) => rejectBordereau(input),
     onSuccess: (collection) => {
       qc.invalidateQueries({ queryKey: ['collections'] });
       qc.setQueryData(['collections', collection.id], collection);

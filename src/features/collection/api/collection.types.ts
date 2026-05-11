@@ -45,15 +45,64 @@ export interface Indicator {
   isCustom?: boolean;
 }
 
+/**
+ * Cycle de vie complet d'un échantillon physique :
+ * - prepared : flacon préparé et étiqueté côté agent (Kobo), pas encore parti.
+ * - sent : remis au coursier / en transit vers le labo.
+ * - received_at_lab : scanné/accusé à l'arrivée par le labo.
+ * - in_analysis : technicien dessus.
+ * - bordereau_returned : analyse rendue, en attente d'acceptation superviseur.
+ * - accepted : superviseur a accepté la valeur (la mesure passe à lab_received).
+ * - refused_by_lab : le labo a refusé (flacon cassé, volume insuffisant, etc.).
+ * - rejected_by_supervisor : superviseur a renvoyé le bordereau pour ré-analyse.
+ */
+export type LabSampleStatus =
+  | 'prepared'
+  | 'sent'
+  | 'received_at_lab'
+  | 'in_analysis'
+  | 'bordereau_returned'
+  | 'accepted'
+  | 'refused_by_lab'
+  | 'rejected_by_supervisor';
+
 export interface LabSample {
+  /** Identifiant physique imprimé sur l'étiquette (QR / code-barres). */
   sampleId: string;
+  /**
+   * Identifiant logique du flacon physique. Plusieurs Measurement peuvent
+   * partager le même containerId : ils sortent du même flacon prélevé sur le
+   * terrain et sont analysés ensemble par le labo.
+   */
+  containerId: string;
   labId: string;
+  status: LabSampleStatus;
+  /** Date d'envoi (= remise au coursier). */
   sentAt: string;
+  /** SLA contractuel — calculé à partir de sentAt + lab.slaBusinessDays. */
   expectedBy?: string;
+  /** Réception physique au labo (accusé). */
   receivedAt?: string;
+  /** Début d'analyse (technicien). */
+  analysisStartedAt?: string;
+  /** Date de rendu du bordereau. */
+  analyzedAt?: string;
+  /** ID du technicien qui a saisi le bordereau. */
+  analyzedBy?: string;
+  /** URL du bordereau PDF signé (stub en maquette). */
   bordereauUrl?: string;
+  /** Référence interne du labo (ex. n° de rapport). */
+  bordereauRef?: string;
   /** Photo de l'étiquette physique pour traçabilité. */
   labelPhotoId?: string;
+  /** Motif de refus côté labo (volume insuffisant, joint cassé…). */
+  refusalReason?: string;
+  /** Motif de rejet du bordereau par le superviseur (ré-analyse demandée). */
+  rejectionReason?: string;
+  /** Superviseur qui a rejeté le bordereau. */
+  rejectedBy?: string;
+  /** Date du rejet superviseur. */
+  rejectedAt?: string;
 }
 
 export interface Measurement {
@@ -111,7 +160,14 @@ export interface CollectionNotification {
   /** Identité de l'agent destinataire au moment de l'envoi. */
   recipientUserId: string;
   /** Catégorie déterministe — le contenu est généré côté UI. */
-  kind: 'correction_requested' | 'rejected' | 'validated';
+  kind:
+    | 'correction_requested'
+    | 'rejected'
+    | 'validated'
+    | 'sample_sent_to_lab'
+    | 'sample_refused_by_lab'
+    | 'bordereau_returned'
+    | 'bordereau_rejected_by_supervisor';
   sentAt: string;
   /** Référence libre (numéro de ticket SMS, message-id e-mail). */
   ref?: string;
@@ -190,3 +246,28 @@ export const STATUS_VARIANT: Record<
 export function hasPendingLabSamples(collection: Collection): boolean {
   return collection.measurements.some((m) => m.acquisition === 'lab_pending');
 }
+
+export const LAB_SAMPLE_STATUS_LABEL: Record<LabSampleStatus, string> = {
+  prepared: 'Préparé',
+  sent: 'Envoyé',
+  received_at_lab: 'Reçu au labo',
+  in_analysis: 'En analyse',
+  bordereau_returned: 'Bordereau rendu',
+  accepted: 'Accepté',
+  refused_by_lab: 'Refusé par le labo',
+  rejected_by_supervisor: 'Renvoyé pour ré-analyse',
+};
+
+export const LAB_SAMPLE_STATUS_VARIANT: Record<
+  LabSampleStatus,
+  'neutral' | 'info' | 'warning' | 'success' | 'danger'
+> = {
+  prepared: 'neutral',
+  sent: 'info',
+  received_at_lab: 'info',
+  in_analysis: 'info',
+  bordereau_returned: 'warning',
+  accepted: 'success',
+  refused_by_lab: 'danger',
+  rejected_by_supervisor: 'warning',
+};

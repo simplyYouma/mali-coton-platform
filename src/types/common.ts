@@ -23,6 +23,11 @@ export interface AuthenticatedUser {
    * à un agent du référentiel plateforme.
    */
   koboUsername?: string;
+  /**
+   * Pour un user `role = 'lab'` : le laboratoire auquel il appartient.
+   * Permet de scoper l'écran labo aux échantillons destinés à ce labo.
+   */
+  labId?: string;
 }
 
 export interface ApiError {

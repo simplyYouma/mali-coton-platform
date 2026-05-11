@@ -15,6 +15,7 @@ import {
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
+import { useLabs } from '@/features/collection/hooks/useLabs';
 import { formatRelativeTime } from '@/lib/format';
 import type { UserRole } from '@/types/common';
 import {
@@ -56,6 +57,9 @@ interface FormState {
   role: UserRole;
   assignedSiteIds: string[];
   locale: 'fr';
+  phone: string;
+  koboUsername: string;
+  labId: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -64,6 +68,9 @@ const EMPTY_FORM: FormState = {
   role: 'agent',
   assignedSiteIds: [],
   locale: 'fr',
+  phone: '',
+  koboUsername: '',
+  labId: '',
 };
 
 function initials(name: string): string {
@@ -79,6 +86,7 @@ export function UsersPage() {
   const toast = useToast();
   const { data: usersPage, isLoading } = useUsers();
   const { data: sitesPage } = useSites();
+  const { data: labs } = useLabs();
   const createMut = useCreateUser();
   const updateMut = useUpdateUser();
   const deleteMut = useDeleteUser();
@@ -107,6 +115,9 @@ export function UsersPage() {
       role: user.role,
       assignedSiteIds: user.assignedSiteIds,
       locale: 'fr',
+      phone: user.phone ?? '',
+      koboUsername: user.koboUsername ?? '',
+      labId: user.labId ?? '',
     });
     setEditing(user);
     setCreating(false);
@@ -135,12 +146,26 @@ export function UsersPage() {
       toast.error('Un agent doit être affecté à au moins un site.');
       return;
     }
+    if (form.role === 'lab' && !form.labId) {
+      toast.error('Sélectionnez le laboratoire de rattachement.');
+      return;
+    }
     try {
+      const payload = {
+        email: form.email,
+        fullName: form.fullName,
+        role: form.role,
+        assignedSiteIds: form.assignedSiteIds,
+        locale: form.locale,
+        phone: form.phone.trim() || undefined,
+        koboUsername: form.koboUsername.trim() || undefined,
+        labId: form.role === 'lab' ? form.labId : undefined,
+      };
       if (editing) {
-        await updateMut.mutateAsync({ id: editing.id, patch: form });
+        await updateMut.mutateAsync({ id: editing.id, patch: payload });
         toast.success('Utilisateur mis à jour.');
       } else {
-        await createMut.mutateAsync(form);
+        await createMut.mutateAsync(payload);
         toast.success('Utilisateur créé. Un email d\'activation sera envoyé.');
       }
       closeModal();
@@ -308,6 +333,34 @@ export function UsersPage() {
               onChange={(role) => setForm((f) => ({ ...f, role }))}
             />
           </FormField>
+          <FormField label="Mobile">
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              placeholder="+22376112233"
+            />
+          </FormField>
+          {form.role === 'agent' ? (
+            <FormField label="Compte Kobo">
+              <Input
+                value={form.koboUsername}
+                onChange={(e) => setForm((f) => ({ ...f, koboUsername: e.target.value }))}
+                placeholder="prenom.nom"
+              />
+            </FormField>
+          ) : null}
+          {form.role === 'lab' ? (
+            <FormField label="Laboratoire" required>
+              <Select
+                options={(labs ?? []).map((l) => ({
+                  value: l.id,
+                  label: `${l.name} — ${l.city}`,
+                }))}
+                value={form.labId}
+                onChange={(labId) => setForm((f) => ({ ...f, labId }))}
+              />
+            </FormField>
+          ) : null}
           <div className={styles.formGridFull}>
             <FormField
               label="Sites affectés"

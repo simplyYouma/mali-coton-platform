@@ -334,6 +334,180 @@ export const mockCollections: Collection[] = (() => {
     });
   }
 
+  // ─── Pipeline labo : collectes avec échantillons à différents stades du cycle
+  // (sent / received_at_lab / in_analysis / bordereau_returned / refused / accepted)
+  // Modélise correctement le flacon physique : un containerId regroupe les
+  // indicateurs partageant le même prélèvement (un flacon d'eau → pH + sulfates + métaux).
+  const labCases: Array<{
+    siteId: string;
+    daysSinceSent: number;
+    labId: string;
+    status:
+      | 'sent'
+      | 'received_at_lab'
+      | 'in_analysis'
+      | 'bordereau_returned'
+      | 'refused_by_lab'
+      | 'rejected_by_supervisor'
+      | 'accepted';
+    sulfatesValue?: number;
+    heavyMetalsValue?: number;
+    bordereauRef?: string;
+    refusalReason?: string;
+    rejectionReason?: string;
+  }> = [
+    { siteId: 'site-atpek', daysSinceSent: 1.2, labId: 'lab.lne', status: 'sent' },
+    { siteId: 'site-dianeguela', daysSinceSent: 2.1, labId: 'lab.lne', status: 'sent' },
+    { siteId: 'site-galanimassiriw', daysSinceSent: 2.9, labId: 'lab.lns-bamako', status: 'received_at_lab' },
+    { siteId: 'site-djiguiyaso', daysSinceSent: 4.0, labId: 'lab.lne', status: 'received_at_lab' },
+    { siteId: 'site-dianeguela', daysSinceSent: 5.4, labId: 'lab.lne', status: 'in_analysis' },
+    { siteId: 'site-ndomo', daysSinceSent: 6.8, labId: 'lab.sotuba', status: 'in_analysis' },
+    {
+      siteId: 'site-atpek',
+      daysSinceSent: 8.2,
+      labId: 'lab.lne',
+      status: 'bordereau_returned',
+      sulfatesValue: 612,
+      heavyMetalsValue: 0.08,
+      bordereauRef: 'LNE-2026-0421',
+    },
+    {
+      siteId: 'site-galanimassiriw',
+      daysSinceSent: 7.6,
+      labId: 'lab.lns-bamako',
+      status: 'bordereau_returned',
+      sulfatesValue: 880,
+      heavyMetalsValue: 0.12,
+      bordereauRef: 'LNS-2026-0188',
+    },
+    {
+      siteId: 'site-djiguiyaso',
+      daysSinceSent: 3.4,
+      labId: 'lab.lne',
+      status: 'refused_by_lab',
+      refusalReason: 'Volume insuffisant (35 mL reçus, 100 mL requis pour analyse complète). Re-prélèvement nécessaire.',
+    },
+    {
+      siteId: 'site-dianeguela',
+      daysSinceSent: 9.0,
+      labId: 'lab.lne',
+      status: 'rejected_by_supervisor',
+      sulfatesValue: 8520,
+      heavyMetalsValue: 0.04,
+      bordereauRef: 'LNE-2026-0398',
+      rejectionReason: 'Valeur sulfates incohérente (8 520 mg/L = 4× le pic historique du site). Demande de ré-analyse en duplicate.',
+    },
+    {
+      siteId: 'site-atpek',
+      daysSinceSent: 13.0,
+      labId: 'lab.lne',
+      status: 'accepted',
+      sulfatesValue: 720,
+      heavyMetalsValue: 0.09,
+      bordereauRef: 'LNE-2026-0387',
+    },
+  ];
+
+  for (const lc of labCases) {
+    counter += 1;
+    const collectedIso = daysAgo(lc.daysSinceSent + 0.3);
+    const sentIso = daysAgo(lc.daysSinceSent);
+    const sla = lc.labId === 'lab.lns-bamako' ? 7 : lc.labId === 'lab.cnrst' ? 14 : 10;
+    const expectedBy = new Date(new Date(sentIso).getTime() + sla * 86_400_000).toISOString();
+    const containerId = `flacon-${counter}-water`;
+    const sampleId = `${lc.labId.split('.')[1]!.toUpperCase()}-${String(counter).padStart(4, '0')}`;
+    const receivedAt =
+      lc.status === 'received_at_lab' ||
+      lc.status === 'in_analysis' ||
+      lc.status === 'bordereau_returned' ||
+      lc.status === 'rejected_by_supervisor' ||
+      lc.status === 'accepted'
+        ? daysAgo(lc.daysSinceSent - 0.8)
+        : undefined;
+    const analysisStartedAt =
+      lc.status === 'in_analysis' ||
+      lc.status === 'bordereau_returned' ||
+      lc.status === 'rejected_by_supervisor' ||
+      lc.status === 'accepted'
+        ? daysAgo(lc.daysSinceSent - 1.5)
+        : undefined;
+    const analyzedAt =
+      lc.status === 'bordereau_returned' ||
+      lc.status === 'rejected_by_supervisor' ||
+      lc.status === 'accepted'
+        ? daysAgo(lc.daysSinceSent - 2.2)
+        : undefined;
+    const analyzedBy =
+      analyzedAt ? (lc.labId === 'lab.lns-bamako' ? 'u-lab-2' : 'u-lab-1') : undefined;
+    const rejectedAt =
+      lc.status === 'rejected_by_supervisor' ? daysAgo(lc.daysSinceSent - 2.6) : undefined;
+
+    const sharedSample = {
+      sampleId,
+      containerId,
+      labId: lc.labId,
+      status: lc.status,
+      sentAt: sentIso,
+      expectedBy,
+      receivedAt,
+      analysisStartedAt,
+      analyzedAt,
+      analyzedBy,
+      bordereauRef: lc.bordereauRef,
+      bordereauUrl: lc.bordereauRef ? `https://stub.local/bordereau/${lc.bordereauRef}.pdf` : undefined,
+      refusalReason: lc.refusalReason,
+      rejectionReason: lc.rejectionReason,
+      rejectedBy: rejectedAt ? 'u-sup-1' : undefined,
+      rejectedAt,
+    };
+
+    // Le flacon contient 2 analyses : sulfates + métaux lourds
+    const valuePresent =
+      lc.status === 'bordereau_returned' ||
+      lc.status === 'rejected_by_supervisor' ||
+      lc.status === 'accepted';
+
+    const collectionStatus: CollectionStatus =
+      lc.status === 'accepted' ? 'lab_complete' : 'awaiting_lab';
+
+    list.push({
+      id: `col-${String(counter).padStart(4, '0')}`,
+      koboSubmissionUuid: koboUuid(counter),
+      koboVersion: 1,
+      siteId: lc.siteId,
+      agentId: lc.siteId === 'site-ndomo' ? 'u-agent-segou' : 'u-agent-bko',
+      collectedAt: collectedIso,
+      status: collectionStatus,
+      syncedAt: sentIso,
+      gps: { lat: 12.6 + (Math.random() - 0.5) * 0.3, lng: -7.95 + (Math.random() - 0.5) * 0.3, accuracy: 5 },
+      context: {
+        weather: 'sunny',
+        ambientTempC: 33,
+        hasNearbyWatercourse: SITES_WITH_WATERCOURSE.has(lc.siteId),
+      },
+      measurements: [
+        { indicatorId: 'water.ph', acquisition: 'in_situ', value: 8.5, unit: '' },
+        {
+          indicatorId: 'water.sulfates',
+          acquisition: valuePresent && lc.status === 'accepted' ? 'lab_received' : 'lab_pending',
+          value: valuePresent ? lc.sulfatesValue ?? null : null,
+          unit: 'mg/L',
+          sample: sharedSample,
+        },
+        {
+          indicatorId: 'water.metals.cr',
+          acquisition: valuePresent && lc.status === 'accepted' ? 'lab_received' : 'lab_pending',
+          value: valuePresent ? lc.heavyMetalsValue ?? null : null,
+          unit: 'mg/L',
+          sample: sharedSample,
+        },
+        { indicatorId: 'air.pm25', acquisition: 'in_situ', value: 22, unit: 'µg/m³' },
+      ],
+      photos: [],
+      agentCertified: true,
+    });
+  }
+
   // ─── Cas "boucle fermée" : collecte renvoyée pour correction puis ré-soumise
   // par l'agent via Kobo (même UUID, version 2). Démontre que la plateforme
   // reconnaît la collecte revenue corrigée — pas une nouvelle collecte.

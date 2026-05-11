@@ -16,36 +16,50 @@ import { uuid } from '@/lib/uuid';
  * générer par la couche transport en prod.
  */
 function buildNotifications(
-  agentId: string,
+  recipientUserId: string,
   kind: CollectionNotification['kind'],
 ): CollectionNotification[] {
-  const agent = mockUsers.find((u) => u.id === agentId);
-  if (!agent) return [];
+  const recipient = mockUsers.find((u) => u.id === recipientUserId);
+  if (!recipient) return [];
   const now = new Date().toISOString();
   const notifs: CollectionNotification[] = [];
-  if (agent.email) {
+  if (recipient.email) {
     notifs.push({
       id: uuid(),
       channel: 'email',
-      recipient: agent.email,
-      recipientUserId: agent.id,
+      recipient: recipient.email,
+      recipientUserId: recipient.id,
       kind,
       sentAt: now,
       ref: `msg-${uuid().slice(0, 8)}@plateforme.pnud.org`,
     });
   }
-  if (agent.phone) {
+  if (recipient.phone) {
     notifs.push({
       id: uuid(),
       channel: 'sms',
-      recipient: agent.phone,
-      recipientUserId: agent.id,
+      recipient: recipient.phone,
+      recipientUserId: recipient.id,
       kind,
       sentAt: now,
       ref: `SMS-${uuid().slice(0, 6).toUpperCase()}`,
     });
   }
   return notifs;
+}
+
+/** Renvoie le 1er user qui correspond à un labo donné (technicien). */
+function findLabUser(labId: string): string | null {
+  return mockUsers.find((u) => u.role === 'lab' && u.labId === labId)?.id ?? null;
+}
+
+/** Renvoie le 1er superviseur qui couvre le site de la collecte. */
+function findSupervisor(siteId: string): string | null {
+  return (
+    mockUsers.find(
+      (u) => u.role === 'superviseur' && u.assignedSiteIds.includes(siteId),
+    )?.id ?? null
+  );
 }
 
 const seenIdempotencyKeys = new Set<string>();
@@ -205,4 +219,156 @@ export const collectionsHandlers = [
 
     return HttpResponse.json(item);
   }),
+
+  /* ─── Workflow labo : actions par flacon (containerId) ─── */
+
+  /** POST .../lab-samples/:containerId/receive — le labo accuse réception physique. */
+  http.post(
+    '/api/v1/collections/:id/lab-samples/:containerId/receive',
+    async ({ params, request }) => {
+      await delay(180);
+      const item = mockCollections.find((c) => c.id === params.id);
+      if (!item) return error404Collection();
+      const body = (await request.json()) as { receivedBy: string };
+      const now = new Date().toISOString();
+      updateContainer(item, String(params.containerId), (s) => ({
+        ...s,
+        status: 'received_at_lab',
+        receivedAt: now,
+        analyzedBy: undefined,
+      }));
+      // Notifie le superviseur du site
+      const supId = findSupervisor(item.siteId);
+      if (supId) {
+        const notifs = buildNotifications(supId, 'sample_sent_to_lab');
+        item.notifications = [...(item.notifications ?? []), ...notifs];
+      }
+      void body;
+      return HttpResponse.json(item);
+    },
+  ),
+
+  /** POST .../lab-samples/:containerId/refuse — le labo refuse (flacon cassé, volume…). */
+  http.post(
+    '/api/v1/collections/:id/lab-samples/:containerId/refuse',
+    async ({ params, request }) => {
+      await delay(200);
+      const item = mockCollections.find((c) => c.id === params.id);
+      if (!item) return error404Collection();
+      const body = (await request.json()) as { reason: string; refusedBy: string };
+      updateContainer(item, String(params.containerId), (s) => ({
+        ...s,
+        status: 'refused_by_lab',
+        refusalReason: body.reason,
+      }));
+      // Notifie l'agent + le superviseur (l'agent doit re-prélever)
+      const supId = findSupervisor(item.siteId);
+      const recipients = [item.agentId, supId].filter(Boolean) as string[];
+      for (const r of recipients) {
+        const notifs = buildNotifications(r, 'sample_refused_by_lab');
+        item.notifications = [...(item.notifications ?? []), ...notifs];
+      }
+      return HttpResponse.json(item);
+    },
+  ),
+
+  /** POST .../lab-samples/:containerId/transmit — le labo rend le bordereau. */
+  http.post(
+    '/api/v1/collections/:id/lab-samples/:containerId/transmit',
+    async ({ params, request }) => {
+      await delay(220);
+      const item = mockCollections.find((c) => c.id === params.id);
+      if (!item) return error404Collection();
+      const body = (await request.json()) as {
+        analyzedBy: string;
+        bordereauRef?: string;
+        bordereauUrl?: string;
+        values: Array<{ indicatorId: string; value: number | string }>;
+      };
+      const now = new Date().toISOString();
+      // Met à jour le sample partagé sur toutes les measurements du containerId
+      updateContainer(item, String(params.containerId), (s) => ({
+        ...s,
+        status: 'bordereau_returned',
+        analyzedAt: now,
+        analyzedBy: body.analyzedBy,
+        bordereauRef: body.bordereauRef,
+        bordereauUrl: body.bordereauUrl,
+      }));
+      // Inscrit les valeurs sur chaque indicateur du flacon
+      for (const v of body.values) {
+        const m = item.measurements.find((x) => x.indicatorId === v.indicatorId);
+        if (m) m.value = v.value;
+      }
+      // Notifie le superviseur
+      const supId = findSupervisor(item.siteId);
+      if (supId) {
+        const notifs = buildNotifications(supId, 'bordereau_returned');
+        item.notifications = [...(item.notifications ?? []), ...notifs];
+      }
+      return HttpResponse.json(item);
+    },
+  ),
+
+  /** POST .../lab-samples/:containerId/reject — superviseur renvoie le bordereau au labo. */
+  http.post(
+    '/api/v1/collections/:id/lab-samples/:containerId/reject',
+    async ({ params, request }) => {
+      await delay(180);
+      const item = mockCollections.find((c) => c.id === params.id);
+      if (!item) return error404Collection();
+      const body = (await request.json()) as { reason: string; rejectedBy: string };
+      const now = new Date().toISOString();
+      let labId: string | null = null;
+      updateContainer(item, String(params.containerId), (s) => {
+        labId = s.labId;
+        return {
+          ...s,
+          status: 'rejected_by_supervisor',
+          rejectionReason: body.reason,
+          rejectedBy: body.rejectedBy,
+          rejectedAt: now,
+        };
+      });
+      // Notifie le labo concerné
+      if (labId) {
+        const labUserId = findLabUser(labId);
+        if (labUserId) {
+          const notifs = buildNotifications(labUserId, 'bordereau_rejected_by_supervisor');
+          item.notifications = [...(item.notifications ?? []), ...notifs];
+        }
+      }
+      return HttpResponse.json(item);
+    },
+  ),
 ];
+
+function error404Collection() {
+  return HttpResponse.json(
+    {
+      error: {
+        code: 'not_found',
+        message: 'Collecte introuvable.',
+        correlationId: uuid(),
+      },
+    },
+    { status: 404 },
+  );
+}
+
+/**
+ * Applique un patch à tous les samples partageant un containerId dans la collecte.
+ * (Le même flacon est référencé par N measurements.)
+ */
+function updateContainer(
+  collection: Collection,
+  containerId: string,
+  patcher: (sample: NonNullable<Collection['measurements'][number]['sample']>) =>
+    NonNullable<Collection['measurements'][number]['sample']>,
+): void {
+  for (const m of collection.measurements) {
+    if (m.sample && m.sample.containerId === containerId) {
+      m.sample = patcher(m.sample);
+    }
+  }
+}

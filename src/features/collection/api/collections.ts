@@ -112,3 +112,68 @@ export function patchMeasurement(
     body: patch,
   });
 }
+
+/* ─── Workflow labo : actions sur un flacon (containerId) ─── */
+
+export interface ReceiveSampleInput {
+  collectionId: string;
+  containerId: string;
+  receivedBy: string;
+}
+
+export interface RefuseSampleInput {
+  collectionId: string;
+  containerId: string;
+  reason: string;
+  refusedBy: string;
+}
+
+export interface TransmitBordereauInput {
+  collectionId: string;
+  containerId: string;
+  analyzedBy: string;
+  bordereauRef?: string;
+  bordereauUrl?: string;
+  /** Valeurs analysées par indicateur du flacon. */
+  values: Array<{ indicatorId: string; value: number | string }>;
+}
+
+export interface RejectBordereauInput {
+  collectionId: string;
+  containerId: string;
+  rejectedBy: string;
+  reason: string;
+}
+
+export function markSampleReceived(input: ReceiveSampleInput): Promise<Collection> {
+  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/receive`, {
+    method: 'POST',
+    body: { receivedBy: input.receivedBy },
+  });
+}
+
+export function refuseSample(input: RefuseSampleInput): Promise<Collection> {
+  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/refuse`, {
+    method: 'POST',
+    body: { reason: input.reason, refusedBy: input.refusedBy },
+  });
+}
+
+export function transmitBordereau(input: TransmitBordereauInput): Promise<Collection> {
+  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/transmit`, {
+    method: 'POST',
+    body: {
+      analyzedBy: input.analyzedBy,
+      bordereauRef: input.bordereauRef,
+      bordereauUrl: input.bordereauUrl,
+      values: input.values,
+    },
+  });
+}
+
+export function rejectBordereau(input: RejectBordereauInput): Promise<Collection> {
+  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/reject`, {
+    method: 'POST',
+    body: { reason: input.reason, rejectedBy: input.rejectedBy },
+  });
+}

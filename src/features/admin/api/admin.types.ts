@@ -13,6 +13,7 @@ export interface ManagedUser {
   lastLoginAt?: string;
   phone?: string;
   koboUsername?: string;
+  labId?: string;
 }
 
 export interface UserCreateInput {
@@ -23,6 +24,7 @@ export interface UserCreateInput {
   locale: Locale;
   phone?: string;
   koboUsername?: string;
+  labId?: string;
 }
 
 export interface UserUpdateInput extends Partial<UserCreateInput> {
