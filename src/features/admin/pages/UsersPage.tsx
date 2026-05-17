@@ -15,7 +15,6 @@ import {
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
-import { useLabs } from '@/features/collection/hooks/useLabs';
 import { formatRelativeTime } from '@/lib/format';
 import type { UserRole } from '@/types/common';
 import {
@@ -31,7 +30,6 @@ const ROLE_OPTIONS = [
   { value: 'admin' as UserRole, label: 'Administrateur' },
   { value: 'superviseur' as UserRole, label: 'Superviseur' },
   { value: 'agent' as UserRole, label: 'Agent terrain' },
-  { value: 'lab' as UserRole, label: 'Agent laboratoire' },
   { value: 'visitor' as UserRole, label: 'Observateur' },
 ];
 
@@ -86,7 +84,6 @@ export function UsersPage() {
   const toast = useToast();
   const { data: usersPage, isLoading } = useUsers();
   const { data: sitesPage } = useSites();
-  const { data: labs } = useLabs();
   const createMut = useCreateUser();
   const updateMut = useUpdateUser();
   const deleteMut = useDeleteUser();
@@ -346,18 +343,6 @@ export function UsersPage() {
                 value={form.koboUsername}
                 onChange={(e) => setForm((f) => ({ ...f, koboUsername: e.target.value }))}
                 placeholder="prenom.nom"
-              />
-            </FormField>
-          ) : null}
-          {form.role === 'lab' ? (
-            <FormField label="Laboratoire" required>
-              <Select
-                options={(labs ?? []).map((l) => ({
-                  value: l.id,
-                  label: `${l.name} — ${l.city}`,
-                }))}
-                value={form.labId}
-                onChange={(labId) => setForm((f) => ({ ...f, labId }))}
               />
             </FormField>
           ) : null}

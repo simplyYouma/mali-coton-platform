@@ -1,12 +1,51 @@
 import { http, HttpResponse, delay } from 'msw';
 import { mockCollections } from '../fixtures/collections';
 import { mockUsers } from '../fixtures/users';
+import { mockLabs } from '../fixtures/labs';
 import {
   hasPendingLabSamples,
   type Collection,
   type CollectionNotification,
 } from '@/features/collection/api/collection.types';
 import { uuid } from '@/lib/uuid';
+
+/**
+ * Génère des notifications mock vers un laboratoire (qui n'a PAS de compte
+ * plateforme — il reçoit uniquement les notifications sur ses coordonnées
+ * de contact officielles).
+ */
+function buildLabNotifications(
+  labId: string,
+  kind: CollectionNotification['kind'],
+): CollectionNotification[] {
+  const lab = mockLabs.find((l) => l.id === labId);
+  if (!lab) return [];
+  const now = new Date().toISOString();
+  const notifs: CollectionNotification[] = [];
+  if (lab.contactEmail) {
+    notifs.push({
+      id: uuid(),
+      channel: 'email',
+      recipient: lab.contactEmail,
+      recipientUserId: labId, // pas un user — on stocke labId comme référence
+      kind,
+      sentAt: now,
+      ref: `msg-${uuid().slice(0, 8)}@plateforme.pnud.org`,
+    });
+  }
+  if (lab.contactPhone) {
+    notifs.push({
+      id: uuid(),
+      channel: 'sms',
+      recipient: lab.contactPhone,
+      recipientUserId: labId,
+      kind,
+      sentAt: now,
+      ref: `SMS-${uuid().slice(0, 6).toUpperCase()}`,
+    });
+  }
+  return notifs;
+}
 
 /**
  * Génère les notifications mock à envoyer à l'agent suite à une action
@@ -46,11 +85,6 @@ function buildNotifications(
     });
   }
   return notifs;
-}
-
-/** Renvoie le 1er user qui correspond à un labo donné (technicien). */
-function findLabUser(labId: string): string | null {
-  return mockUsers.find((u) => u.role === 'lab' && u.labId === labId)?.id ?? null;
 }
 
 /** Renvoie le 1er superviseur qui couvre le site de la collecte. */
@@ -330,14 +364,43 @@ export const collectionsHandlers = [
           rejectedAt: now,
         };
       });
-      // Notifie le labo concerné
+      // Notifie le labo concerné (via lab.contactEmail / contactPhone — pas de compte)
       if (labId) {
-        const labUserId = findLabUser(labId);
-        if (labUserId) {
-          const notifs = buildNotifications(labUserId, 'bordereau_rejected_by_supervisor');
-          item.notifications = [...(item.notifications ?? []), ...notifs];
-        }
+        const notifs = buildLabNotifications(labId, 'bordereau_rejected_by_supervisor');
+        item.notifications = [...(item.notifications ?? []), ...notifs];
       }
+      return HttpResponse.json(item);
+    },
+  ),
+
+  /** POST .../lab-samples/:containerId/send — superviseur marque le flacon comme parti au labo. */
+  http.post(
+    '/api/v1/collections/:id/lab-samples/:containerId/send',
+    async ({ params, request }) => {
+      await delay(200);
+      const item = mockCollections.find((c) => c.id === params.id);
+      if (!item) return error404Collection();
+      const body = (await request.json()) as { sentBy: string };
+      const now = new Date().toISOString();
+      let labId: string | null = null;
+      updateContainer(item, String(params.containerId), (s) => {
+        labId = s.labId;
+        const lab = mockLabs.find((l) => l.id === s.labId);
+        const sla = lab?.slaBusinessDays ?? 10;
+        const expectedBy = new Date(Date.now() + sla * 86_400_000).toISOString();
+        return {
+          ...s,
+          status: 'sent',
+          sentAt: now,
+          expectedBy,
+        };
+      });
+      // Notifie le labo par e-mail/SMS qu'un flacon est en route
+      if (labId) {
+        const notifs = buildLabNotifications(labId, 'sample_sent_to_lab');
+        item.notifications = [...(item.notifications ?? []), ...notifs];
+      }
+      void body;
       return HttpResponse.json(item);
     },
   ),

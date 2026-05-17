@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   markSampleReceived,
+  markSampleSent,
   patchMeasurement,
   rejectBordereau,
   rejectCollection,
@@ -11,6 +12,7 @@ import {
   type ReceiveSampleInput,
   type RefuseSampleInput,
   type RejectBordereauInput,
+  type SendSampleInput,
   type TransmitBordereauInput,
 } from '../api/collections';
 import type { Measurement } from '../api/collection.types';
@@ -81,6 +83,17 @@ export function usePatchMeasurement() {
   return useMutation({
     mutationFn: ({ collectionId, indicatorId, patch }: PatchMeasurementInput) =>
       patchMeasurement(collectionId, indicatorId, patch),
+    onSuccess: (collection) => {
+      qc.invalidateQueries({ queryKey: ['collections'] });
+      qc.setQueryData(['collections', collection.id], collection);
+    },
+  });
+}
+
+export function useMarkSampleSent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SendSampleInput) => markSampleSent(input),
     onSuccess: (collection) => {
       qc.invalidateQueries({ queryKey: ['collections'] });
       qc.setQueryData(['collections', collection.id], collection);

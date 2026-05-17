@@ -77,7 +77,7 @@ export function AppRoutes() {
         <Route
           path="/labo/echantillons"
           element={
-            <RoleGuard roles={['lab', 'admin', 'superviseur']}>
+            <RoleGuard roles={['admin', 'superviseur']}>
               <LabSamplesPage />
             </RoleGuard>
           }
@@ -158,6 +158,5 @@ export function AppRoutes() {
 
 function defaultRoute(role: UserRole | null): string {
   if (role === 'agent') return '/collecte';
-  if (role === 'lab') return '/labo/echantillons';
   return '/dashboard';
 }

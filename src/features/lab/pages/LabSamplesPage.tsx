@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import {
   Beaker,
   CheckCircle2,
-  Clock,
   FileText,
   MapPin,
   PackageCheck,
   PackageX,
   RefreshCw,
+  Send,
 } from 'lucide-react';
 import { Badge, Button, Modal, Skeleton, Textarea } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -17,7 +17,7 @@ import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useLabs } from '@/features/collection/hooks/useLabs';
 import {
-  useMarkSampleReceived,
+  useMarkSampleSent,
   useRefuseSample,
   useTransmitBordereau,
 } from '@/features/collection/hooks/useCollectionMutations';
@@ -36,38 +36,36 @@ import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import styles from './LabSamplesPage.module.css';
 
 /**
- * Représente un flacon physique (containerId) — un envoi groupé d'1 à N
- * indicateurs au même labo. Le statut est porté par le flacon, pas par les
- * mesures individuelles.
+ * Un flacon physique (containerId) — 1 prélèvement, N indicateurs analysés
+ * ensemble par le même labo.
  */
 interface Flacon {
   collection: Collection;
   containerId: string;
   sample: LabSample;
-  /** Mesures partageant ce flacon — typiquement 1-3 indicateurs. */
   measurements: Measurement[];
   daysSinceSent: number;
   isOverdue: boolean;
 }
 
-type Tab = 'inbound' | 'in_progress' | 'returned' | 'closed';
+type Tab = 'to_send' | 'at_lab' | 'returned' | 'closed';
 
 const TAB_LABEL: Record<Tab, string> = {
-  inbound: 'À réceptionner',
-  in_progress: 'En cours',
-  returned: 'Rendus',
+  to_send: 'À envoyer',
+  at_lab: 'Au labo',
+  returned: 'Bordereaux reçus',
   closed: 'Clôturés',
 };
 
 function classifyTab(status: LabSampleStatus): Tab {
-  if (status === 'sent') return 'inbound';
-  if (status === 'received_at_lab' || status === 'in_analysis') return 'in_progress';
+  if (status === 'prepared') return 'to_send';
+  if (status === 'sent' || status === 'received_at_lab' || status === 'in_analysis') return 'at_lab';
   if (status === 'bordereau_returned' || status === 'rejected_by_supervisor') return 'returned';
-  return 'closed'; // accepted | refused_by_lab | prepared
+  return 'closed'; // accepted | refused_by_lab
 }
 
 export function LabSamplesPage() {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
 
   const { data: awaiting, isLoading: l1 } = useCollections({ status: 'awaiting_lab' });
@@ -75,14 +73,13 @@ export function LabSamplesPage() {
   const { data: sitesPage } = useSites();
   const { data: labs } = useLabs();
 
-  const receiveMut = useMarkSampleReceived();
+  const sendMut = useMarkSampleSent();
   const refuseMut = useRefuseSample();
   const transmitMut = useTransmitBordereau();
 
-  const [tab, setTab] = useState<Tab>('inbound');
+  const [tab, setTab] = useState<Tab>('to_send');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  // Modals
   const [refuseOpen, setRefuseOpen] = useState(false);
   const [refuseReason, setRefuseReason] = useState('');
   const [transmitOpen, setTransmitOpen] = useState(false);
@@ -96,14 +93,19 @@ export function LabSamplesPage() {
   }, [sitesPage]);
 
   const labsById = useMemo(() => {
-    const map = new Map<string, { name: string; city: string; sla: number }>();
+    const map = new Map<string, { name: string; city: string; sla: number; contactEmail?: string }>();
     (labs ?? []).forEach((l) =>
-      map.set(l.id, { name: l.name, city: l.city, sla: l.slaBusinessDays }),
+      map.set(l.id, {
+        name: l.name,
+        city: l.city,
+        sla: l.slaBusinessDays,
+        contactEmail: l.contactEmail,
+      }),
     );
     return map;
   }, [labs]);
 
-  /** Tous les flacons des collectes ouvertes, groupés par containerId. */
+  /** Tous les flacons issus des collectes ouvertes, groupés par containerId. */
   const allFlacons = useMemo<Flacon[]>(() => {
     const out: Flacon[] = [];
     const collections = [...(awaiting?.items ?? []), ...(complete?.items ?? [])];
@@ -119,9 +121,10 @@ export function LabSamplesPage() {
       for (const [containerId, measurements] of grouped) {
         const sample = measurements[0]!.sample!;
         const sla = labsById.get(sample.labId)?.sla ?? 10;
-        const sentAt = new Date(sample.sentAt).getTime();
-        const days = Math.floor((now - sentAt) / 86_400_000);
+        const sentAt = sample.sentAt ? new Date(sample.sentAt).getTime() : null;
+        const days = sentAt ? Math.floor((now - sentAt) / 86_400_000) : 0;
         const isOverdue =
+          sentAt != null &&
           days > sla &&
           (sample.status === 'sent' ||
             sample.status === 'received_at_lab' ||
@@ -139,56 +142,48 @@ export function LabSamplesPage() {
     return out;
   }, [awaiting, complete, labsById]);
 
-  // Scope au laboratoire de l'utilisateur connecté (si role=lab et labId présent)
-  const scopedFlacons = useMemo(() => {
-    if (role === 'lab' && user?.labId) {
-      return allFlacons.filter((f) => f.sample.labId === user.labId);
-    }
-    return allFlacons;
-  }, [allFlacons, role, user]);
-
   const byTab = useMemo(() => {
     const map: Record<Tab, Flacon[]> = {
-      inbound: [],
-      in_progress: [],
+      to_send: [],
+      at_lab: [],
       returned: [],
       closed: [],
     };
-    for (const f of scopedFlacons) {
+    for (const f of allFlacons) {
       map[classifyTab(f.sample.status)].push(f);
     }
     for (const k of Object.keys(map) as Tab[]) {
       map[k].sort((a, b) => b.daysSinceSent - a.daysSinceSent);
     }
     return map;
-  }, [scopedFlacons]);
+  }, [allFlacons]);
 
   const list = byTab[tab];
   const selected =
     list.find((f) => `${f.collection.id}::${f.containerId}` === selectedKey) ?? list[0] ?? null;
 
   const stats = {
-    inbound: byTab.inbound.length,
-    in_progress: byTab.in_progress.length,
+    to_send: byTab.to_send.length,
+    at_lab: byTab.at_lab.length,
     returned: byTab.returned.length,
-    overdue: scopedFlacons.filter((f) => f.isOverdue).length,
+    overdue: allFlacons.filter((f) => f.isOverdue).length,
   };
 
   const isLoading = l1 || l2;
-  const canActAsLab = role === 'lab' || role === 'admin';
 
-  // ── Actions ──────────────────────────────────────────────────────
-  const handleReceive = async (f: Flacon) => {
+  // ── Actions superviseur ──────────────────────────────────────────
+  const handleMarkSent = async (f: Flacon) => {
     if (!user) return;
     try {
-      await receiveMut.mutateAsync({
+      await sendMut.mutateAsync({
         collectionId: f.collection.id,
         containerId: f.containerId,
-        receivedBy: user.id,
+        sentBy: user.id,
       });
-      toast.success('Échantillon réceptionné — superviseur notifié.');
+      const labContact = labsById.get(f.sample.labId)?.contactEmail ?? f.sample.labId;
+      toast.success(`Flacon envoyé — e-mail envoyé à ${labContact}.`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec de la réception.');
+      toast.error(err instanceof Error ? err.message : 'Échec.');
     }
   };
 
@@ -200,7 +195,7 @@ export function LabSamplesPage() {
   const confirmRefuse = async () => {
     if (!selected || !user) return;
     if (!refuseReason.trim()) {
-      toast.error('Précisez le motif du refus.');
+      toast.error('Précisez le motif communiqué par le labo.');
       return;
     }
     try {
@@ -210,16 +205,15 @@ export function LabSamplesPage() {
         reason: refuseReason.trim(),
         refusedBy: user.id,
       });
-      toast.warning('Échantillon refusé — agent et superviseur notifiés.');
+      toast.warning('Refus enregistré — l\'agent est notifié pour re-prélèvement.');
       setRefuseOpen(false);
-      setRefuseReason('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec du refus.');
+      toast.error(err instanceof Error ? err.message : 'Échec.');
     }
   };
 
   const openTransmit = (f: Flacon) => {
-    setBordereauRef('');
+    setBordereauRef(f.sample.bordereauRef ?? '');
     const draft: Record<string, string> = {};
     for (const m of f.measurements) {
       draft[m.indicatorId] = m.value != null ? String(m.value) : '';
@@ -235,7 +229,7 @@ export function LabSamplesPage() {
       const num = Number(raw);
       return {
         indicatorId: m.indicatorId,
-        value: Number.isNaN(num) ? raw : num,
+        value: Number.isNaN(num) || raw === '' ? raw : num,
       };
     });
     if (values.some((v) => v.value === '' || v.value === null)) {
@@ -253,10 +247,10 @@ export function LabSamplesPage() {
           : undefined,
         values,
       });
-      toast.success('Bordereau transmis au superviseur.');
+      toast.success('Bordereau saisi — collecte enrichie.');
       setTransmitOpen(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec de la transmission.');
+      toast.error(err instanceof Error ? err.message : 'Échec.');
     }
   };
 
@@ -265,22 +259,20 @@ export function LabSamplesPage() {
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Échantillons</h1>
-          {role === 'lab' && user?.labId ? (
-            <span className={styles.heroEyebrow}>
-              {labsById.get(user.labId)?.name ?? user.labId}
-            </span>
-          ) : null}
+          <span className={styles.heroEyebrow}>
+            Le superviseur supervise le cycle labo · le labo n'accède pas à la plateforme
+          </span>
         </div>
         <div className={styles.heroStats}>
-          <Stat label="À réceptionner" value={stats.inbound} />
-          <Stat label="En cours" value={stats.in_progress} />
-          <Stat label="Rendus" value={stats.returned} />
+          <Stat label="À envoyer" value={stats.to_send} />
+          <Stat label="Au labo" value={stats.at_lab} />
+          <Stat label="Bordereaux reçus" value={stats.returned} />
           <Stat label="En retard SLA" value={stats.overdue} tone="danger" />
         </div>
       </header>
 
       <div className={styles.tabs}>
-        {(['inbound', 'in_progress', 'returned', 'closed'] as Tab[]).map((t) => (
+        {(['to_send', 'at_lab', 'returned', 'closed'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -309,9 +301,7 @@ export function LabSamplesPage() {
             {list.map((f) => {
               const key = `${f.collection.id}::${f.containerId}`;
               const active =
-                (selected
-                  ? `${selected.collection.id}::${selected.containerId}`
-                  : null) === key;
+                (selected ? `${selected.collection.id}::${selected.containerId}` : null) === key;
               return (
                 <button
                   key={key}
@@ -346,13 +336,11 @@ export function LabSamplesPage() {
               <FlaconDetail
                 flacon={selected}
                 siteName={sitesById.get(selected.collection.siteId) ?? selected.collection.siteId}
-                labName={labsById.get(selected.sample.labId)?.name ?? selected.sample.labId}
-                slaDays={labsById.get(selected.sample.labId)?.sla ?? 10}
-                canActAsLab={canActAsLab}
-                onReceive={() => handleReceive(selected)}
+                labInfo={labsById.get(selected.sample.labId)}
+                onMarkSent={() => handleMarkSent(selected)}
                 onRefuse={openRefuse}
                 onTransmit={() => openTransmit(selected)}
-                isReceiving={receiveMut.isPending}
+                isSending={sendMut.isPending}
               />
             )}
           </section>
@@ -362,8 +350,8 @@ export function LabSamplesPage() {
       <Modal
         open={refuseOpen}
         onClose={() => setRefuseOpen(false)}
-        title="Refuser l'échantillon"
-        description="Le flacon ne peut pas être analysé — précisez la raison. L'agent et le superviseur seront notifiés."
+        title="Enregistrer un refus du laboratoire"
+        description="Le labo vous a informé qu'il refuse le flacon (volume insuffisant, flacon cassé…). Précisez le motif tel qu'il vous a été communiqué."
         footer={
           <>
             <Button variant="ghost" onClick={() => setRefuseOpen(false)}>
@@ -375,7 +363,7 @@ export function LabSamplesPage() {
               loading={refuseMut.isPending}
               iconLeft={<PackageX size={14} />}
             >
-              Confirmer le refus
+              Enregistrer le refus
             </Button>
           </>
         }
@@ -391,10 +379,10 @@ export function LabSamplesPage() {
       <Modal
         open={transmitOpen}
         onClose={() => setTransmitOpen(false)}
-        title="Transmettre le bordereau"
+        title="Saisir le bordereau"
         description={
           selected
-            ? `Saisir les valeurs analysées pour le flacon ${selected.sample.sampleId} (${selected.measurements.length} indicateur${selected.measurements.length > 1 ? 's' : ''}).`
+            ? `Reportez les valeurs du bordereau papier/PDF reçu du labo pour le flacon ${selected.sample.sampleId}.`
             : ''
         }
         footer={
@@ -408,7 +396,7 @@ export function LabSamplesPage() {
               loading={transmitMut.isPending}
               iconLeft={<CheckCircle2 size={14} />}
             >
-              Transmettre
+              Enregistrer
             </Button>
           </>
         }
@@ -416,7 +404,7 @@ export function LabSamplesPage() {
         {selected ? (
           <div className={styles.transmitForm}>
             <label className={styles.transmitField}>
-              <span>Référence bordereau (n° rapport)</span>
+              <span>Référence bordereau (n° rapport du labo)</span>
               <input
                 className={styles.transmitInput}
                 value={bordereauRef}
@@ -455,28 +443,25 @@ export function LabSamplesPage() {
 interface FlaconDetailProps {
   flacon: Flacon;
   siteName: string;
-  labName: string;
-  slaDays: number;
-  canActAsLab: boolean;
-  onReceive: () => void;
+  labInfo: { name: string; sla: number; contactEmail?: string } | undefined;
+  onMarkSent: () => void;
   onRefuse: () => void;
   onTransmit: () => void;
-  isReceiving: boolean;
+  isSending: boolean;
 }
 
 function FlaconDetail({
   flacon,
   siteName,
-  labName,
-  slaDays,
-  canActAsLab,
-  onReceive,
+  labInfo,
+  onMarkSent,
   onRefuse,
   onTransmit,
-  isReceiving,
+  isSending,
 }: FlaconDetailProps) {
   const { sample, measurements, daysSinceSent, isOverdue } = flacon;
-  const remaining = slaDays - daysSinceSent;
+  const sla = labInfo?.sla ?? 10;
+  const remaining = sla - daysSinceSent;
   return (
     <>
       <header className={styles.detailHead}>
@@ -487,11 +472,9 @@ function FlaconDetail({
             </Badge>
             {isOverdue ? (
               <span className={styles.detailOverdue}>SLA dépassé</span>
-            ) : (sample.status === 'sent' ||
-                sample.status === 'received_at_lab' ||
-                sample.status === 'in_analysis') ? (
+            ) : sample.status === 'sent' ? (
               <span className={styles.detailRemain}>
-                {remaining > 0 ? `${remaining} j restants` : 'À rendre'} · SLA {slaDays} j
+                {remaining > 0 ? `${remaining} j restants` : 'À rendre'} · SLA {sla} j
               </span>
             ) : null}
           </span>
@@ -500,8 +483,8 @@ function FlaconDetail({
             <span>
               <MapPin size={12} aria-hidden="true" /> {siteName}
             </span>
-            <span>{labName}</span>
-            <span>envoyé {formatRelativeTime(sample.sentAt)}</span>
+            <span>{labInfo?.name ?? sample.labId}</span>
+            {sample.sentAt ? <span>envoyé {formatRelativeTime(sample.sentAt)}</span> : null}
           </div>
         </div>
         <Link to={`/collecte/${flacon.collection.id}`}>
@@ -512,21 +495,23 @@ function FlaconDetail({
       </header>
 
       <div className={styles.detailGrid}>
-        <KV label="Envoyé le" value={formatDateTime(sample.sentAt)} />
         <KV
-          label="Réceptionné"
-          value={sample.receivedAt ? formatDateTime(sample.receivedAt) : '—'}
+          label="Envoyé le"
+          value={sample.sentAt ? formatDateTime(sample.sentAt) : 'pas encore'}
         />
         <KV
-          label="Analyse débutée"
-          value={sample.analysisStartedAt ? formatDateTime(sample.analysisStartedAt) : '—'}
+          label="Délai prévu"
+          value={sample.expectedBy ? formatDateTime(sample.expectedBy) : '—'}
         />
         <KV
           label="Bordereau rendu"
           value={sample.analyzedAt ? formatDateTime(sample.analyzedAt) : '—'}
         />
-        {sample.bordereauRef ? <KV label="Réf. bordereau" value={sample.bordereauRef} /> : null}
-        <KV label="SLA contractuel" value={`${slaDays} j ouvrés`} />
+        {sample.bordereauRef ? <KV label="Réf. rapport" value={sample.bordereauRef} /> : null}
+        <KV label="SLA contractuel" value={`${sla} j ouvrés`} />
+        {labInfo?.contactEmail ? (
+          <KV label="Contact labo" value={labInfo.contactEmail} />
+        ) : null}
       </div>
 
       <section className={styles.indicators}>
@@ -573,18 +558,15 @@ function FlaconDetail({
 
       {sample.refusalReason ? (
         <div className={styles.warningBlock} data-tone="refusal">
-          <strong>Motif de refus :</strong> {sample.refusalReason}
+          <strong>Refusé par le labo :</strong> {sample.refusalReason}
         </div>
       ) : null}
 
       {sample.rejectionReason ? (
         <div className={styles.warningBlock} data-tone="rejection">
-          <strong>Bordereau renvoyé par le superviseur :</strong> {sample.rejectionReason}
+          <strong>Ré-analyse demandée :</strong> {sample.rejectionReason}
           {sample.rejectedAt ? (
-            <span className={styles.muted}>
-              {' '}
-              · {formatDateTime(sample.rejectedAt)}
-            </span>
+            <span className={styles.muted}> · {formatDateTime(sample.rejectedAt)}</span>
           ) : null}
         </div>
       ) : null}
@@ -597,52 +579,43 @@ function FlaconDetail({
           rel="noopener"
         >
           <FileText size={14} aria-hidden="true" />
-          Télécharger le bordereau ({sample.bordereauRef ?? 'PDF'})
+          Bordereau du labo ({sample.bordereauRef ?? 'PDF'})
         </a>
       ) : null}
 
-      {canActAsLab ? (
-        <div className={styles.actions}>
-          {sample.status === 'sent' ? (
-            <>
-              <Button
-                variant="primary"
-                iconLeft={<PackageCheck size={14} />}
-                onClick={onReceive}
-                loading={isReceiving}
-              >
-                Accuser réception
-              </Button>
-              <Button variant="danger" iconLeft={<PackageX size={14} />} onClick={onRefuse}>
-                Refuser le flacon
-              </Button>
-            </>
-          ) : null}
-          {sample.status === 'received_at_lab' || sample.status === 'in_analysis' ? (
-            <>
-              <Button
-                variant="primary"
-                iconLeft={<CheckCircle2 size={14} />}
-                onClick={onTransmit}
-              >
-                Saisir le bordereau
-              </Button>
-              <Button variant="danger" iconLeft={<PackageX size={14} />} onClick={onRefuse}>
-                Refuser le flacon
-              </Button>
-            </>
-          ) : null}
-          {sample.status === 'rejected_by_supervisor' ? (
+      <div className={styles.actions}>
+        {sample.status === 'prepared' ? (
+          <Button
+            variant="primary"
+            iconLeft={<Send size={14} />}
+            onClick={onMarkSent}
+            loading={isSending}
+          >
+            Marquer envoyé au labo
+          </Button>
+        ) : null}
+        {sample.status === 'sent' ||
+        sample.status === 'received_at_lab' ||
+        sample.status === 'in_analysis' ? (
+          <>
             <Button
               variant="primary"
-              iconLeft={<RefreshCw size={14} />}
+              iconLeft={<PackageCheck size={14} />}
               onClick={onTransmit}
             >
-              Soumettre une nouvelle analyse
+              Saisir le bordereau
             </Button>
-          ) : null}
-        </div>
-      ) : null}
+            <Button variant="danger" iconLeft={<PackageX size={14} />} onClick={onRefuse}>
+              Le labo a refusé
+            </Button>
+          </>
+        ) : null}
+        {sample.status === 'rejected_by_supervisor' ? (
+          <Button variant="primary" iconLeft={<RefreshCw size={14} />} onClick={onTransmit}>
+            Re-saisir après ré-analyse
+          </Button>
+        ) : null}
+      </div>
     </>
   );
 }
@@ -671,12 +644,4 @@ function KV({ label, value }: { label: string; value: string }) {
       <span className={styles.kvValue}>{value}</span>
     </div>
   );
-}
-
-interface ClockProps {
-  size?: number;
-}
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _ClockMarker(_: ClockProps) {
-  return <Clock size={12} />;
 }

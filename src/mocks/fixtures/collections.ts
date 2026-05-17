@@ -343,9 +343,8 @@ export const mockCollections: Collection[] = (() => {
     daysSinceSent: number;
     labId: string;
     status:
+      | 'prepared'
       | 'sent'
-      | 'received_at_lab'
-      | 'in_analysis'
       | 'bordereau_returned'
       | 'refused_by_lab'
       | 'rejected_by_supervisor'
@@ -356,12 +355,17 @@ export const mockCollections: Collection[] = (() => {
     refusalReason?: string;
     rejectionReason?: string;
   }> = [
+    // À envoyer (juste sortis de Kobo, étiquetés, en attente du passage au labo)
+    { siteId: 'site-atpek', daysSinceSent: 0.1, labId: 'lab.lne', status: 'prepared' },
+    { siteId: 'site-djiguiyaso', daysSinceSent: 0.2, labId: 'lab.lne', status: 'prepared' },
+    { siteId: 'site-galanimassiriw', daysSinceSent: 0.3, labId: 'lab.lns-bamako', status: 'prepared' },
+    // En cours d'analyse côté labo (le sup ne sait pas exactement où ça en est)
     { siteId: 'site-atpek', daysSinceSent: 1.2, labId: 'lab.lne', status: 'sent' },
     { siteId: 'site-dianeguela', daysSinceSent: 2.1, labId: 'lab.lne', status: 'sent' },
-    { siteId: 'site-galanimassiriw', daysSinceSent: 2.9, labId: 'lab.lns-bamako', status: 'received_at_lab' },
-    { siteId: 'site-djiguiyaso', daysSinceSent: 4.0, labId: 'lab.lne', status: 'received_at_lab' },
-    { siteId: 'site-dianeguela', daysSinceSent: 5.4, labId: 'lab.lne', status: 'in_analysis' },
-    { siteId: 'site-ndomo', daysSinceSent: 6.8, labId: 'lab.sotuba', status: 'in_analysis' },
+    { siteId: 'site-galanimassiriw', daysSinceSent: 2.9, labId: 'lab.lns-bamako', status: 'sent' },
+    { siteId: 'site-djiguiyaso', daysSinceSent: 4.0, labId: 'lab.lne', status: 'sent' },
+    { siteId: 'site-dianeguela', daysSinceSent: 5.4, labId: 'lab.lne', status: 'sent' },
+    { siteId: 'site-ndomo', daysSinceSent: 6.8, labId: 'lab.sotuba', status: 'sent' },
     {
       siteId: 'site-atpek',
       daysSinceSent: 8.2,
@@ -411,34 +415,20 @@ export const mockCollections: Collection[] = (() => {
   for (const lc of labCases) {
     counter += 1;
     const collectedIso = daysAgo(lc.daysSinceSent + 0.3);
-    const sentIso = daysAgo(lc.daysSinceSent);
+    const isPrepared = lc.status === 'prepared';
+    const sentIso = isPrepared ? '' : daysAgo(lc.daysSinceSent);
     const sla = lc.labId === 'lab.lns-bamako' ? 7 : lc.labId === 'lab.cnrst' ? 14 : 10;
-    const expectedBy = new Date(new Date(sentIso).getTime() + sla * 86_400_000).toISOString();
+    const expectedBy = isPrepared
+      ? undefined
+      : new Date(new Date(sentIso).getTime() + sla * 86_400_000).toISOString();
     const containerId = `flacon-${counter}-water`;
     const sampleId = `${lc.labId.split('.')[1]!.toUpperCase()}-${String(counter).padStart(4, '0')}`;
-    const receivedAt =
-      lc.status === 'received_at_lab' ||
-      lc.status === 'in_analysis' ||
-      lc.status === 'bordereau_returned' ||
-      lc.status === 'rejected_by_supervisor' ||
-      lc.status === 'accepted'
-        ? daysAgo(lc.daysSinceSent - 0.8)
-        : undefined;
-    const analysisStartedAt =
-      lc.status === 'in_analysis' ||
-      lc.status === 'bordereau_returned' ||
-      lc.status === 'rejected_by_supervisor' ||
-      lc.status === 'accepted'
-        ? daysAgo(lc.daysSinceSent - 1.5)
-        : undefined;
     const analyzedAt =
       lc.status === 'bordereau_returned' ||
       lc.status === 'rejected_by_supervisor' ||
       lc.status === 'accepted'
         ? daysAgo(lc.daysSinceSent - 2.2)
         : undefined;
-    const analyzedBy =
-      analyzedAt ? (lc.labId === 'lab.lns-bamako' ? 'u-lab-2' : 'u-lab-1') : undefined;
     const rejectedAt =
       lc.status === 'rejected_by_supervisor' ? daysAgo(lc.daysSinceSent - 2.6) : undefined;
 
@@ -449,10 +439,7 @@ export const mockCollections: Collection[] = (() => {
       status: lc.status,
       sentAt: sentIso,
       expectedBy,
-      receivedAt,
-      analysisStartedAt,
       analyzedAt,
-      analyzedBy,
       bordereauRef: lc.bordereauRef,
       bordereauUrl: lc.bordereauRef ? `https://stub.local/bordereau/${lc.bordereauRef}.pdf` : undefined,
       refusalReason: lc.refusalReason,
@@ -478,7 +465,7 @@ export const mockCollections: Collection[] = (() => {
       agentId: lc.siteId === 'site-ndomo' ? 'u-agent-segou' : 'u-agent-bko',
       collectedAt: collectedIso,
       status: collectionStatus,
-      syncedAt: sentIso,
+      syncedAt: isPrepared ? collectedIso : sentIso,
       gps: { lat: 12.6 + (Math.random() - 0.5) * 0.3, lng: -7.95 + (Math.random() - 0.5) * 0.3, accuracy: 5 },
       context: {
         weather: 'sunny',

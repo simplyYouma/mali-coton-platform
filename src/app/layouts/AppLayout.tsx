@@ -63,7 +63,7 @@ const ALL_NAV: NavSpec[] = [
     to: '/labo/echantillons',
     label: 'Échantillons labo',
     icon: <Beaker size={18} />,
-    roles: ['admin', 'superviseur', 'lab'],
+    roles: ['admin', 'superviseur'],
     section: 'main',
   },
   {

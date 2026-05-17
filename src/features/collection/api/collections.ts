@@ -115,6 +115,12 @@ export function patchMeasurement(
 
 /* ─── Workflow labo : actions sur un flacon (containerId) ─── */
 
+export interface SendSampleInput {
+  collectionId: string;
+  containerId: string;
+  sentBy: string;
+}
+
 export interface ReceiveSampleInput {
   collectionId: string;
   containerId: string;
@@ -143,6 +149,13 @@ export interface RejectBordereauInput {
   containerId: string;
   rejectedBy: string;
   reason: string;
+}
+
+export function markSampleSent(input: SendSampleInput): Promise<Collection> {
+  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/send`, {
+    method: 'POST',
+    body: { sentBy: input.sentBy },
+  });
 }
 
 export function markSampleReceived(input: ReceiveSampleInput): Promise<Collection> {
