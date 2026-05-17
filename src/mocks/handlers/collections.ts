@@ -380,27 +380,21 @@ export const collectionsHandlers = [
       await delay(200);
       const item = mockCollections.find((c) => c.id === params.id);
       if (!item) return error404Collection();
-      const body = (await request.json()) as { sentBy: string };
+      const body = (await request.json()) as { sentBy: string; labId: string };
       const now = new Date().toISOString();
-      let labId: string | null = null;
-      updateContainer(item, String(params.containerId), (s) => {
-        labId = s.labId;
-        const lab = mockLabs.find((l) => l.id === s.labId);
-        const sla = lab?.slaBusinessDays ?? 10;
-        const expectedBy = new Date(Date.now() + sla * 86_400_000).toISOString();
-        return {
-          ...s,
-          status: 'sent',
-          sentAt: now,
-          expectedBy,
-        };
-      });
+      const chosenLab = mockLabs.find((l) => l.id === body.labId);
+      const sla = chosenLab?.slaBusinessDays ?? 10;
+      const expectedBy = new Date(Date.now() + sla * 86_400_000).toISOString();
+      updateContainer(item, String(params.containerId), (s) => ({
+        ...s,
+        labId: body.labId,
+        status: 'sent',
+        sentAt: now,
+        expectedBy,
+      }));
       // Notifie le labo par e-mail/SMS qu'un flacon est en route
-      if (labId) {
-        const notifs = buildLabNotifications(labId, 'sample_sent_to_lab');
-        item.notifications = [...(item.notifications ?? []), ...notifs];
-      }
-      void body;
+      const notifs = buildLabNotifications(body.labId, 'sample_sent_to_lab');
+      item.notifications = [...(item.notifications ?? []), ...notifs];
       return HttpResponse.json(item);
     },
   ),

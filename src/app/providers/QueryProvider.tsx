@@ -12,8 +12,16 @@ export function QueryProvider({ children }: Props) {
         defaultOptions: {
           queries: {
             retry: 1,
-            staleTime: 30_000,
-            refetchOnWindowFocus: false,
+            /**
+             * Maquette : on privilégie la fraîcheur. À chaque navigation on
+             * re-fetch (refetchOnMount: 'always') et au retour de focus on
+             * vérifie aussi — évite les "données fantômes" après une action
+             * sup (validation, envoi labo, etc.).
+             */
+            staleTime: 0,
+            refetchOnMount: 'always',
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
           },
           mutations: {
             retry: 0,

@@ -355,10 +355,10 @@ export const mockCollections: Collection[] = (() => {
     refusalReason?: string;
     rejectionReason?: string;
   }> = [
-    // À envoyer (juste sortis de Kobo, étiquetés, en attente du passage au labo)
-    { siteId: 'site-atpek', daysSinceSent: 0.1, labId: 'lab.lne', status: 'prepared' },
-    { siteId: 'site-djiguiyaso', daysSinceSent: 0.2, labId: 'lab.lne', status: 'prepared' },
-    { siteId: 'site-galanimassiriw', daysSinceSent: 0.3, labId: 'lab.lns-bamako', status: 'prepared' },
+    // À envoyer (juste sortis de Kobo, étiquetés, le sup choisira le labo)
+    { siteId: 'site-atpek', daysSinceSent: 0.1, labId: '', status: 'prepared' },
+    { siteId: 'site-djiguiyaso', daysSinceSent: 0.2, labId: '', status: 'prepared' },
+    { siteId: 'site-galanimassiriw', daysSinceSent: 0.3, labId: '', status: 'prepared' },
     // En cours d'analyse côté labo (le sup ne sait pas exactement où ça en est)
     { siteId: 'site-atpek', daysSinceSent: 1.2, labId: 'lab.lne', status: 'sent' },
     { siteId: 'site-dianeguela', daysSinceSent: 2.1, labId: 'lab.lne', status: 'sent' },
@@ -422,7 +422,10 @@ export const mockCollections: Collection[] = (() => {
       ? undefined
       : new Date(new Date(sentIso).getTime() + sla * 86_400_000).toISOString();
     const containerId = `flacon-${counter}-water`;
-    const sampleId = `${lc.labId.split('.')[1]!.toUpperCase()}-${String(counter).padStart(4, '0')}`;
+    // Sample ID = code site (3 lettres) + numéro séquentiel — généré par la
+    // plateforme à l'ingestion Kobo (étiquette imprimable).
+    const siteCode = lc.siteId.replace('site-', '').slice(0, 3).toUpperCase();
+    const sampleId = `${siteCode}-${String(counter).padStart(4, '0')}`;
     const analyzedAt =
       lc.status === 'bordereau_returned' ||
       lc.status === 'rejected_by_supervisor' ||

@@ -119,6 +119,8 @@ export interface SendSampleInput {
   collectionId: string;
   containerId: string;
   sentBy: string;
+  /** Le superviseur choisit le labo destinataire au moment de l'envoi. */
+  labId: string;
 }
 
 export interface ReceiveSampleInput {
@@ -154,7 +156,7 @@ export interface RejectBordereauInput {
 export function markSampleSent(input: SendSampleInput): Promise<Collection> {
   return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/send`, {
     method: 'POST',
-    body: { sentBy: input.sentBy },
+    body: { sentBy: input.sentBy, labId: input.labId },
   });
 }
 

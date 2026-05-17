@@ -19,6 +19,7 @@ import { useLabs } from '@/features/collection/hooks/useLabs';
 import {
   useMarkSampleSent,
   useRefuseSample,
+  useRejectBordereau,
   useTransmitBordereau,
 } from '@/features/collection/hooks/useCollectionMutations';
 import { findRule } from '@/features/collection/lib/indicatorRules';
@@ -76,6 +77,7 @@ export function LabSamplesPage() {
   const sendMut = useMarkSampleSent();
   const refuseMut = useRefuseSample();
   const transmitMut = useTransmitBordereau();
+  const rejectMut = useRejectBordereau();
 
   const [tab, setTab] = useState<Tab>('to_send');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -84,7 +86,12 @@ export function LabSamplesPage() {
   const [refuseReason, setRefuseReason] = useState('');
   const [transmitOpen, setTransmitOpen] = useState(false);
   const [bordereauRef, setBordereauRef] = useState('');
+  const [bordereauFile, setBordereauFile] = useState<{ name: string; dataUrl: string } | null>(null);
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
+  const [sendOpen, setSendOpen] = useState(false);
+  const [chosenLabId, setChosenLabId] = useState('');
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const sitesById = useMemo(() => {
     const map = new Map<string, string>();
@@ -172,16 +179,53 @@ export function LabSamplesPage() {
   const isLoading = l1 || l2;
 
   // ── Actions superviseur ──────────────────────────────────────────
-  const handleMarkSent = async (f: Flacon) => {
-    if (!user) return;
+  const openSend = () => {
+    setChosenLabId('');
+    setSendOpen(true);
+  };
+
+  const confirmSend = async () => {
+    if (!selected || !user) return;
+    if (!chosenLabId) {
+      toast.error('Choisissez le laboratoire destinataire.');
+      return;
+    }
     try {
       await sendMut.mutateAsync({
-        collectionId: f.collection.id,
-        containerId: f.containerId,
+        collectionId: selected.collection.id,
+        containerId: selected.containerId,
         sentBy: user.id,
+        labId: chosenLabId,
       });
-      const labContact = labsById.get(f.sample.labId)?.contactEmail ?? f.sample.labId;
+      const labContact = labsById.get(chosenLabId)?.contactEmail ?? chosenLabId;
       toast.success(`Flacon envoyé — e-mail envoyé à ${labContact}.`);
+      setSendOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Échec.');
+    }
+  };
+
+  const openReject = () => {
+    setRejectReason('');
+    setRejectOpen(true);
+  };
+
+  const confirmReject = async () => {
+    if (!selected || !user) return;
+    if (!rejectReason.trim()) {
+      toast.error('Précisez ce qui motive la ré-analyse.');
+      return;
+    }
+    try {
+      await rejectMut.mutateAsync({
+        collectionId: selected.collection.id,
+        containerId: selected.containerId,
+        rejectedBy: user.id,
+        reason: rejectReason.trim(),
+      });
+      const labContact = labsById.get(selected.sample.labId)?.contactEmail ?? selected.sample.labId;
+      toast.warning(`Demande de ré-analyse envoyée à ${labContact}.`);
+      setRejectOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Échec.');
     }
@@ -214,12 +258,29 @@ export function LabSamplesPage() {
 
   const openTransmit = (f: Flacon) => {
     setBordereauRef(f.sample.bordereauRef ?? '');
+    setBordereauFile(null);
     const draft: Record<string, string> = {};
     for (const m of f.measurements) {
       draft[m.indicatorId] = m.value != null ? String(m.value) : '';
     }
     setDraftValues(draft);
     setTransmitOpen(true);
+  };
+
+  const handleFilePick = (file: File | null) => {
+    if (!file) {
+      setBordereauFile(null);
+      return;
+    }
+    if (file.type !== 'application/pdf') {
+      toast.error('Le bordereau doit être un PDF.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBordereauFile({ name: file.name, dataUrl: String(reader.result) });
+    };
+    reader.readAsDataURL(file);
   };
 
   const confirmTransmit = async () => {
@@ -242,9 +303,10 @@ export function LabSamplesPage() {
         containerId: selected.containerId,
         analyzedBy: user.id,
         bordereauRef: bordereauRef.trim() || undefined,
-        bordereauUrl: bordereauRef.trim()
-          ? `https://stub.local/bordereau/${bordereauRef.trim()}.pdf`
-          : undefined,
+        bordereauUrl: bordereauFile?.dataUrl
+          ?? (bordereauRef.trim()
+            ? `https://stub.local/bordereau/${bordereauRef.trim()}.pdf`
+            : undefined),
         values,
       });
       toast.success('Bordereau saisi — collecte enrichie.');
@@ -337,9 +399,10 @@ export function LabSamplesPage() {
                 flacon={selected}
                 siteName={sitesById.get(selected.collection.siteId) ?? selected.collection.siteId}
                 labInfo={labsById.get(selected.sample.labId)}
-                onMarkSent={() => handleMarkSent(selected)}
+                onMarkSent={openSend}
                 onRefuse={openRefuse}
                 onTransmit={() => openTransmit(selected)}
+                onReject={openReject}
                 isSending={sendMut.isPending}
               />
             )}
@@ -412,6 +475,22 @@ export function LabSamplesPage() {
                 placeholder="LNE-2026-0421"
               />
             </label>
+            <label className={styles.transmitField}>
+              <span>Bordereau PDF (joint envoyé par le labo)</span>
+              <div className={styles.fileRow}>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)}
+                  className={styles.fileInput}
+                />
+                {bordereauFile ? (
+                  <span className={styles.fileBadge}>
+                    <FileText size={12} aria-hidden="true" /> {bordereauFile.name}
+                  </span>
+                ) : null}
+              </div>
+            </label>
             {selected.measurements.map((m) => {
               const rule = findRule(m.indicatorId);
               return (
@@ -436,6 +515,94 @@ export function LabSamplesPage() {
           </div>
         ) : null}
       </Modal>
+
+      <Modal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        title="Envoyer le flacon au laboratoire"
+        description={
+          selected
+            ? `Flacon ${selected.sample.sampleId} — choisissez le laboratoire destinataire. Un e-mail récap sera envoyé automatiquement à son adresse de contact.`
+            : ''
+        }
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setSendOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              onClick={confirmSend}
+              loading={sendMut.isPending}
+              iconLeft={<Send size={14} />}
+            >
+              Confirmer l'envoi
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.transmitForm}>
+          {(labs ?? [])
+            .filter((l) => l.isActive)
+            .map((l) => (
+              <label
+                key={l.id}
+                className={`${styles.labChoice} ${chosenLabId === l.id ? styles.labChoiceActive : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="labChoice"
+                  checked={chosenLabId === l.id}
+                  onChange={() => setChosenLabId(l.id)}
+                />
+                <div className={styles.labChoiceMain}>
+                  <span className={styles.labChoiceName}>
+                    {l.name}
+                    {l.isReference ? (
+                      <Badge size="sm" variant="info">Référence</Badge>
+                    ) : null}
+                  </span>
+                  <span className={styles.labChoiceMeta}>
+                    {l.city} · SLA {l.slaBusinessDays} j ouvrés · {l.contactEmail ?? 'pas d\'e-mail'}
+                  </span>
+                </div>
+              </label>
+            ))}
+        </div>
+      </Modal>
+
+      <Modal
+        open={rejectOpen}
+        onClose={() => setRejectOpen(false)}
+        title="Renvoyer pour ré-analyse"
+        description={
+          selected
+            ? `Le flacon ${selected.sample.sampleId} repart au laboratoire. Précisez le motif — il sera envoyé par e-mail au labo.`
+            : ''
+        }
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRejectOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmReject}
+              loading={rejectMut.isPending}
+              iconLeft={<RefreshCw size={14} />}
+            >
+              Envoyer la demande
+            </Button>
+          </>
+        }
+      >
+        <Textarea
+          rows={4}
+          placeholder="Ex : valeur sulfates aberrante (4× le pic historique du site), demande de ré-analyse en duplicate."
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+        />
+      </Modal>
     </div>
   );
 }
@@ -447,6 +614,7 @@ interface FlaconDetailProps {
   onMarkSent: () => void;
   onRefuse: () => void;
   onTransmit: () => void;
+  onReject: () => void;
   isSending: boolean;
 }
 
@@ -457,6 +625,7 @@ function FlaconDetail({
   onMarkSent,
   onRefuse,
   onTransmit,
+  onReject,
   isSending,
 }: FlaconDetailProps) {
   const { sample, measurements, daysSinceSent, isOverdue } = flacon;
@@ -609,6 +778,11 @@ function FlaconDetail({
               Le labo a refusé
             </Button>
           </>
+        ) : null}
+        {sample.status === 'bordereau_returned' ? (
+          <Button variant="danger" iconLeft={<RefreshCw size={14} />} onClick={onReject}>
+            Renvoyer pour ré-analyse
+          </Button>
         ) : null}
         {sample.status === 'rejected_by_supervisor' ? (
           <Button variant="primary" iconLeft={<RefreshCw size={14} />} onClick={onTransmit}>
