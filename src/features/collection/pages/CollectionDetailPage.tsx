@@ -414,12 +414,6 @@ export function CollectionDetailPage() {
         </div>
       </section>
 
-      <FlaconsSection
-        collection={collection}
-        labsById={labsById}
-        canReject={role === 'superviseur' || role === 'admin'}
-      />
-
       {grouped ? (
         <section className={styles.section} aria-label="Mesures par domaine">
           <div className={styles.sectionHead}>
