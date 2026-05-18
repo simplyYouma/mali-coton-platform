@@ -758,66 +758,57 @@ function FlaconDetail({
         </Link>
       </header>
 
-      <div className={styles.detailGrid}>
-        <KV
-          label="Envoyé le"
-          value={sample.sentAt ? formatDateTime(sample.sentAt) : 'pas encore'}
-        />
-        <KV
-          label="Délai prévu"
-          value={sample.expectedBy ? formatDateTime(sample.expectedBy) : '—'}
-        />
-        <KV
-          label="Bordereau rendu"
-          value={sample.analyzedAt ? formatDateTime(sample.analyzedAt) : '—'}
-        />
-        {sample.bordereauRef ? <KV label="Réf. rapport" value={sample.bordereauRef} /> : null}
-        <KV label="SLA contractuel" value={`${sla} j ouvrés`} />
-        {labInfo?.contactEmail ? (
-          <KV label="Contact labo" value={labInfo.contactEmail} />
+      <dl className={styles.detailStrip}>
+        {sample.sentAt ? (
+          <span>
+            <dt>Envoyé</dt>
+            <dd>{formatRelativeTime(sample.sentAt)}</dd>
+          </span>
         ) : null}
-      </div>
+        {sample.expectedBy ? (
+          <span>
+            <dt>Délai</dt>
+            <dd>{formatDateTime(sample.expectedBy, 'dd MMM')}</dd>
+          </span>
+        ) : null}
+        {sample.analyzedAt ? (
+          <span>
+            <dt>Bordereau</dt>
+            <dd>{formatDateTime(sample.analyzedAt, 'dd MMM')}</dd>
+          </span>
+        ) : null}
+        {sample.bordereauRef ? (
+          <span>
+            <dt>Réf.</dt>
+            <dd>
+              <code className={styles.refCode}>{sample.bordereauRef}</code>
+            </dd>
+          </span>
+        ) : null}
+      </dl>
 
       <section className={styles.indicators}>
-        <h3 className={styles.indicatorsTitle}>
-          Indicateurs partageant ce flacon · {measurements.length}
-        </h3>
-        <table className={styles.indicatorsTable}>
-          <thead>
-            <tr>
-              <th>Indicateur</th>
-              <th>Valeur</th>
-              <th>Plage OK</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
+        <ul className={styles.indicatorsList}>
             {measurements.map((m) => {
               const rule = findRule(m.indicatorId);
+              const hasValue = m.value != null;
               return (
-                <tr key={m.indicatorId}>
-                  <td>{rule?.label ?? m.indicatorId}</td>
-                  <td>
-                    {m.value != null ? (
-                      <strong>
-                        {String(m.value)}
-                        {rule?.unit ? ` ${rule.unit}` : ''}
-                      </strong>
+                <li key={m.indicatorId} className={styles.indicatorItem}>
+                  <span className={styles.indicatorLabel}>{rule?.label ?? m.indicatorId}</span>
+                  <span className={styles.indicatorValue}>
+                    {hasValue ? (
+                      <>
+                        <strong>{String(m.value)}</strong>
+                        {rule?.unit ? <span className={styles.indicatorUnit}>{rule.unit}</span> : null}
+                      </>
                     ) : (
                       <span className={styles.empty2}>en attente</span>
                     )}
-                  </td>
-                  <td className={styles.muted}>
-                    {rule?.minOk != null || rule?.maxOk != null
-                      ? `${rule?.minOk ?? '—'} – ${rule?.maxOk ?? '—'}`
-                      : '—'}
-                  </td>
-                  <td className={styles.muted}>{rule?.source ?? '—'}</td>
-                </tr>
+                  </span>
+                </li>
               );
             })}
-          </tbody>
-        </table>
+        </ul>
       </section>
 
       {sample.refusalReason ? (
