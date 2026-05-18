@@ -451,42 +451,36 @@
   font-family: var(--font-mono);
 }
 
-/* ── Flacons labo (groupés par containerId) ── */
+/* ── Flacons labo (ligne compacte par flacon) ── */
 .flaconList {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-.flacon {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
 }
-.flacon[data-status='refused_by_lab'] {
-  border-color: var(--color-danger);
-  background: var(--color-danger-bg);
-}
-.flacon[data-status='rejected_by_supervisor'] {
-  border-color: var(--color-amber-hover);
-  background: var(--color-amber-soft);
-}
-.flacon[data-status='accepted'] {
-  border-color: var(--color-success);
-}
-.flaconHead {
+.flaconRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
 }
-.flaconTitleBlock {
+.flaconRow:first-child {
+  border-top: none;
+}
+.flaconRowMain {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+}
+.flaconRowTop {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 .flaconSampleId {
   font-family: var(--font-mono);
@@ -497,68 +491,17 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 2px 6px;
-  width: fit-content;
 }
-.flaconLab {
+.flaconRowLab {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
-.flaconIndicators {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-top: 1px dashed var(--color-border);
-  padding-top: var(--space-2);
-}
-.flaconIndicators li {
-  display: flex;
-  justify-content: space-between;
+.flaconRowIndicators {
   font-size: var(--text-sm);
   color: var(--color-text);
-}
-.flaconIndicators li span {
-  color: var(--color-text-muted);
-}
-.flaconPending {
-  font-style: italic;
-  color: var(--color-text-disabled) !important;
-  font-weight: var(--weight-regular);
-}
-.flaconFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px dashed var(--color-border);
-}
-.flaconMeta {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-.flaconNote {
-  margin: 0;
-  font-size: var(--text-sm);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  line-height: 1.5;
-}
-.flaconNote[data-tone='danger'] {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-}
-.flaconNote[data-tone='warning'] {
-  background: var(--color-amber-soft);
-  color: var(--color-amber-hover);
-}
-
-@media (max-width: 768px) {
-  .flaconList {
-    grid-template-columns: 1fr;
-  }
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .validationBlock {
@@ -598,7 +541,7 @@
 .timelineList {
   list-style: none;
   margin: 0;
-  padding: var(--space-3) 0 var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-4);
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -607,7 +550,7 @@
 .timelineList::before {
   content: '';
   position: absolute;
-  left: 13px;
+  left: calc(var(--space-5) + 13px);
   top: 18px;
   bottom: 18px;
   width: 2px;

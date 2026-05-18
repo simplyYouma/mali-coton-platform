@@ -804,11 +804,10 @@ function FlaconDetail({
                 <li key={m.indicatorId} className={styles.indicatorItem}>
                   <div className={styles.indicatorMain}>
                     <span className={styles.indicatorLabel}>{rule?.label ?? m.indicatorId}</span>
-                    {hasValue && (rangeText || rule?.source) ? (
+                    {hasValue && rangeText ? (
                       <span className={styles.indicatorRef}>
-                        {rangeText ? `seuil ${rangeText}${rule?.unit ? ` ${rule.unit}` : ''}` : null}
-                        {rangeText && rule?.source ? ' · ' : null}
-                        {rule?.source ?? ''}
+                        seuil {rangeText}
+                        {rule?.unit ? ` ${rule.unit}` : ''}
                       </span>
                     ) : null}
                   </div>

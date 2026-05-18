@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   FlaskConical,
   Inbox,
-  MapPin,
   Pencil,
   XCircle,
 } from 'lucide-react';
@@ -40,7 +39,6 @@ const STATUS_ICONS: Record<CollectionStatus, typeof Inbox> = {
 };
 
 export function CollectionRow({ collection, site, agentName, href }: CollectionRowProps) {
-  const phMeasurement = collection.measurements.find((m) => m.indicatorId === 'water.ph');
   const StatusIcon = STATUS_ICONS[collection.status];
 
   const content = (
@@ -54,32 +52,11 @@ export function CollectionRow({ collection, site, agentName, href }: CollectionR
           {site?.shortName ?? collection.siteId}
           {site?.city ? <span className={styles.siteCity}>· {site.city}</span> : null}
         </span>
-        <span className={styles.statusLabel}>{STATUS_LABEL[collection.status]}</span>
-      </div>
-
-      <div className={styles.metaCol}>
-        <span className={styles.metaTop}>
-          <span className={styles.id}>{collection.id}</span>
-          {agentName ? <span>par {agentName}</span> : null}
+        <span className={styles.statusLabel}>
+          {STATUS_LABEL[collection.status]}
+          {agentName ? ` · ${agentName}` : ''}
         </span>
-        {collection.gps ? (
-          <span className={styles.gps}>
-            <MapPin size={11} aria-hidden="true" />
-            {collection.gps.lat.toFixed(3)}°, {collection.gps.lng.toFixed(3)}°
-          </span>
-        ) : (
-          <span style={{ color: 'var(--color-text-disabled)' }}>GPS non capturé</span>
-        )}
       </div>
-
-      {phMeasurement && typeof phMeasurement.value === 'number' ? (
-        <span className={styles.measuresCol}>
-          <span className={styles.measureLabel}>pH</span>
-          <span className={styles.measureValue}>{phMeasurement.value.toFixed(2)}</span>
-        </span>
-      ) : (
-        <span className={styles.measureEmpty}>—</span>
-      )}
 
       <div className={styles.dateCol}>
         <span className={styles.dateValue}>

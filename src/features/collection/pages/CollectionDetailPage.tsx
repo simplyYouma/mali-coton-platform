@@ -894,82 +894,48 @@ function FlaconsSection({ collection, labsById, canReject }: FlaconsSectionProps
           </h2>
         </div>
       </div>
-      <div className={styles.flaconList}>
+      <ul className={styles.flaconList}>
         {flacons.map(({ containerId, sample, measurements }) => {
-          const labLabel = labsById.get(sample.labId) ?? sample.labId;
+          const labLabel = labsById.get(sample.labId) ?? sample.labId ?? 'Labo non choisi';
           const canSupReject =
             canReject &&
             (sample.status === 'bordereau_returned' || sample.status === 'accepted');
+          const indicators = measurements
+            .map((m) => findRule(m.indicatorId)?.label ?? m.indicatorId)
+            .join(' · ');
           return (
-            <article key={containerId} className={styles.flacon} data-status={sample.status}>
-              <header className={styles.flaconHead}>
-                <div className={styles.flaconTitleBlock}>
+            <li key={containerId} className={styles.flaconRow} data-status={sample.status}>
+              <div className={styles.flaconRowMain}>
+                <div className={styles.flaconRowTop}>
                   <code className={styles.flaconSampleId}>{sample.sampleId}</code>
-                  <span className={styles.flaconLab}>{labLabel}</span>
+                  <Badge size="sm" variant={LAB_SAMPLE_STATUS_VARIANT[sample.status]}>
+                    {LAB_SAMPLE_STATUS_LABEL[sample.status]}
+                  </Badge>
+                  <span className={styles.flaconRowLab}>{labLabel}</span>
                 </div>
-                <Badge size="sm" variant={LAB_SAMPLE_STATUS_VARIANT[sample.status]}>
-                  {LAB_SAMPLE_STATUS_LABEL[sample.status]}
-                </Badge>
-              </header>
-              <ul className={styles.flaconIndicators}>
-                {measurements.map((m) => {
-                  const rule = findRule(m.indicatorId);
-                  return (
-                    <li key={m.indicatorId}>
-                      <span>{rule?.label ?? m.indicatorId}</span>
-                      <strong>
-                        {m.value != null ? (
-                          <>
-                            {formatMeasureValue(m.value)}
-                            {rule?.unit ? ` ${rule.unit}` : ''}
-                          </>
-                        ) : (
-                          <span className={styles.flaconPending}>en attente</span>
-                        )}
-                      </strong>
-                    </li>
-                  );
-                })}
-              </ul>
-              <footer className={styles.flaconFooter}>
-                <span className={styles.flaconMeta}>
-                  Envoyé {formatRelativeTime(sample.sentAt)}
-                  {sample.analyzedAt ? ` · rendu ${formatRelativeTime(sample.analyzedAt)}` : ''}
-                  {sample.bordereauRef ? ` · réf. ${sample.bordereauRef}` : ''}
-                </span>
-                {canSupReject ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setRejectingId(containerId);
-                      setReason('');
-                    }}
-                  >
-                    Renvoyer au labo
-                  </Button>
-                ) : null}
-              </footer>
-              {sample.refusalReason ? (
-                <p className={styles.flaconNote} data-tone="danger">
-                  Refusé : {sample.refusalReason}
-                </p>
+                <span className={styles.flaconRowIndicators}>{indicators}</span>
+              </div>
+              {canSupReject ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setRejectingId(containerId);
+                    setReason('');
+                  }}
+                >
+                  Renvoyer
+                </Button>
               ) : null}
-              {sample.rejectionReason ? (
-                <p className={styles.flaconNote} data-tone="warning">
-                  Ré-analyse demandée : {sample.rejectionReason}
-                </p>
-              ) : null}
-            </article>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       <Modal
         open={rejectingId !== null}
         onClose={() => setRejectingId(null)}
-        title="Renvoyer le bordereau pour ré-analyse"
-        description="Le flacon repart vers le laboratoire. Précisez ce qui motive la demande (valeur aberrante, suspicion de contamination croisée…)."
+        title="Renvoyer pour ré-analyse"
         footer={
           <>
             <Button variant="ghost" onClick={() => setRejectingId(null)}>

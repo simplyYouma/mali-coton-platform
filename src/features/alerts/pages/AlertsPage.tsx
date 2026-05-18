@@ -264,14 +264,9 @@ export function AlertsPage() {
                     </span>
                     <div className={styles.rowMain}>
                       <span className={styles.rowTitle}>{alert.title}</span>
-                      <span className={styles.rowSummary}>{formatAlertSummary(alert)}</span>
-                      <div className={styles.rowMeta}>
-                        <span className={styles.rowSiteName}>
-                          {siteName ?? CATEGORY_LABEL[alert.category]}
-                        </span>
-                        <span>·</span>
-                        <span>{STATUS_LABEL[alert.status]}</span>
-                      </div>
+                      <span className={styles.rowMeta}>
+                        {siteName ?? CATEGORY_LABEL[alert.category]} · {STATUS_LABEL[alert.status]}
+                      </span>
                     </div>
                     <span className={styles.rowAge} title={formatDateTime(alert.raisedAt)}>
                       {formatRelativeTime(alert.raisedAt)}
