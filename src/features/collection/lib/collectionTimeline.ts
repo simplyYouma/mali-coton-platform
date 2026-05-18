@@ -74,15 +74,17 @@ export function buildCollectionTimeline(c: Collection): TimelineEvent[] {
     }
   }
 
-  // 2. Échantillons envoyés au labo
+  // 2. Échantillons envoyés au labo (uniquement ceux qui ont une date d'envoi
+  // — les flacons en 'prepared' n'ont pas encore été envoyés)
   const samples = c.measurements
     .filter((m) => m.sample)
     .map((m) => m.sample!);
-  const sentDates = Array.from(new Set(samples.map((s) => s.sentAt))).sort();
+  const sentSamples = samples.filter((s) => s.sentAt && s.sentAt.length > 0);
+  const sentDates = Array.from(new Set(sentSamples.map((s) => s.sentAt))).sort();
   if (sentDates.length > 0) {
     events.push({
       id: 'sample-sent',
-      label: `${samples.length} échantillon${samples.length > 1 ? 's' : ''} envoyé${samples.length > 1 ? 's' : ''} au laboratoire`,
+      label: `${sentSamples.length} échantillon${sentSamples.length > 1 ? 's' : ''} envoyé${sentSamples.length > 1 ? 's' : ''} au laboratoire`,
       when: sentDates[0]!,
       tone: 'sample',
     });

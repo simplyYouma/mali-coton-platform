@@ -5,13 +5,25 @@
 import { formatDistanceToNow, format as formatDate } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-export function formatRelativeTime(iso: string): string {
-  const date = new Date(iso);
+function safeDate(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export function formatRelativeTime(iso: string | null | undefined): string {
+  const date = safeDate(iso);
+  if (!date) return '—';
   return formatDistanceToNow(date, { addSuffix: true, locale: fr });
 }
 
-export function formatDateTime(iso: string, pattern = 'dd MMM yyyy · HH:mm'): string {
-  return formatDate(new Date(iso), pattern, { locale: fr });
+export function formatDateTime(
+  iso: string | null | undefined,
+  pattern = 'dd MMM yyyy · HH:mm',
+): string {
+  const date = safeDate(iso);
+  if (!date) return '—';
+  return formatDate(date, pattern, { locale: fr });
 }
 
 export function formatNumber(value: number, fractionDigits = 2): string {
