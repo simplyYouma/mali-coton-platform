@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchLabs } from '../api/labs';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createLab, fetchLabs, type LabCreateInput } from '../api/labs';
 import { cacheLabs, listAllCachedLabs } from '../lib/offlineDb';
 
 /**
@@ -21,5 +21,13 @@ export function useLabs() {
       }
     },
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useCreateLab() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: LabCreateInput) => createLab(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['labs'] }),
   });
 }

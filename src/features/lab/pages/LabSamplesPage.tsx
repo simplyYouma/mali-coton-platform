@@ -15,7 +15,7 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useSites } from '@/features/sites/hooks/useSites';
-import { useLabs } from '@/features/collection/hooks/useLabs';
+import { useCreateLab, useLabs } from '@/features/collection/hooks/useLabs';
 import {
   useMarkSampleSent,
   useRefuseSample,
@@ -78,6 +78,16 @@ export function LabSamplesPage() {
   const refuseMut = useRefuseSample();
   const transmitMut = useTransmitBordereau();
   const rejectMut = useRejectBordereau();
+  const createLabMut = useCreateLab();
+
+  const [newLabOpen, setNewLabOpen] = useState(false);
+  const [newLab, setNewLab] = useState({
+    name: '',
+    city: '',
+    contactEmail: '',
+    contactPhone: '',
+    slaBusinessDays: '10',
+  });
 
   const [tab, setTab] = useState<Tab>('to_send');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -210,6 +220,33 @@ export function LabSamplesPage() {
     setRejectOpen(true);
   };
 
+  const confirmCreateLab = async () => {
+    if (!newLab.name.trim() || !newLab.city.trim()) {
+      toast.error('Nom et ville obligatoires.');
+      return;
+    }
+    const sla = Number(newLab.slaBusinessDays);
+    if (!Number.isFinite(sla) || sla <= 0) {
+      toast.error('SLA invalide.');
+      return;
+    }
+    try {
+      const created = await createLabMut.mutateAsync({
+        name: newLab.name.trim(),
+        city: newLab.city.trim(),
+        contactEmail: newLab.contactEmail.trim() || undefined,
+        contactPhone: newLab.contactPhone.trim() || undefined,
+        slaBusinessDays: sla,
+      });
+      toast.success('Laboratoire ajouté.');
+      setChosenLabId(created.id);
+      setNewLabOpen(false);
+      setNewLab({ name: '', city: '', contactEmail: '', contactPhone: '', slaBusinessDays: '10' });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Échec.');
+    }
+  };
+
   const confirmReject = async () => {
     if (!selected || !user) return;
     if (!rejectReason.trim()) {
@@ -321,9 +358,6 @@ export function LabSamplesPage() {
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Échantillons</h1>
-          <span className={styles.heroEyebrow}>
-            Le superviseur supervise le cycle labo · le labo n'accède pas à la plateforme
-          </span>
         </div>
         <div className={styles.heroStats}>
           <Stat label="À envoyer" value={stats.to_send} />
@@ -413,8 +447,7 @@ export function LabSamplesPage() {
       <Modal
         open={refuseOpen}
         onClose={() => setRefuseOpen(false)}
-        title="Enregistrer un refus du laboratoire"
-        description="Le labo vous a informé qu'il refuse le flacon (volume insuffisant, flacon cassé…). Précisez le motif tel qu'il vous a été communiqué."
+        title="Refus du laboratoire"
         footer={
           <>
             <Button variant="ghost" onClick={() => setRefuseOpen(false)}>
@@ -442,12 +475,7 @@ export function LabSamplesPage() {
       <Modal
         open={transmitOpen}
         onClose={() => setTransmitOpen(false)}
-        title="Saisir le bordereau"
-        description={
-          selected
-            ? `Reportez les valeurs du bordereau papier/PDF reçu du labo pour le flacon ${selected.sample.sampleId}.`
-            : ''
-        }
+        title={selected ? `Bordereau ${selected.sample.sampleId}` : 'Bordereau'}
         footer={
           <>
             <Button variant="ghost" onClick={() => setTransmitOpen(false)}>
@@ -519,12 +547,7 @@ export function LabSamplesPage() {
       <Modal
         open={sendOpen}
         onClose={() => setSendOpen(false)}
-        title="Envoyer le flacon au laboratoire"
-        description={
-          selected
-            ? `Flacon ${selected.sample.sampleId} — choisissez le laboratoire destinataire. Un e-mail récap sera envoyé automatiquement à son adresse de contact.`
-            : ''
-        }
+        title={selected ? `Envoyer ${selected.sample.sampleId}` : 'Envoyer le flacon'}
         footer={
           <>
             <Button variant="ghost" onClick={() => setSendOpen(false)}>
@@ -536,7 +559,7 @@ export function LabSamplesPage() {
               loading={sendMut.isPending}
               iconLeft={<Send size={14} />}
             >
-              Confirmer l'envoi
+              Confirmer
             </Button>
           </>
         }
@@ -563,11 +586,88 @@ export function LabSamplesPage() {
                     ) : null}
                   </span>
                   <span className={styles.labChoiceMeta}>
-                    {l.city} · SLA {l.slaBusinessDays} j ouvrés · {l.contactEmail ?? 'pas d\'e-mail'}
+                    {l.city} · SLA {l.slaBusinessDays} j · {l.contactEmail ?? '—'}
                   </span>
                 </div>
               </label>
             ))}
+          <button
+            type="button"
+            className={styles.addLabLink}
+            onClick={() => setNewLabOpen(true)}
+          >
+            + Ajouter un laboratoire
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={newLabOpen}
+        onClose={() => setNewLabOpen(false)}
+        title="Nouveau laboratoire"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setNewLabOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              onClick={confirmCreateLab}
+              loading={createLabMut.isPending}
+            >
+              Créer
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.transmitForm}>
+          <label className={styles.transmitField}>
+            <span>Nom</span>
+            <input
+              className={styles.transmitInput}
+              value={newLab.name}
+              onChange={(e) => setNewLab((s) => ({ ...s, name: e.target.value }))}
+              placeholder="LMA — Laboratoire Mobile d'Analyse"
+            />
+          </label>
+          <label className={styles.transmitField}>
+            <span>Ville</span>
+            <input
+              className={styles.transmitInput}
+              value={newLab.city}
+              onChange={(e) => setNewLab((s) => ({ ...s, city: e.target.value }))}
+              placeholder="Bamako"
+            />
+          </label>
+          <label className={styles.transmitField}>
+            <span>E-mail de contact</span>
+            <input
+              type="email"
+              className={styles.transmitInput}
+              value={newLab.contactEmail}
+              onChange={(e) => setNewLab((s) => ({ ...s, contactEmail: e.target.value }))}
+              placeholder="contact@labo.ml"
+            />
+          </label>
+          <label className={styles.transmitField}>
+            <span>Téléphone</span>
+            <input
+              className={styles.transmitInput}
+              value={newLab.contactPhone}
+              onChange={(e) => setNewLab((s) => ({ ...s, contactPhone: e.target.value }))}
+              placeholder="+223 20 22 00 00"
+            />
+          </label>
+          <label className={styles.transmitField}>
+            <span>SLA (jours ouvrés)</span>
+            <input
+              type="number"
+              min="1"
+              className={styles.transmitInput}
+              value={newLab.slaBusinessDays}
+              onChange={(e) => setNewLab((s) => ({ ...s, slaBusinessDays: e.target.value }))}
+            />
+          </label>
         </div>
       </Modal>
 
@@ -575,11 +675,6 @@ export function LabSamplesPage() {
         open={rejectOpen}
         onClose={() => setRejectOpen(false)}
         title="Renvoyer pour ré-analyse"
-        description={
-          selected
-            ? `Le flacon ${selected.sample.sampleId} repart au laboratoire. Précisez le motif — il sera envoyé par e-mail au labo.`
-            : ''
-        }
         footer={
           <>
             <Button variant="ghost" onClick={() => setRejectOpen(false)}>

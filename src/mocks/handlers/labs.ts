@@ -1,6 +1,7 @@
 import { http, HttpResponse, delay } from 'msw';
 import { mockLabs } from '../fixtures/labs';
 import { uuid } from '@/lib/uuid';
+import type { Lab } from '@/features/collection/api/labs.types';
 
 export const labsHandlers = [
   http.get('/api/v1/labs', async () => {
@@ -25,5 +26,22 @@ export const labsHandlers = [
       );
     }
     return HttpResponse.json(item);
+  }),
+
+  http.post('/api/v1/labs', async ({ request }) => {
+    await delay(200);
+    const body = (await request.json()) as Partial<Lab>;
+    const created: Lab = {
+      id: `lab.${(body.name ?? 'nouveau').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24)}-${uuid().slice(0, 4)}`,
+      name: body.name ?? 'Nouveau laboratoire',
+      city: body.city ?? '',
+      contactEmail: body.contactEmail,
+      contactPhone: body.contactPhone,
+      slaBusinessDays: body.slaBusinessDays ?? 10,
+      capabilities: body.capabilities ?? ['water_chem'],
+      isActive: true,
+    };
+    mockLabs.push(created);
+    return HttpResponse.json(created, { status: 201 });
   }),
 ];
