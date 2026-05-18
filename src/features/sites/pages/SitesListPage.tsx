@@ -256,7 +256,6 @@ function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
               <Star size={11} className={styles.refStar} aria-label="Site de référence" />
             ) : null}
           </span>
-          <span className={styles.siteSub}>{site.workforce} membres · depuis {site.createdYear}</span>
         </span>
       </td>
       <td>
