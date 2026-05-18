@@ -112,6 +112,18 @@
 .summaryItem:last-child {
   border-right: none;
 }
+.summaryItemClickable {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.summaryItemClickable:hover {
+  background: var(--color-surface-2);
+}
+.summaryItemClickable:hover .summaryValue {
+  color: var(--color-primary);
+}
 @media (max-width: 1024px) {
   .summaryItem:nth-child(3n) {
     border-right: none;
@@ -460,9 +472,9 @@
   flex-direction: column;
 }
 .flaconRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--color-border);
@@ -471,16 +483,13 @@
   border-top: none;
 }
 .flaconRowMain {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
 }
 .flaconRowTop {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  display: none;
 }
 .flaconSampleId {
   font-family: var(--font-mono);
@@ -491,32 +500,44 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 2px 6px;
+  white-space: nowrap;
 }
 .flaconRowLab {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .flaconRowIndicators {
   font-size: var(--text-sm);
   color: var(--color-text);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.validationBlock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--color-brand-rust-soft);
-  border: 1px solid var(--color-brand-rust);
-  border-radius: var(--radius-md);
-}
-.validationActions {
-  display: flex;
+/* ── Dock flottant des actions superviseur ── */
+.supDock {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: 40;
+  display: inline-flex;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 10px 24px -10px rgba(15, 23, 42, 0.25);
+}
+@media (max-width: 768px) {
+  .supDock {
+    right: var(--space-3);
+    bottom: var(--space-3);
+    flex-wrap: wrap;
+    max-width: calc(100vw - var(--space-3) * 2);
+  }
 }
 
 .fatal {

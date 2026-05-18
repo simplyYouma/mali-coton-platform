@@ -379,10 +379,13 @@ export function CollectionDetailPage() {
           <span className={styles.summaryLabel}>Date / heure</span>
           <span className={styles.summaryValue}>{formatDateTime(collection.collectedAt)}</span>
         </div>
-        <div className={styles.summaryItem}>
+        <Link
+          to={`/agents/${collection.agentId}`}
+          className={`${styles.summaryItem} ${styles.summaryItemClickable}`}
+        >
           <span className={styles.summaryLabel}>Agent</span>
           <span className={styles.summaryValue}>{agentName}</span>
-        </div>
+        </Link>
         <div className={styles.summaryItem}>
           <span className={styles.summaryLabel}>
             <MapPin size={12} aria-hidden="true" /> GPS
@@ -410,11 +413,6 @@ export function CollectionDetailPage() {
           </span>
         </div>
       </section>
-
-      <CollectionIdentityStrip
-        collection={collection}
-        agent={mockUsers.find((u) => u.id === collection.agentId) ?? null}
-      />
 
       <FlaconsSection
         collection={collection}
@@ -515,48 +513,40 @@ export function CollectionDetailPage() {
       ) : null}
 
       {canValidate ? (
-        <section className={styles.section}>
-          <div className={styles.validationBlock}>
-            <div>
-              <h2 className={styles.sectionTitle}>Action superviseur</h2>
-              <p className={styles.sectionSubtitle}>
-                Validez la collecte pour transmission définitive en base centrale, ou rejetez-la
-                avec motif si les données sont incohérentes.
-              </p>
-            </div>
-            <div className={styles.validationActions}>
-              <Button
-                variant="primary"
-                iconLeft={<CheckCircle2 size={16} />}
-                onClick={() => setValidateModalOpen(true)}
-                loading={validateMut.isPending}
-                disabled={collection.status === 'awaiting_lab'}
-              >
-                Valider la collecte
-              </Button>
-              <Button
-                variant="secondary"
-                iconLeft={<Pencil size={16} />}
-                onClick={() => setCorrectionModalOpen(true)}
-              >
-                Demander correction
-              </Button>
-              <Button
-                variant="danger"
-                iconLeft={<XCircle size={16} />}
-                onClick={() => setRejectModalOpen(true)}
-              >
-                Rejeter avec motif
-              </Button>
-            </div>
-            {collection.status === 'awaiting_lab' ? (
-              <p className={styles.sectionSubtitle}>
-                <ClipboardCheck size={12} aria-hidden="true" /> Validation possible une fois
-                tous les bordereaux labo reçus.
-              </p>
-            ) : null}
-          </div>
-        </section>
+        <div
+          className={styles.supDock}
+          role="region"
+          aria-label="Actions superviseur"
+          title={
+            collection.status === 'awaiting_lab'
+              ? 'Validation possible une fois tous les bordereaux reçus'
+              : undefined
+          }
+        >
+          <Button
+            variant="danger"
+            iconLeft={<XCircle size={16} />}
+            onClick={() => setRejectModalOpen(true)}
+          >
+            Rejeter
+          </Button>
+          <Button
+            variant="secondary"
+            iconLeft={<Pencil size={16} />}
+            onClick={() => setCorrectionModalOpen(true)}
+          >
+            Demander correction
+          </Button>
+          <Button
+            variant="primary"
+            iconLeft={<CheckCircle2 size={16} />}
+            onClick={() => setValidateModalOpen(true)}
+            loading={validateMut.isPending}
+            disabled={collection.status === 'awaiting_lab'}
+          >
+            Valider
+          </Button>
+        </div>
       ) : collection.status === 'rejected' ? (
         <EmptyState
           title="Collecte rejetée"
@@ -905,15 +895,13 @@ function FlaconsSection({ collection, labsById, canReject }: FlaconsSectionProps
             .join(' · ');
           return (
             <li key={containerId} className={styles.flaconRow} data-status={sample.status}>
+              <code className={styles.flaconSampleId}>{sample.sampleId}</code>
+              <Badge size="sm" variant={LAB_SAMPLE_STATUS_VARIANT[sample.status]}>
+                {LAB_SAMPLE_STATUS_LABEL[sample.status]}
+              </Badge>
               <div className={styles.flaconRowMain}>
-                <div className={styles.flaconRowTop}>
-                  <code className={styles.flaconSampleId}>{sample.sampleId}</code>
-                  <Badge size="sm" variant={LAB_SAMPLE_STATUS_VARIANT[sample.status]}>
-                    {LAB_SAMPLE_STATUS_LABEL[sample.status]}
-                  </Badge>
-                  <span className={styles.flaconRowLab}>{labLabel}</span>
-                </div>
                 <span className={styles.flaconRowIndicators}>{indicators}</span>
+                <span className={styles.flaconRowLab}>{labLabel}</span>
               </div>
               {canSupReject ? (
                 <Button
@@ -926,7 +914,9 @@ function FlaconsSection({ collection, labsById, canReject }: FlaconsSectionProps
                 >
                   Renvoyer
                 </Button>
-              ) : null}
+              ) : (
+                <span />
+              )}
             </li>
           );
         })}
