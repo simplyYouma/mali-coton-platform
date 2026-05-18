@@ -320,7 +320,6 @@ export function AgentDetailPage() {
                 <th>Date</th>
                 <th>Site</th>
                 <th>Statut</th>
-                <th>Kobo</th>
                 <th>Photos</th>
                 <th aria-label="Action" />
               </tr>
@@ -343,15 +342,6 @@ export function AgentDetailPage() {
                       <Badge variant={STATUS_VARIANT[c.status]} size="sm">
                         {STATUS_LABEL[c.status]}
                       </Badge>
-                    </td>
-                    <td>
-                      {c.koboVersion > 1 ? (
-                        <span className={styles.koboVersion}>
-                          <Smartphone size={11} aria-hidden="true" /> v{c.koboVersion}
-                        </span>
-                      ) : (
-                        <span className={styles.koboVersionEmpty}>—</span>
-                      )}
                     </td>
                     <td>{c.photos.length}</td>
                     <td>
