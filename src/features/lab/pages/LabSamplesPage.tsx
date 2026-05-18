@@ -792,9 +792,26 @@ function FlaconDetail({
             {measurements.map((m) => {
               const rule = findRule(m.indicatorId);
               const hasValue = m.value != null;
+              const hasRange = rule?.minOk != null || rule?.maxOk != null;
+              const rangeText = hasRange
+                ? (rule?.minOk != null && rule?.maxOk != null
+                    ? `${rule.minOk}–${rule.maxOk}`
+                    : rule?.maxOk != null
+                      ? `≤ ${rule.maxOk}`
+                      : `≥ ${rule?.minOk ?? ''}`)
+                : null;
               return (
                 <li key={m.indicatorId} className={styles.indicatorItem}>
-                  <span className={styles.indicatorLabel}>{rule?.label ?? m.indicatorId}</span>
+                  <div className={styles.indicatorMain}>
+                    <span className={styles.indicatorLabel}>{rule?.label ?? m.indicatorId}</span>
+                    {hasValue && (rangeText || rule?.source) ? (
+                      <span className={styles.indicatorRef}>
+                        {rangeText ? `seuil ${rangeText}${rule?.unit ? ` ${rule.unit}` : ''}` : null}
+                        {rangeText && rule?.source ? ' · ' : null}
+                        {rule?.source ?? ''}
+                      </span>
+                    ) : null}
+                  </div>
                   <span className={styles.indicatorValue}>
                     {hasValue ? (
                       <>

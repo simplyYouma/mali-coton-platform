@@ -312,9 +312,20 @@
 .indicatorItem:last-child {
   border-bottom: none;
 }
+.indicatorMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .indicatorLabel {
   font-size: var(--text-sm);
   color: var(--color-text);
+}
+.indicatorRef {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .indicatorValue {
   display: inline-flex;

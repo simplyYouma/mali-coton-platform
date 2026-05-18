@@ -283,8 +283,6 @@ export function CollectionDetailPage() {
               {site ? `${site.location.commune}, ${site.location.city}` : '—'}
             </span>
             <span>·</span>
-            <span>par {agentName}</span>
-            <span>·</span>
             <span>{formatRelativeTime(collection.collectedAt)}</span>
           </p>
         </div>
@@ -418,14 +416,11 @@ export function CollectionDetailPage() {
         agent={mockUsers.find((u) => u.id === collection.agentId) ?? null}
       />
 
-      <CollectionTimelineSection collection={collection} usersById={usersById} />
-
-      {collection.revisions && collection.revisions.length > 0 ? (
-        <CollectionRevisionsHistory
-          collection={collection}
-          usersById={usersById}
-        />
-      ) : null}
+      <FlaconsSection
+        collection={collection}
+        labsById={labsById}
+        canReject={role === 'superviseur' || role === 'admin'}
+      />
 
       {grouped ? (
         <section className={styles.section} aria-label="Mesures par domaine">
@@ -484,12 +479,6 @@ export function CollectionDetailPage() {
           </div>
         </section>
       ) : null}
-
-      <FlaconsSection
-        collection={collection}
-        labsById={labsById}
-        canReject={role === 'superviseur' || role === 'admin'}
-      />
 
       {collection.photos.length > 0 ? (
         <section className={styles.section} aria-label="Photos">
@@ -572,6 +561,15 @@ export function CollectionDetailPage() {
         <EmptyState
           title="Collecte rejetée"
           description={collection.rejectionReason ?? 'Motif non précisé.'}
+        />
+      ) : null}
+
+      <CollectionTimelineSection collection={collection} usersById={usersById} />
+
+      {collection.revisions && collection.revisions.length > 0 ? (
+        <CollectionRevisionsHistory
+          collection={collection}
+          usersById={usersById}
         />
       ) : null}
 
