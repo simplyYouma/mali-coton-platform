@@ -1,12 +1,6 @@
 import { useMemo, useState } from 'react';
-import {
-  Badge,
-  EmptyState,
-  Input,
-  PageHeader,
-  Select,
-  Skeleton,
-} from '@/components/common';
+import { Search } from 'lucide-react';
+import { EmptyState, Input, Skeleton } from '@/components/common';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { useAuditLogs } from '../hooks/useAdmin';
 import type { AuditFilter, AuditLogEntry } from '../api/admin.types';
@@ -28,85 +22,129 @@ const ACTION_LABEL: Record<string, string> = {
   'collection.correction_requested': 'Demande de correction',
   'collection.lab_result': 'Résultat labo saisi',
   'sample.transmitted': 'Bordereau labo transmis',
+  'sample.sent': 'Échantillon envoyé',
+  'sample.received': 'Échantillon reçu',
   'report.generated': 'Rapport généré',
   'threshold.update': 'Modification seuil',
   'alert.acknowledged': 'Alerte prise en compte',
   'alert.resolved': 'Alerte résolue',
 };
 
-const ACTION_OPTIONS = [
-  { value: '', label: 'Toutes les actions' },
-  ...Object.entries(ACTION_LABEL).map(([value, label]) => ({ value, label })),
+type ResourceChip = '' | 'collection' | 'site' | 'user' | 'role' | 'alert' | 'sample' | 'report' | 'threshold' | 'auth';
+
+const RESOURCE_CHIPS: Array<{ value: ResourceChip; label: string }> = [
+  { value: '', label: 'Tout' },
+  { value: 'collection', label: 'Collectes' },
+  { value: 'site', label: 'Sites' },
+  { value: 'sample', label: 'Échantillons' },
+  { value: 'alert', label: 'Alertes' },
+  { value: 'user', label: 'Utilisateurs' },
+  { value: 'role', label: 'Rôles' },
+  { value: 'report', label: 'Rapports' },
+  { value: 'threshold', label: 'Seuils' },
+  { value: 'auth', label: 'Auth' },
 ];
 
-const RESOURCE_OPTIONS = [
-  { value: '', label: 'Toutes les ressources' },
-  { value: 'user', label: 'Utilisateur' },
-  { value: 'site', label: 'Site' },
-  { value: 'collection', label: 'Collecte' },
-  { value: 'threshold', label: 'Seuil' },
-  { value: 'auth', label: 'Authentification' },
-];
-
-const ROLE_VARIANT: Record<
-  AuditLogEntry['actorRole'],
-  'success' | 'info' | 'warning' | 'neutral'
-> = {
-  admin: 'warning',
-  superviseur: 'info',
-  agent: 'success',
-  lab: 'info',
-  visitor: 'neutral',
+const ROLE_LABEL: Record<AuditLogEntry['actorRole'], string> = {
+  admin: 'Admin',
+  superviseur: 'Superviseur',
+  agent: 'Agent',
+  lab: 'Labo',
+  visitor: 'Observateur',
 };
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((s) => s[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
 
 export function AuditLogsPage() {
   const [filter, setFilter] = useState<AuditFilter>({});
+  const [q, setQ] = useState('');
   const { data, isLoading } = useAuditLogs(filter);
 
-  const items = useMemo(() => data?.items ?? [], [data]);
+  const items = useMemo(() => {
+    const list = data?.items ?? [];
+    if (!q) return list;
+    const needle = q.toLowerCase();
+    return list.filter(
+      (e) =>
+        e.actorName.toLowerCase().includes(needle) ||
+        (e.resourceLabel ?? '').toLowerCase().includes(needle) ||
+        (e.details ?? '').toLowerCase().includes(needle) ||
+        (ACTION_LABEL[e.action] ?? e.action).toLowerCase().includes(needle),
+    );
+  }, [data, q]);
 
   const update = (patch: Partial<AuditFilter>) => setFilter((f) => ({ ...f, ...patch }));
 
   return (
     <div className={styles.page}>
-      <PageHeader eyebrow="Administration" title="Journal d'audit" />
+      <div className={styles.hero}>
+        <div className={styles.heroLeft}>
+          <h1 className={styles.heroTitle}>Journal d'audit</h1>
+          <span className={styles.heroCount}>
+            {items.length} entrée{items.length > 1 ? 's' : ''}
+          </span>
+        </div>
+        <div className={styles.heroRight}>
+          <label className={styles.search}>
+            <Search size={14} />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Rechercher acteur, ressource, détail…"
+              aria-label="Rechercher dans le journal"
+            />
+          </label>
+        </div>
+      </div>
 
       <div className={styles.toolbar}>
-        <Select
-          options={ACTION_OPTIONS}
-          value={filter.action ?? ''}
-          onChange={(v) => update({ action: v || undefined })}
-          placeholder="Action"
-          aria-label="Filtrer par action"
-        />
-        <Select
-          options={RESOURCE_OPTIONS}
-          value={filter.resourceType ?? ''}
-          onChange={(v) => update({ resourceType: v || undefined })}
-          placeholder="Type de ressource"
-          aria-label="Filtrer par ressource"
-        />
-        <Input
-          type="date"
-          value={filter.from?.slice(0, 10) ?? ''}
-          onChange={(e) =>
-            update({ from: e.target.value ? new Date(e.target.value).toISOString() : undefined })
-          }
-          aria-label="Du (date début)"
-        />
-        <Input
-          type="date"
-          value={filter.to?.slice(0, 10) ?? ''}
-          onChange={(e) =>
-            update({ to: e.target.value ? new Date(e.target.value).toISOString() : undefined })
-          }
-          aria-label="Au (date fin)"
-        />
+        <div className={styles.chips} role="tablist" aria-label="Filtrer par type">
+          {RESOURCE_CHIPS.map((c) => (
+            <button
+              key={c.value || 'all'}
+              type="button"
+              role="tab"
+              aria-selected={(filter.resourceType ?? '') === c.value}
+              className={`${styles.chip} ${(filter.resourceType ?? '') === c.value ? styles.chipActive : ''}`}
+              onClick={() => update({ resourceType: c.value || undefined })}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div className={styles.dateRange}>
+          <Input
+            type="date"
+            value={filter.from?.slice(0, 10) ?? ''}
+            onChange={(e) =>
+              update({ from: e.target.value ? new Date(e.target.value).toISOString() : undefined })
+            }
+            aria-label="Du"
+          />
+          <span className={styles.dateSep}>→</span>
+          <Input
+            type="date"
+            value={filter.to?.slice(0, 10) ?? ''}
+            onChange={(e) =>
+              update({ to: e.target.value ? new Date(e.target.value).toISOString() : undefined })
+            }
+            aria-label="Au"
+          />
+        </div>
       </div>
 
       <div className={styles.tableWrapper}>
         {isLoading ? (
-          <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className={styles.skeletonStack}>
+            <Skeleton height={48} />
             <Skeleton height={48} />
             <Skeleton height={48} />
             <Skeleton height={48} />
@@ -123,44 +161,35 @@ export function AuditLogsPage() {
                 <th>Quand</th>
                 <th>Acteur</th>
                 <th>Action</th>
-                <th>Ressource</th>
+                <th>Sur</th>
                 <th>Détails</th>
-                <th>Contexte</th>
               </tr>
             </thead>
             <tbody>
               {items.map((entry) => (
-                <tr key={entry.id}>
+                <tr key={entry.id} className={styles.row}>
                   <td className={styles.timeCell} title={formatDateTime(entry.occurredAt)}>
                     {formatRelativeTime(entry.occurredAt)}
                   </td>
                   <td>
-                    <div className={styles.actorCell}>
-                      <span className={styles.actorName}>{entry.actorName}</span>
-                      <Badge variant={ROLE_VARIANT[entry.actorRole]} size="sm">
-                        {entry.actorRole}
-                      </Badge>
-                    </div>
-                  </td>
-                  <td>
-                    <code className={styles.actionCode}>
-                      {ACTION_LABEL[entry.action] ?? entry.action}
-                    </code>
-                  </td>
-                  <td>
-                    <div>
-                      <span className={styles.resourceLabel}>
-                        {entry.resourceLabel ?? entry.resourceType}
+                    <div className={styles.actor}>
+                      <span className={`${styles.avatar} ${styles[`avatar-${entry.actorRole}`] ?? ''}`}>
+                        {initials(entry.actorName)}
                       </span>
-                      {entry.resourceId ? (
-                        <div className={styles.resourceMeta}>{entry.resourceId}</div>
-                      ) : null}
+                      <div className={styles.actorInfo}>
+                        <span className={styles.actorName}>{entry.actorName}</span>
+                        <span className={styles.actorRole}>{ROLE_LABEL[entry.actorRole]}</span>
+                      </div>
                     </div>
                   </td>
-                  <td className={styles.detailsCell}>{entry.details ?? '—'}</td>
-                  <td className={styles.contextCell}>
-                    {entry.ipAddress ?? '—'}
-                    {entry.userAgent ? <div>{entry.userAgent}</div> : null}
+                  <td className={styles.actionCell}>
+                    {ACTION_LABEL[entry.action] ?? entry.action}
+                  </td>
+                  <td className={styles.resourceCell}>
+                    {entry.resourceLabel ?? <span className={styles.muted}>—</span>}
+                  </td>
+                  <td className={styles.detailsCell}>
+                    {entry.details ?? <span className={styles.muted}>—</span>}
                   </td>
                 </tr>
               ))}
