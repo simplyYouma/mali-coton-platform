@@ -110,9 +110,11 @@ export function IndicatorsPage() {
   const [filterDomain, setFilterDomain] = useState<IndicatorDomain | 'all'>('all');
   const [showInactive, setShowInactive] = useState(false);
   const [query, setQuery] = useState('');
-  /** Domaines ouverts. Vide par défaut = tout fermé. Une recherche ou un filtre
-   * spécifique ouvre automatiquement le(s) bloc(s) concerné(s). */
-  const [openDomains, setOpenDomains] = useState<Set<IndicatorDomain>>(new Set());
+  /** Domaines ouverts. Par défaut : 'water' (la majorité des indicateurs).
+   * Cliquer sur un chip de filtre ouvre automatiquement le domaine ciblé. */
+  const [openDomains, setOpenDomains] = useState<Set<IndicatorDomain>>(
+    () => new Set(['water']),
+  );
 
   const toggleDomain = (d: IndicatorDomain) => {
     setOpenDomains((prev) => {
@@ -121,6 +123,13 @@ export function IndicatorsPage() {
       else next.add(d);
       return next;
     });
+  };
+
+  const handleFilterDomain = (d: IndicatorDomain | 'all') => {
+    setFilterDomain(d);
+    if (d !== 'all') {
+      setOpenDomains((prev) => new Set(prev).add(d));
+    }
   };
 
   useEffect(() => {
@@ -248,7 +257,7 @@ export function IndicatorsPage() {
           <button
             type="button"
             className={`${styles.chip} ${filterDomain === 'all' ? styles.chipActive : ''}`}
-            onClick={() => setFilterDomain('all')}
+            onClick={() => handleFilterDomain('all')}
           >
             Tous
           </button>
@@ -257,7 +266,7 @@ export function IndicatorsPage() {
               key={d.value}
               type="button"
               className={`${styles.chip} ${filterDomain === d.value ? styles.chipActive : ''}`}
-              onClick={() => setFilterDomain(d.value)}
+              onClick={() => handleFilterDomain(d.value)}
             >
               {d.label}
             </button>
