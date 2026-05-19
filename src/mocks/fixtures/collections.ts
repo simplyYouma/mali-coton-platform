@@ -470,17 +470,93 @@ export const mockCollections: Collection[] = (() => {
     const collectionStatus: CollectionStatus =
       lc.status === 'accepted' ? 'lab_complete' : 'awaiting_lab';
 
+    const gpsVisite = {
+      lat: 12.6 + (Math.random() - 0.5) * 0.3,
+      lng: -7.95 + (Math.random() - 0.5) * 0.3,
+      accuracy: 5,
+    };
+    const agentName = lc.siteId === 'site-ndomo' ? 'Issa Traoré' : 'Aïcha Touré';
+    const milieu: 'eau' | 'sol' | 'air' = lc.pointPrelevement?.startsWith('sol_')
+      ? 'sol'
+      : lc.pointPrelevement?.startsWith('air_')
+        ? 'air'
+        : 'eau';
+    const sitePrefix = lc.siteId.replace('site-', '').slice(0, 4).toUpperCase();
+    // Échantillon + Analyse + Résultats (modèle backend) — additif à Measurement.sample
+    const hasLabResults =
+      lc.status === 'bordereau_returned' ||
+      lc.status === 'rejected_by_supervisor' ||
+      lc.status === 'accepted';
+    const analyses = hasLabResults && lc.labId
+      ? [{
+          id: `ana-${counter}`,
+          numeroRapport: lc.bordereauRef,
+          laboratoireId: lc.labId,
+          dateAnalyse: analyzedAt,
+          fichierRapport: lc.bordereauRef ? `https://stub.local/bordereau/${lc.bordereauRef}.pdf` : undefined,
+          statut: (lc.status === 'rejected_by_supervisor' ? 'rejetee_sup' : lc.status === 'accepted' ? 'acceptee' : 'rendue') as 'rendue' | 'rejetee_sup' | 'acceptee',
+          resultats: [
+            {
+              id: `res-${counter}-sulfates`,
+              indicatorId: 'water.sulfates',
+              valeur: String(lc.sulfatesValue ?? ''),
+              unite: 'mg/L',
+              seuilNorme: '≤ 250',
+              conforme: (lc.sulfatesValue ?? 0) <= 250,
+            },
+            {
+              id: `res-${counter}-cr`,
+              indicatorId: 'water.metals.cr.cr3',
+              valeur: String(lc.heavyMetalsValue ?? ''),
+              unite: 'mg/L',
+              conforme: true,
+            },
+          ],
+        }]
+      : undefined;
+
+    const echantillon = lc.pointPrelevement
+      ? [{
+          id: `ech-${counter}`,
+          codeEchantillon: `ECH-${sitePrefix}-${String(counter).padStart(4, '0')}`,
+          typeEchantillon: milieu === 'eau' ? 'Eau usée brute' : milieu === 'sol' ? 'Sol superficiel' : 'Air ambiant',
+          statut: lc.status,
+          laboratoireId: lc.labId || undefined,
+          dateEnvoiLaboratoire: isPrepared ? undefined : sentIso,
+          analyses,
+        }]
+      : undefined;
+
+    const prelevement = lc.pointPrelevement
+      ? [{
+          id: `prel-${counter}`,
+          codePrelevement: `PREL-${sitePrefix}-${String(counter).padStart(4, '0')}`,
+          typePrelevement: milieu,
+          pointPrelevement: lc.pointPrelevement,
+          gps: { ...gpsVisite, lat: gpsVisite.lat + (Math.random() - 0.5) * 0.0008 },
+          datePrelevement: collectedIso,
+          prelevePar: agentName,
+          conditionnement: milieu === 'eau'
+            ? 'Flacon plastique 500 mL + glace'
+            : milieu === 'sol'
+              ? 'Sachet hermétique 250 g'
+              : 'Tube absorbeur PID',
+          echantillons: echantillon,
+        }]
+      : undefined;
+
     list.push({
       id: `col-${String(counter).padStart(4, '0')}`,
       koboSubmissionUuid: koboUuid(counter),
       koboVersion: 1,
       siteId: lc.siteId,
       pointPrelevement: lc.pointPrelevement,
+      prelevements: prelevement,
       agentId: lc.siteId === 'site-ndomo' ? 'u-agent-segou' : 'u-agent-bko',
       collectedAt: collectedIso,
       status: collectionStatus,
       syncedAt: isPrepared ? collectedIso : sentIso,
-      gps: { lat: 12.6 + (Math.random() - 0.5) * 0.3, lng: -7.95 + (Math.random() - 0.5) * 0.3, accuracy: 5 },
+      gps: gpsVisite,
       context: {
         weather: 'sunny',
         ambientTempC: 33,

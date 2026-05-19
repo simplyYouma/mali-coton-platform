@@ -5,17 +5,14 @@ import {
   Beaker,
   Bell,
   CheckCircle2,
-  ClipboardCheck,
   Clock,
   FlaskConical,
-  Hash,
   History,
   MapPin,
   Pencil,
   RefreshCw,
   Send,
   Smartphone,
-  User as UserIcon,
   XCircle,
 } from 'lucide-react';
 import {
@@ -35,15 +32,9 @@ import type {
   Collection,
   CollectionStatus,
   IndicatorDomain,
-  LabSample,
   Measurement,
 } from '../api/collection.types';
-import {
-  LAB_SAMPLE_STATUS_LABEL,
-  LAB_SAMPLE_STATUS_VARIANT,
-  POINT_PRELEVEMENT_LABEL,
-} from '../api/collection.types';
-import { useRejectBordereau } from '../hooks/useCollectionMutations';
+import { POINT_PRELEVEMENT_LABEL } from '../api/collection.types';
 import { STATUS_LABEL, STATUS_VARIANT } from '../api/collection.types';
 import { findRule } from '../lib/indicatorRules';
 import { PhotoLightbox } from '../components/PhotoLightbox';
@@ -51,7 +42,6 @@ import { CorrectionStepsPicker } from '../components/CorrectionStepsPicker';
 import { correctionStepLabel } from '../lib/correctionSteps';
 import { buildCollectionTimeline, type TimelineEvent } from '../lib/collectionTimeline';
 import { useCollection } from '../hooks/useCollections';
-import { useLabs } from '../hooks/useLabs';
 import {
   useRejectCollection,
   useRequestCorrection,
@@ -135,6 +125,35 @@ export function CollectionDetailPage() {
   const [correctionNotes, setCorrectionNotes] = useState('');
   const [correctionTargetSteps, setCorrectionTargetSteps] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  /**
+   * État local des validations par mesure — overlay sur Measurement.validation
+   * pour ne pas avoir à muter la fixture. Phase B3 : le backend exposera ces
+   * actions via ValidationSuperviseur dédié.
+   */
+  const [localValidations, setLocalValidations] = useState<
+    Record<string, { statut: 'valide' | 'rejete'; commentaire?: string; validePar?: string; dateValidation: string }>
+  >({});
+
+  const validateMeasurement = (indicatorId: string, statut: 'valide' | 'rejete') => {
+    if (!user) return;
+    const commentaire = statut === 'rejete'
+      ? window.prompt('Motif de rejet de cette mesure (optionnel) :') ?? undefined
+      : undefined;
+    setLocalValidations((prev) => ({
+      ...prev,
+      [indicatorId]: {
+        statut,
+        commentaire,
+        validePar: user.id,
+        dateValidation: new Date().toISOString(),
+      },
+    }));
+    if (statut === 'valide') {
+      toast.success(`Mesure ${indicatorId} validée.`);
+    } else {
+      toast.warning(`Mesure ${indicatorId} rejetée.`);
+    }
+  };
 
   const site = useMemo(
     () => sitesPage?.items.find((s) => s.id === collection?.siteId),
@@ -145,12 +164,6 @@ export function CollectionDetailPage() {
     if (!collection) return null;
     return mockUsers.find((u) => u.id === collection.agentId)?.fullName ?? collection.agentId;
   }, [collection]);
-
-  const labsById = useMemo(() => {
-    const map = new Map<string, string>();
-    (labs ?? []).forEach((l) => map.set(l.id, `${l.name} — ${l.city}`));
-    return map;
-  }, [labs]);
 
   const usersById = useMemo(() => {
     const map = new Map<string, string>();
@@ -381,7 +394,17 @@ export function CollectionDetailPage() {
             ) : null}
           </span>
         </div>
-        {collection.pointPrelevement ? (
+        {collection.prelevements && collection.prelevements.length > 0 ? (
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>Point de prélèvement</span>
+            <span className={styles.summaryValue}>
+              {POINT_PRELEVEMENT_LABEL[collection.prelevements[0]!.pointPrelevement]}
+              <span className={styles.summaryHint}>
+                {' '}· {collection.prelevements[0]!.codePrelevement}
+              </span>
+            </span>
+          </div>
+        ) : collection.pointPrelevement ? (
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Point de prélèvement</span>
             <span className={styles.summaryValue}>
@@ -445,41 +468,71 @@ export function CollectionDetailPage() {
               .map((domain) => (
                 <div key={domain} className={styles.domainBlock}>
                   <h3 className={styles.domainTitle}>{DOMAIN_LABEL[domain]}</h3>
-                  {grouped[domain].map(({ rule, m }) => (
-                    <div key={m.indicatorId} className={styles.measureRow}>
-                      <div className={styles.measureMain}>
-                        <span className={styles.measureLabel}>
-                          {rule?.label ?? m.indicatorId}
-                        </span>
-                        <span className={styles.measureSource}>
-                          {rule?.method ?? m.thresholdSource ?? rule?.source ?? '—'}
-                        </span>
+                  {grouped[domain].map(({ rule, m }) => {
+                    const hasValue = m.value != null && m.value !== '';
+                    const validation = localValidations[m.indicatorId] ?? m.validation;
+                    const canValidateRow =
+                      hasValue && (role === 'superviseur' || role === 'admin');
+                    return (
+                      <div key={m.indicatorId} className={styles.measureRow}>
+                        <div className={styles.measureMain}>
+                          <span className={styles.measureLabel}>
+                            {rule?.label ?? m.indicatorId}
+                          </span>
+                          <span className={styles.measureSource}>
+                            {rule?.method ?? m.thresholdSource ?? rule?.source ?? '—'}
+                          </span>
+                        </div>
+                        {m.acquisition === 'lab_pending' ? (
+                          <span className={styles.measurePending}>
+                            <Clock size={12} /> Bordereau attendu
+                          </span>
+                        ) : (
+                          <span className={styles.measureValue}>
+                            {formatMeasureValue(m.value)}
+                            {rule?.unit ? ` ${rule.unit}` : ''}
+                          </span>
+                        )}
+                        {validation?.statut === 'valide' ? (
+                          <Badge variant="success" size="sm" title={validation.commentaire}>
+                            <CheckCircle2 size={12} /> Validé
+                          </Badge>
+                        ) : validation?.statut === 'rejete' ? (
+                          <Badge variant="danger" size="sm" title={validation.commentaire}>
+                            <XCircle size={12} /> Rejeté
+                          </Badge>
+                        ) : m.acquisition === 'lab_received' ? (
+                          <Badge variant="info" size="sm">Bordereau reçu</Badge>
+                        ) : m.acquisition === 'lab_pending' ? (
+                          <Badge variant="warning" size="sm">Labo en attente</Badge>
+                        ) : (
+                          <Badge variant="neutral" size="sm">In situ</Badge>
+                        )}
+                        {canValidateRow ? (
+                          <span className={styles.rowValidationActions}>
+                            <button
+                              type="button"
+                              className={styles.rowValidateBtn}
+                              onClick={() => validateMeasurement(m.indicatorId, 'valide')}
+                              aria-label="Valider cette mesure"
+                              title="Valider"
+                            >
+                              <CheckCircle2 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.rowRejectBtn}
+                              onClick={() => validateMeasurement(m.indicatorId, 'rejete')}
+                              aria-label="Rejeter cette mesure"
+                              title="Rejeter"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </span>
+                        ) : null}
                       </div>
-                      {m.acquisition === 'lab_pending' ? (
-                        <span className={styles.measurePending}>
-                          <Clock size={12} /> Bordereau attendu
-                        </span>
-                      ) : (
-                        <span className={styles.measureValue}>
-                          {formatMeasureValue(m.value)}
-                          {rule?.unit ? ` ${rule.unit}` : ''}
-                        </span>
-                      )}
-                      {m.acquisition === 'lab_received' ? (
-                        <Badge variant="success" size="sm">
-                          Bordereau reçu
-                        </Badge>
-                      ) : m.acquisition === 'lab_pending' ? (
-                        <Badge variant="warning" size="sm">
-                          Labo en attente
-                        </Badge>
-                      ) : (
-                        <Badge variant="neutral" size="sm">
-                          In situ
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
           </div>
@@ -730,44 +783,6 @@ function CollectionTimelineSection({ collection, usersById }: CollectionTimeline
   );
 }
 
-interface IdentityStripProps {
-  collection: Collection;
-  agent: { id: string; fullName: string } | null;
-}
-
-function CollectionIdentityStrip({ collection, agent }: IdentityStripProps) {
-  return (
-    <div className={styles.identityStrip} aria-label="Identité collecte">
-      <div className={styles.identityStripGroup}>
-        <Hash size={12} aria-hidden="true" />
-        <code className={styles.identityCode} title={collection.koboSubmissionUuid}>
-          {collection.koboSubmissionUuid.slice(0, 8)}…
-        </code>
-      </div>
-      {collection.koboVersion > 1 ? (
-        <>
-          <span className={styles.identityStripSep} aria-hidden="true">·</span>
-          <div className={styles.identityStripGroup}>
-            <RefreshCw size={12} aria-hidden="true" />
-            <span className={styles.identityStripValue}>Kobo v{collection.koboVersion}</span>
-          </div>
-        </>
-      ) : null}
-      {agent ? (
-        <>
-          <span className={styles.identityStripSep} aria-hidden="true">·</span>
-          <div className={styles.identityStripGroup}>
-            <UserIcon size={12} aria-hidden="true" />
-            <Link to={`/agents/${agent.id}`} className={styles.identityStripLink}>
-              {agent.fullName}
-            </Link>
-          </div>
-        </>
-      ) : null}
-    </div>
-  );
-}
-
 interface RevisionsHistoryProps {
   collection: Collection;
   usersById: Map<string, string>;
@@ -833,129 +848,3 @@ function CollectionRevisionsHistory({ collection, usersById }: RevisionsHistoryP
   );
 }
 
-interface FlaconsSectionProps {
-  collection: Collection;
-  labsById: Map<string, string>;
-  canReject: boolean;
-}
-
-function FlaconsSection({ collection, labsById, canReject }: FlaconsSectionProps) {
-  const toast = useToast();
-  const { user } = useAuth();
-  const rejectMut = useRejectBordereau();
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [reason, setReason] = useState('');
-
-  const flacons = useMemo(() => {
-    const grouped = new Map<string, { sample: LabSample; measurements: Measurement[] }>();
-    for (const m of collection.measurements) {
-      if (!m.sample) continue;
-      const key = m.sample.containerId;
-      if (!grouped.has(key)) grouped.set(key, { sample: m.sample, measurements: [] });
-      grouped.get(key)!.measurements.push(m);
-    }
-    return Array.from(grouped.entries()).map(([containerId, v]) => ({
-      containerId,
-      ...v,
-    }));
-  }, [collection]);
-
-  if (flacons.length === 0) return null;
-
-  const handleReject = async () => {
-    if (!user || !rejectingId) return;
-    if (!reason.trim()) {
-      toast.error('Précisez le motif de la ré-analyse demandée.');
-      return;
-    }
-    try {
-      await rejectMut.mutateAsync({
-        collectionId: collection.id,
-        containerId: rejectingId,
-        rejectedBy: user.id,
-        reason: reason.trim(),
-      });
-      toast.warning('Bordereau renvoyé au labo pour ré-analyse.');
-      setRejectingId(null);
-      setReason('');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec de l\'action.');
-    }
-  };
-
-  return (
-    <section className={styles.section} aria-label="Flacons laboratoire">
-      <div className={styles.sectionHead}>
-        <div>
-          <h2 className={styles.sectionTitle}>
-            <Beaker size={14} aria-hidden="true" /> Flacons laboratoire
-          </h2>
-        </div>
-      </div>
-      <ul className={styles.flaconList}>
-        {flacons.map(({ containerId, sample, measurements }) => {
-          const labLabel = labsById.get(sample.labId) ?? sample.labId ?? 'Labo non choisi';
-          const canSupReject =
-            canReject &&
-            (sample.status === 'bordereau_returned' || sample.status === 'accepted');
-          const indicators = measurements
-            .map((m) => findRule(m.indicatorId)?.label ?? m.indicatorId)
-            .join(' · ');
-          return (
-            <li key={containerId} className={styles.flaconRow} data-status={sample.status}>
-              <code className={styles.flaconSampleId}>{sample.sampleId}</code>
-              <Badge size="sm" variant={LAB_SAMPLE_STATUS_VARIANT[sample.status]}>
-                {LAB_SAMPLE_STATUS_LABEL[sample.status]}
-              </Badge>
-              <div className={styles.flaconRowMain}>
-                <span className={styles.flaconRowIndicators}>{indicators}</span>
-                <span className={styles.flaconRowLab}>{labLabel}</span>
-              </div>
-              {canSupReject ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setRejectingId(containerId);
-                    setReason('');
-                  }}
-                >
-                  Renvoyer
-                </Button>
-              ) : (
-                <span />
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      <Modal
-        open={rejectingId !== null}
-        onClose={() => setRejectingId(null)}
-        title="Renvoyer pour ré-analyse"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setRejectingId(null)}>
-              Annuler
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleReject}
-              loading={rejectMut.isPending}
-            >
-              Confirmer la demande
-            </Button>
-          </>
-        }
-      >
-        <Textarea
-          rows={4}
-          placeholder="Ex : valeur sulfates incohérente vs historique du site, demande de ré-analyse en duplicate."
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-      </Modal>
-    </section>
-  );
-}

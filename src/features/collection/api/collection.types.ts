@@ -114,6 +114,12 @@ export interface Measurement {
   thresholdSource?: string;
   sample?: LabSample;
   notes?: string;
+  /**
+   * Validation superviseur de cette mesure (alignée backend
+   * `ValidationSuperviseur` rattachée au ResultatAnalyse). Permet une
+   * validation **par résultat** plutôt qu'en bloc sur toute la collecte.
+   */
+  validation?: ResultValidation;
 }
 
 export interface PhotoAttachment {
@@ -163,6 +169,124 @@ export function milieuOf(point: PointPrelevement): 'eau' | 'sol' | 'air' {
   if (point.startsWith('sol_')) return 'sol';
   if (point.startsWith('air_')) return 'air';
   return 'eau';
+}
+
+/**
+ * Un prélèvement physique effectué pendant une visite (CollecteTerrain).
+ * Une même visite peut produire plusieurs prélèvements (effluent + cours d'eau
+ * amont + sol direct…). Chaque prélèvement génère 0..N échantillons envoyés
+ * en laboratoire.
+ *
+ * Aligné backend `Prelevement` (cf. CAHIER_PROJET §3.4).
+ */
+export interface Prelevement {
+  id: string;
+  /** Identifiant lisible imprimable sur étiquette (ex. PREL-SITE01-20260518-001). */
+  codePrelevement: string;
+  /** Eau / sol / air — déduit du pointPrelevement ou explicite. */
+  typePrelevement: 'eau' | 'sol' | 'air';
+  pointPrelevement: PointPrelevement;
+  /** GPS précis du point physique (différent du GPS général de la visite). */
+  gps?: GpsPoint;
+  /** Date et heure du prélèvement (peut différer de collectedAt si plusieurs prélèvements). */
+  datePrelevement: string;
+  /** Nom de la personne qui a effectué le prélèvement — string libre, pas FK. */
+  prelevePar: string;
+  /** Mode de conditionnement (flaconnage, glace, etc.). */
+  conditionnement?: string;
+  /** Observations terrain spécifiques à ce prélèvement. */
+  observations?: string;
+  /** Échantillons (flacons) générés par ce prélèvement. */
+  echantillons?: Echantillon[];
+}
+
+/**
+ * Statut d'un échantillon physique côté backend
+ * (champ `Echantillon.statut` API Platform). Aligné sur notre LabSampleStatus
+ * existant, on garde la même sémantique pour la migration B2 → B3.
+ */
+export type EchantillonStatut = LabSampleStatus;
+
+/**
+ * Échantillon = un flacon physique envoyé au laboratoire.
+ * Aligné backend `Echantillon` (cf. CAHIER_PROJET §3.4).
+ * Entité top-level lors du branchement live ; en maquette c'est attaché à
+ * Prelevement.echantillons[] et reflète aussi les sample partagés sur Measurement.
+ */
+export interface Echantillon {
+  id: string;
+  /** Identifiant physique (ECH-SITEXX-YYYYMMDD-NNN). Aligné `codeEchantillon`. */
+  codeEchantillon: string;
+  /** Type d'échantillon (eau brute, eau filtrée, sol, etc.). */
+  typeEchantillon?: string;
+  statut: EchantillonStatut;
+  /** Labo destinataire. */
+  laboratoireId?: string;
+  dateEnvoiLaboratoire?: string;
+  dateReceptionLaboratoire?: string;
+  observations?: string;
+  /** Demandes d'analyse rattachées à cet échantillon (typiquement 1 par labo). */
+  analyses?: AnalyseLaboratoire[];
+}
+
+/**
+ * Statut d'une demande d'analyse côté labo.
+ */
+export type AnalyseLaboStatut =
+  | 'demandee'
+  | 'en_cours'
+  | 'rendue'
+  | 'rejetee_sup'
+  | 'acceptee';
+
+/**
+ * Une demande d'analyse rendue par un labo pour un échantillon.
+ * Aligné backend `AnalyseLaboratoire`. Contient les résultats par paramètre.
+ */
+export interface AnalyseLaboratoire {
+  id: string;
+  /** Numéro de rapport du labo (réf. officielle, ex. LNE-2026-0421). */
+  numeroRapport?: string;
+  laboratoireId: string;
+  dateAnalyse?: string;
+  /** URL ou data-URL du PDF du bordereau. */
+  fichierRapport?: string;
+  statut: AnalyseLaboStatut;
+  observations?: string;
+  /** Résultats individuels par paramètre. */
+  resultats?: ResultatAnalyse[];
+}
+
+/**
+ * Un résultat d'analyse pour un paramètre donné.
+ * Aligné backend `ResultatAnalyse`. En maquette, doublé par `Measurement` qui
+ * reste la source d'affichage principale pour rétrocompat.
+ */
+export interface ResultatAnalyse {
+  id: string;
+  indicatorId: string;
+  /** Valeur en string pour gérer les "<0.01" — aligné backend. */
+  valeur: string;
+  /** Unité au moment de la mesure (snapshot). */
+  unite?: string;
+  /** Seuil de référence au moment de l'analyse (snapshot historique). */
+  seuilNorme?: string;
+  conforme?: boolean;
+  commentaire?: string;
+  /** Validation par le superviseur (par résultat, pas par collecte). */
+  validation?: ResultValidation;
+}
+
+/**
+ * Validation superviseur d'un résultat individuel.
+ * Aligné backend `ValidationSuperviseur`.
+ */
+export interface ResultValidation {
+  statut: 'en_attente' | 'valide' | 'rejete' | 'correction_demandee';
+  decision?: string;
+  commentaire?: string;
+  validePar?: string;
+  dateValidation?: string;
 }
 
 /**
@@ -223,10 +347,16 @@ export interface Collection {
   koboVersion: number;
   siteId: string;
   /**
-   * Point de prélèvement physique au sein du site (effluent_sortie, canal_drainage…).
-   * Aligné backend `Prelevement.pointPrelevement` (cf. CAHIER_PROJET §2.3).
+   * @deprecated Utiliser `prelevements[].pointPrelevement` à la place. Conservé
+   * pour rétrocompat pendant la migration Phase B.
    */
   pointPrelevement?: PointPrelevement;
+  /**
+   * Prélèvements physiques effectués pendant cette visite. Aligné backend
+   * `CollecteTerrain.prelevements`. Si vide, c'est une visite sans
+   * prélèvement (observation seule).
+   */
+  prelevements?: Prelevement[];
   agentId: string;
   collectedAt: string;
   status: CollectionStatus;
