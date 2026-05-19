@@ -48,7 +48,7 @@ export function AnalyticsPage() {
   const days = Number(period);
 
   const [indicatorId, setIndicatorId] = useState<string>('water.ph');
-  const [activeSiteIds, setActiveSiteIds] = useState<Set<string>>(new Set());
+  const [siteFilter, setSiteFilter] = useState<string>('all');
   const [tab, setTab] = useState<'trend' | 'distribution' | 'comparison'>('trend');
   const [domainFilter, setDomainFilter] = useState<DomainFilter>('all');
 
@@ -58,16 +58,8 @@ export function AnalyticsPage() {
   const sites = useMemo(() => sitesPage?.items ?? [], [sitesPage]);
   const collections = useMemo(() => collectionsPage?.items ?? [], [collectionsPage]);
 
-  const isAllSelected = activeSiteIds.size === 0;
-  const toggleSite = (siteId: string) => {
-    setActiveSiteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(siteId)) next.delete(siteId);
-      else next.add(siteId);
-      return next;
-    });
-  };
-  const isSiteVisible = (id: string) => isAllSelected || activeSiteIds.has(id);
+  const isAllSelected = siteFilter === 'all';
+  const isSiteVisible = (id: string) => isAllSelected || siteFilter === id;
 
   const indicatorOptions = useMemo(
     () =>
@@ -142,7 +134,7 @@ export function AnalyticsPage() {
 
     return { labels, series };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collections, indicatorId, days, sites, activeSiteIds]);
+  }, [collections, indicatorId, days, sites, siteFilter]);
 
   /* ── Comparator — moyenne / amplitude par site ── */
   const comparator = useMemo(() => {
@@ -219,7 +211,7 @@ export function AnalyticsPage() {
     const values: number[] = [];
     for (const c of collections) {
       if (new Date(c.collectedAt).getTime() < cutoff) continue;
-      if (!isAllSelected && !activeSiteIds.has(c.siteId)) continue;
+      if (!isAllSelected && siteFilter !== c.siteId) continue;
       const m = c.measurements.find(
         (x) => x.indicatorId === indicatorId && typeof x.value === 'number',
       );
@@ -247,7 +239,7 @@ export function AnalyticsPage() {
       values,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collections, indicatorId, days, activeSiteIds, rule]);
+  }, [collections, indicatorId, days, siteFilter, rule]);
 
   /* ── Évolution de la conformité (% conformes par semaine) ── */
   const conformityEvolution = useMemo(() => {
@@ -355,7 +347,7 @@ export function AnalyticsPage() {
     const rows: Outlier[] = [];
     for (const c of collections) {
       if (new Date(c.collectedAt).getTime() < cutoff) continue;
-      if (!isAllSelected && !activeSiteIds.has(c.siteId)) continue;
+      if (!isAllSelected && siteFilter !== c.siteId) continue;
       const m = c.measurements.find(
         (x) => x.indicatorId === indicatorId && typeof x.value === 'number',
       );
@@ -380,7 +372,7 @@ export function AnalyticsPage() {
     }
     return rows.sort((a, b) => b.excessPct - a.excessPct).slice(0, 5);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collections, indicatorId, days, rule, sites, activeSiteIds]);
+  }, [collections, indicatorId, days, rule, sites, siteFilter]);
 
   const isWithinThreshold = (v: number): boolean => {
     if (!rule) return true;
@@ -404,73 +396,37 @@ export function AnalyticsPage() {
           <span className={styles.heroEyebrow}>Tendances inter-sites</span>
           <h1 className={styles.heroTitle}>Analytics</h1>
         </div>
+        <div className={styles.heroControls}>
+          <Tabs
+            value={period}
+            onChange={setPeriod}
+            items={PERIODS}
+            variant="pill"
+            aria-label="Période"
+          />
+          <Select<DomainFilter>
+            value={domainFilter}
+            onChange={setDomainFilter}
+            options={DOMAIN_CHIPS.map((d) => ({ value: d.value, label: d.label }))}
+            aria-label="Filtrer par domaine"
+          />
+          <Select<string>
+            value={indicatorId}
+            onChange={setIndicatorId}
+            options={indicatorOptions}
+            aria-label="Indicateur à explorer"
+          />
+          <Select<string>
+            value={siteFilter}
+            onChange={setSiteFilter}
+            options={[
+              { value: 'all', label: 'Tous les sites' },
+              ...sites.map((s) => ({ value: s.id, label: s.shortName })),
+            ]}
+            aria-label="Filtrer par site"
+          />
+        </div>
       </header>
-
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarRow}>
-          <span className={styles.toolbarLabel}>Domaine</span>
-          <div className={styles.siteChips} role="tablist" aria-label="Filtrer par domaine">
-            {DOMAIN_CHIPS.map((d) => (
-              <button
-                key={d.value}
-                type="button"
-                role="tab"
-                aria-selected={domainFilter === d.value}
-                className={`${styles.siteChip} ${domainFilter === d.value ? styles.siteChipActive : ''}`}
-                onClick={() => setDomainFilter(d.value)}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className={styles.toolbarRow}>
-          <div className={styles.toolbarField}>
-            <span className={styles.toolbarLabel}>Indicateur</span>
-            <div className={styles.toolbarSelect}>
-              <Select<string>
-                value={indicatorId}
-                onChange={setIndicatorId}
-                options={indicatorOptions}
-                aria-label="Indicateur à explorer"
-              />
-            </div>
-          </div>
-          <div className={styles.toolbarField}>
-            <span className={styles.toolbarLabel}>Période</span>
-            <Tabs
-              value={period}
-              onChange={setPeriod}
-              items={PERIODS}
-              variant="pill"
-              aria-label="Période"
-            />
-          </div>
-        </div>
-        <div className={styles.toolbarRow}>
-          <span className={styles.toolbarLabel}>Sites</span>
-          <div className={styles.siteChips} role="group" aria-label="Filtrer par site">
-            <button
-              type="button"
-              className={`${styles.siteChip} ${isAllSelected ? styles.siteChipActive : ''}`}
-              onClick={() => setActiveSiteIds(new Set())}
-            >
-              Tous
-            </button>
-            {sites.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`${styles.siteChip} ${activeSiteIds.has(s.id) ? styles.siteChipActive : ''}`}
-                onClick={() => toggleSite(s.id)}
-                aria-pressed={activeSiteIds.has(s.id)}
-              >
-                {s.shortName}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
 
       <section className={styles.statsStrip} aria-label="Statistiques de l'indicateur sélectionné">
         <div className={styles.statCell}>
