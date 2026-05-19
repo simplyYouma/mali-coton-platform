@@ -664,6 +664,16 @@
   font-family: var(--font-mono);
   font-weight: 600;
 }
+.qLabel {
+  font-size: 11px;
+  fill: var(--color-text);
+  font-weight: 600;
+}
+.qN {
+  font-size: 10px;
+  fill: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
 
 /* ── Widget : Top dépassements ── */
 .outliersList {
