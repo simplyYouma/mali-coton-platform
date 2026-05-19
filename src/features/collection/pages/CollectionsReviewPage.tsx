@@ -238,7 +238,6 @@ export function CollectionsReviewPage() {
                     </span>
                     <div className={styles.rowMain}>
                       <span className={styles.rowSite}>
-                        {isUnread ? <span className={styles.unreadDot} aria-hidden="true" /> : null}
                         {site?.shortName ?? c.siteId}
                       </span>
                       <span className={styles.rowMeta}>

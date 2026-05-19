@@ -192,15 +192,6 @@
   color: var(--color-primary);
   font-weight: var(--weight-bold);
 }
-.unreadDot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  margin-right: 6px;
-  vertical-align: middle;
-}
 
 .rowIcon {
   width: 32px;

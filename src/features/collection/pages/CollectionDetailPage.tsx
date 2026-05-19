@@ -385,15 +385,6 @@ export function CollectionDetailPage() {
       })() : null}
 
       <section className={styles.summaryGrid} aria-label="Résumé">
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>Site</span>
-          <span className={styles.summaryValue}>
-            {site?.shortName ?? '—'}
-            {site?.codeSite ? (
-              <span className={styles.summaryHint}> · {site.codeSite}</span>
-            ) : null}
-          </span>
-        </div>
         {collection.prelevements && collection.prelevements.length > 0 ? (
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Point de prélèvement</span>

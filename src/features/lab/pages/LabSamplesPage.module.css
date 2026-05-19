@@ -550,6 +550,46 @@
   background: var(--color-primary-soft);
 }
 
+/* Form d'ajout inline dans la modale Envoyer — evite un 2eme modal */
+.inlineLabForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.inlineLabHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.inlineLabTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+.inlineLabClose {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+.inlineLabClose:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
 @media (max-width: 1024px) {
   .split {
     grid-template-columns: 1fr;

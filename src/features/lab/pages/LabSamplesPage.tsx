@@ -579,95 +579,92 @@ export function LabSamplesPage() {
                   onChange={() => setChosenLabId(l.id)}
                 />
                 <div className={styles.labChoiceMain}>
-                  <span className={styles.labChoiceName}>
-                    {l.name}
-                    {l.isReference ? (
-                      <Badge size="sm" variant="info">Référence</Badge>
-                    ) : null}
-                  </span>
+                  <span className={styles.labChoiceName}>{l.name}</span>
                   <span className={styles.labChoiceMeta}>
                     {l.city} · SLA {l.slaBusinessDays} j · {l.contactEmail ?? '—'}
                   </span>
                 </div>
               </label>
             ))}
-          <button
-            type="button"
-            className={styles.addLabLink}
-            onClick={() => setNewLabOpen(true)}
-          >
-            + Ajouter un laboratoire
-          </button>
-        </div>
-      </Modal>
 
-      <Modal
-        open={newLabOpen}
-        onClose={() => setNewLabOpen(false)}
-        title="Nouveau laboratoire"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setNewLabOpen(false)}>
-              Annuler
-            </Button>
-            <Button
-              variant="primary"
-              onClick={confirmCreateLab}
-              loading={createLabMut.isPending}
+          {!newLabOpen ? (
+            <button
+              type="button"
+              className={styles.addLabLink}
+              onClick={() => setNewLabOpen(true)}
             >
-              Créer
-            </Button>
-          </>
-        }
-      >
-        <div className={styles.transmitForm}>
-          <label className={styles.transmitField}>
-            <span>Nom</span>
-            <input
-              className={styles.transmitInput}
-              value={newLab.name}
-              onChange={(e) => setNewLab((s) => ({ ...s, name: e.target.value }))}
-              placeholder="LMA — Laboratoire Mobile d'Analyse"
-            />
-          </label>
-          <label className={styles.transmitField}>
-            <span>Ville</span>
-            <input
-              className={styles.transmitInput}
-              value={newLab.city}
-              onChange={(e) => setNewLab((s) => ({ ...s, city: e.target.value }))}
-              placeholder="Bamako"
-            />
-          </label>
-          <label className={styles.transmitField}>
-            <span>E-mail de contact</span>
-            <input
-              type="email"
-              className={styles.transmitInput}
-              value={newLab.contactEmail}
-              onChange={(e) => setNewLab((s) => ({ ...s, contactEmail: e.target.value }))}
-              placeholder="contact@labo.ml"
-            />
-          </label>
-          <label className={styles.transmitField}>
-            <span>Téléphone</span>
-            <input
-              className={styles.transmitInput}
-              value={newLab.contactPhone}
-              onChange={(e) => setNewLab((s) => ({ ...s, contactPhone: e.target.value }))}
-              placeholder="+223 20 22 00 00"
-            />
-          </label>
-          <label className={styles.transmitField}>
-            <span>SLA (jours ouvrés)</span>
-            <input
-              type="number"
-              min="1"
-              className={styles.transmitInput}
-              value={newLab.slaBusinessDays}
-              onChange={(e) => setNewLab((s) => ({ ...s, slaBusinessDays: e.target.value }))}
-            />
-          </label>
+              + Ajouter un laboratoire
+            </button>
+          ) : (
+            <div className={styles.inlineLabForm} aria-label="Nouveau laboratoire">
+              <header className={styles.inlineLabHead}>
+                <span className={styles.inlineLabTitle}>Nouveau laboratoire</span>
+                <button
+                  type="button"
+                  className={styles.inlineLabClose}
+                  onClick={() => setNewLabOpen(false)}
+                  aria-label="Annuler l'ajout"
+                >
+                  ✕
+                </button>
+              </header>
+              <label className={styles.transmitField}>
+                <span>Nom</span>
+                <input
+                  className={styles.transmitInput}
+                  value={newLab.name}
+                  onChange={(e) => setNewLab((s) => ({ ...s, name: e.target.value }))}
+                  placeholder="LMA — Laboratoire Mobile d'Analyse"
+                />
+              </label>
+              <label className={styles.transmitField}>
+                <span>Ville</span>
+                <input
+                  className={styles.transmitInput}
+                  value={newLab.city}
+                  onChange={(e) => setNewLab((s) => ({ ...s, city: e.target.value }))}
+                  placeholder="Bamako"
+                />
+              </label>
+              <label className={styles.transmitField}>
+                <span>E-mail de contact</span>
+                <input
+                  type="email"
+                  className={styles.transmitInput}
+                  value={newLab.contactEmail}
+                  onChange={(e) => setNewLab((s) => ({ ...s, contactEmail: e.target.value }))}
+                  placeholder="contact@labo.ml"
+                />
+              </label>
+              <label className={styles.transmitField}>
+                <span>Téléphone</span>
+                <input
+                  className={styles.transmitInput}
+                  value={newLab.contactPhone}
+                  onChange={(e) => setNewLab((s) => ({ ...s, contactPhone: e.target.value }))}
+                  placeholder="+223 20 22 00 00"
+                />
+              </label>
+              <label className={styles.transmitField}>
+                <span>SLA (jours ouvrés)</span>
+                <input
+                  type="number"
+                  min="1"
+                  className={styles.transmitInput}
+                  value={newLab.slaBusinessDays}
+                  onChange={(e) => setNewLab((s) => ({ ...s, slaBusinessDays: e.target.value }))}
+                />
+              </label>
+              <Button
+                variant="secondary"
+                onClick={confirmCreateLab}
+                loading={createLabMut.isPending}
+                fullWidth
+              >
+                Créer et sélectionner
+              </Button>
+            </div>
+          )}
         </div>
       </Modal>
 

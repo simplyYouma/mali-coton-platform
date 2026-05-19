@@ -38,9 +38,10 @@ export const RESOURCE_PATH: Record<string, string> = {
   roles: 'roles',
   permissions: 'permissions',
   indicators: API_MODE === 'live' ? 'parametre_analyses' : 'indicators',
+  units: 'parametre_unites',
   thresholds: API_MODE === 'live' ? 'norme_rejets' : 'thresholds',
   recommandations: 'recommandations',
-  // entités présentes seulement en live
+  // entités présentes seulement en live (Phase A3 + Phase B)
   regions: 'regions',
   cercles: 'cercles',
   communes: 'communes',
