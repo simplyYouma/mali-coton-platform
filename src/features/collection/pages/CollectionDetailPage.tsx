@@ -19,6 +19,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  FormField,
   Modal,
   Skeleton,
   Textarea,
@@ -133,12 +134,15 @@ export function CollectionDetailPage() {
   const [localValidations, setLocalValidations] = useState<
     Record<string, { statut: 'valide' | 'rejete'; commentaire?: string; validePar?: string; dateValidation: string }>
   >({});
+  const [rejectMeasureTarget, setRejectMeasureTarget] = useState<string | null>(null);
+  const [rejectMeasureReason, setRejectMeasureReason] = useState('');
 
-  const validateMeasurement = (indicatorId: string, statut: 'valide' | 'rejete') => {
+  const applyMeasurementValidation = (
+    indicatorId: string,
+    statut: 'valide' | 'rejete',
+    commentaire?: string,
+  ) => {
     if (!user) return;
-    const commentaire = statut === 'rejete'
-      ? window.prompt('Motif de rejet de cette mesure (optionnel) :') ?? undefined
-      : undefined;
     setLocalValidations((prev) => ({
       ...prev,
       [indicatorId]: {
@@ -153,6 +157,27 @@ export function CollectionDetailPage() {
     } else {
       toast.warning(`Mesure ${indicatorId} rejetée.`);
     }
+  };
+
+  const validateMeasurement = (indicatorId: string, statut: 'valide' | 'rejete') => {
+    if (!user) return;
+    if (statut === 'rejete') {
+      setRejectMeasureTarget(indicatorId);
+      setRejectMeasureReason('');
+      return;
+    }
+    applyMeasurementValidation(indicatorId, 'valide');
+  };
+
+  const confirmRejectMeasure = () => {
+    if (!rejectMeasureTarget) return;
+    applyMeasurementValidation(
+      rejectMeasureTarget,
+      'rejete',
+      rejectMeasureReason.trim() || undefined,
+    );
+    setRejectMeasureTarget(null);
+    setRejectMeasureReason('');
   };
 
   const site = useMemo(
@@ -407,13 +432,6 @@ export function CollectionDetailPage() {
           <span className={styles.summaryLabel}>Date / heure</span>
           <span className={styles.summaryValue}>{formatDateTime(collection.collectedAt)}</span>
         </div>
-        <Link
-          to={`/agents/${collection.agentId}`}
-          className={`${styles.summaryItem} ${styles.summaryItemClickable}`}
-        >
-          <span className={styles.summaryLabel}>Agent</span>
-          <span className={styles.summaryValue}>{agentName}</span>
-        </Link>
         <div className={styles.summaryItem}>
           <span className={styles.summaryLabel}>
             <MapPin size={12} aria-hidden="true" /> GPS
@@ -434,12 +452,19 @@ export function CollectionDetailPage() {
               : '—'}
           </span>
         </div>
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>Cours d'eau proche</span>
+        <div className={`${styles.summaryItem} ${styles.summaryItemCompact}`}>
+          <span className={styles.summaryLabel}>Cours d'eau</span>
           <span className={styles.summaryValue}>
             {collection.context?.hasNearbyWatercourse ? 'Oui' : 'Non'}
           </span>
         </div>
+        <Link
+          to={`/agents/${collection.agentId}`}
+          className={`${styles.summaryItem} ${styles.summaryItemAgent} ${styles.summaryItemClickable}`}
+        >
+          <span className={styles.summaryLabel}>Agent</span>
+          <span className={styles.summaryValue}>{agentName}</span>
+        </Link>
       </section>
 
       {grouped ? (
@@ -706,6 +731,32 @@ export function CollectionDetailPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={rejectMeasureTarget !== null}
+        onClose={() => setRejectMeasureTarget(null)}
+        title="Rejeter la mesure"
+        width={520}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRejectMeasureTarget(null)}>
+              Annuler
+            </Button>
+            <Button variant="danger" onClick={confirmRejectMeasure}>
+              Confirmer le rejet
+            </Button>
+          </>
+        }
+      >
+        <FormField label="Motif (optionnel)">
+          <Textarea
+            rows={3}
+            value={rejectMeasureReason}
+            onChange={(e) => setRejectMeasureReason(e.target.value)}
+            placeholder="Ex. valeur incohérente avec l'historique, suspicion d'erreur d'instrumentation…"
+          />
+        </FormField>
       </Modal>
 
       <PhotoLightbox

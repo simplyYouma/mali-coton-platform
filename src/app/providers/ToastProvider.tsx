@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { uuid } from '@/lib/uuid';
+import styles from './ToastProvider.module.css';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
@@ -59,36 +61,26 @@ export function ToastViewport({ children: _ }: ToastViewportProps) {
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
-      role="region"
-      aria-label="Notifications"
-      aria-live="polite"
-      style={{
-        position: 'fixed',
-        bottom: 'var(--space-5)',
-        right: 'var(--space-5)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-2)',
-        zIndex: 'var(--z-toast)' as unknown as number,
-        maxWidth: '360px',
-      }}
-    >
+    <div role="region" aria-label="Notifications" aria-live="polite" className={styles.viewport}>
       {toasts.map((t) => (
         <div
           key={t.id}
           role={t.variant === 'error' ? 'alert' : 'status'}
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderLeft: `3px solid var(--color-${variantToColor(t.variant)})`,
-            borderRadius: 'var(--radius-md)',
-            padding: 'var(--space-3) var(--space-4)',
-            boxShadow: 'var(--shadow-md)',
-            fontSize: 'var(--text-body)',
-          }}
+          className={styles.toast}
+          data-variant={t.variant}
         >
-          {t.message}
+          <span className={styles.icon} aria-hidden="true">
+            {variantIcon(t.variant)}
+          </span>
+          <span className={styles.message}>{t.message}</span>
+          <button
+            type="button"
+            className={styles.close}
+            onClick={() => dismiss(t.id)}
+            aria-label="Fermer la notification"
+          >
+            <X size={14} />
+          </button>
         </div>
       ))}
     </div>,
@@ -96,15 +88,15 @@ export function ToastViewport({ children: _ }: ToastViewportProps) {
   );
 }
 
-function variantToColor(v: ToastVariant): string {
+function variantIcon(v: ToastVariant): ReactNode {
   switch (v) {
     case 'success':
-      return 'success';
+      return <CheckCircle2 size={16} />;
     case 'error':
-      return 'danger';
+      return <AlertCircle size={16} />;
     case 'warning':
-      return 'warning';
+      return <AlertCircle size={16} />;
     case 'info':
-      return 'info';
+      return <Info size={16} />;
   }
 }
