@@ -201,17 +201,19 @@ export function RefDataPage() {
                   <td>
                     <code className={styles.code}>{e.code}</code>
                   </td>
-                  <td className={styles.labelCell}>
-                    <span className={styles.label}>{e.label}</span>
-                    {e.locked ? (
-                      <span
-                        className={styles.lockIcon}
-                        title="Socle CDC — suppression bloquée"
-                        aria-label="Socle CDC"
-                      >
-                        <Lock size={11} />
-                      </span>
-                    ) : null}
+                  <td>
+                    <span className={styles.labelCell}>
+                      <span className={styles.label}>{e.label}</span>
+                      {e.locked ? (
+                        <span
+                          className={styles.lockIcon}
+                          title="Socle CDC — suppression bloquée"
+                          aria-label="Socle CDC"
+                        >
+                          <Lock size={11} />
+                        </span>
+                      ) : null}
+                    </span>
                   </td>
                   <td className={styles.description}>
                     {e.description ?? <span className={styles.muted}>—</span>}
