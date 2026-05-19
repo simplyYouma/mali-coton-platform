@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { Button, FormField, Input } from '@/components/common';
 import { useLogin } from '../hooks/useLogin';
 import styles from './LoginPage.module.css';
@@ -14,6 +14,7 @@ const DEMO_ACCOUNTS = [
 export function LoginPage() {
   const [email, setEmail] = useState('admin@pnud.org');
   const [password, setPassword] = useState('demo');
+  const [showPassword, setShowPassword] = useState(false);
   const login = useLogin();
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -27,12 +28,13 @@ export function LoginPage() {
         <div className={styles.visualOverlay}>
           <p className={styles.eyebrow}>Plateforme officielle · UNDP-MLI-00492</p>
           <h2 className={styles.visualTitle}>
-            Suivi socio-environnemental des teintureries artisanales du Mali.
+            Plateforme de monitoring socio-environnemental des sites de teinture artisanale au Mali.
           </h2>
           <ul className={styles.metaList}>
-            <li><span>5</span> sites pilotes</li>
-            <li><span>6 mois</span> de collecte</li>
-            <li><span>40+</span> indicateurs</li>
+            <li><span>6</span> sites pilotes</li>
+            <li><span>~600</span> teinturiers·ères</li>
+            <li><span>49</span> indicateurs suivis</li>
+            <li><span>3 ans</span> de suivi</li>
           </ul>
         </div>
       </section>
@@ -40,11 +42,8 @@ export function LoginPage() {
       <section className={styles.formPane}>
         <div className={styles.formCard}>
           <header className={styles.brand}>
-            <span className={styles.brandMark}>P</span>
-            <div>
-              <p className={styles.brandLabel}>Plateforme</p>
-              <h1 className={styles.brandName}>PASET Mali</h1>
-            </div>
+            <p className={styles.brandLabel}>Plateforme</p>
+            <h1 className={styles.brandName}>PASET Mali</h1>
           </header>
 
           <h2 className={styles.title}>Connexion</h2>
@@ -65,11 +64,22 @@ export function LoginPage() {
 
             <FormField label="Mot de passe" required>
               <Input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 prefix={<Lock size={16} />}
+                suffix={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className={styles.eyeBtn}
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                }
                 inputSize="lg"
                 required
               />
@@ -117,7 +127,6 @@ export function LoginPage() {
                 </li>
               ))}
             </ul>
-            <p className={styles.demoHint}>Mot de passe : <code>demo</code></p>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { TrendingUp, BarChart3 } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Gauge, MapPin, TrendingDown, TrendingUp } from 'lucide-react';
 import { Select, Skeleton, Tabs } from '@/components/common';
 import { LineChart } from '@/components/common/charts';
 import { useCollections } from '@/features/collection/hooks/useCollections';
@@ -10,6 +10,7 @@ import {
   findRule,
 } from '@/features/collection/lib/indicatorRules';
 import { format, subDays } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import styles from './AnalyticsPage.module.css';
 
 const PERIODS = [
@@ -64,7 +65,86 @@ export function AnalyticsPage() {
     [indicatorId],
   );
 
-  /* Trend explorer — timeseries par site */
+  const fmtUnit = rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1;
+  const fmt = (v: number) => v.toFixed(fmtUnit);
+
+  /* ── Hero KPIs : période courante vs période précédente ── */
+  const heroKpis = useMemo(() => {
+    const now = Date.now();
+    const periodStart = now - days * 86_400_000;
+    const prevStart = periodStart - days * 86_400_000;
+
+    const inPeriod = collections.filter((c) => {
+      const t = new Date(c.collectedAt).getTime();
+      return t >= periodStart && t <= now;
+    });
+    const inPrev = collections.filter((c) => {
+      const t = new Date(c.collectedAt).getTime();
+      return t >= prevStart && t < periodStart;
+    });
+
+    const computeConformityScore = (list: typeof collections): number => {
+      let total = 0;
+      let conformingCount = 0;
+      for (const c of list) {
+        for (const m of c.measurements) {
+          const r = findRule(m.indicatorId);
+          if (!r) continue;
+          const num = typeof m.value === 'number' ? m.value : Number(m.value);
+          if (!Number.isFinite(num)) continue;
+          total += 1;
+          const level = computeLocalConformity(r, num);
+          if (level === 'conforming') conformingCount += 1;
+        }
+      }
+      return total > 0 ? Math.round((conformingCount / total) * 100) : 0;
+    };
+
+    const conformity = computeConformityScore(inPeriod);
+    const conformityPrev = computeConformityScore(inPrev);
+
+    const measureCount = inPeriod.reduce((sum, c) => sum + c.measurements.length, 0);
+    const measureCountPrev = inPrev.reduce((sum, c) => sum + c.measurements.length, 0);
+
+    const sitesMonitored = new Set(inPeriod.map((c) => c.siteId)).size;
+    const sitesMonitoredPrev = new Set(inPrev.map((c) => c.siteId)).size;
+
+    const hotIndicators = new Set<string>();
+    for (const c of inPeriod) {
+      for (const m of c.measurements) {
+        const r = findRule(m.indicatorId);
+        if (!r) continue;
+        const num = typeof m.value === 'number' ? m.value : Number(m.value);
+        if (!Number.isFinite(num)) continue;
+        if (computeLocalConformity(r, num) === 'critical') hotIndicators.add(m.indicatorId);
+      }
+    }
+    const hotIndicatorsCount = hotIndicators.size;
+
+    const hotPrev = new Set<string>();
+    for (const c of inPrev) {
+      for (const m of c.measurements) {
+        const r = findRule(m.indicatorId);
+        if (!r) continue;
+        const num = typeof m.value === 'number' ? m.value : Number(m.value);
+        if (!Number.isFinite(num)) continue;
+        if (computeLocalConformity(r, num) === 'critical') hotPrev.add(m.indicatorId);
+      }
+    }
+
+    return {
+      conformity,
+      conformityDelta: conformity - conformityPrev,
+      measureCount,
+      measureDelta: measureCount - measureCountPrev,
+      sitesMonitored,
+      sitesDelta: sitesMonitored - sitesMonitoredPrev,
+      hotIndicatorsCount,
+      hotDelta: hotIndicatorsCount - hotPrev.size,
+    };
+  }, [collections, days]);
+
+  /* ── Tendance — timeseries par site ── */
   const trend = useMemo(() => {
     const cutoff = subDays(new Date(), days).getTime();
     const labelsSet = new Set<string>();
@@ -77,7 +157,7 @@ export function AnalyticsPage() {
         (x) => x.indicatorId === indicatorId && typeof x.value === 'number',
       );
       if (!m) continue;
-      const dayLabel = format(new Date(c.collectedAt), 'dd MMM');
+      const dayLabel = format(new Date(c.collectedAt), 'dd MMM', { locale: fr });
       labelsSet.add(dayLabel);
       if (!buckets.has(c.siteId)) buckets.set(c.siteId, new Map());
       const siteMap = buckets.get(c.siteId)!;
@@ -109,7 +189,7 @@ export function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collections, indicatorId, days, sites, activeSiteIds]);
 
-  /* Comparateur — moyenne par site sur la période + min/max + série pour sparkline */
+  /* ── Comparator — moyenne / amplitude par site ── */
   const comparator = useMemo(() => {
     const cutoff = subDays(new Date(), days).getTime();
     const map = new Map<string, Array<{ value: number; ts: number }>>();
@@ -147,9 +227,7 @@ export function AnalyticsPage() {
     return { items, globalMax, globalMin };
   }, [collections, indicatorId, days, sites]);
 
-  /* Indice composite — moyenne pondérée environnement (60%) + social (40%)
-   * Conformité calculée à la volée via les règles d'indicateurs (pas de field
-   * `conformity` figé en fixture). */
+  /* ── Indice composite ── */
   const composite = useMemo(() => {
     let envScore = 0;
     let socScore = 0;
@@ -180,7 +258,7 @@ export function AnalyticsPage() {
     return { env, soc, overall };
   }, [collections, days]);
 
-  /* Quick stats sur l'indicateur sélectionné */
+  /* ── Quick stats sur l'indicateur sélectionné ── */
   const indicatorStats = useMemo(() => {
     const cutoff = subDays(new Date(), days).getTime();
     const values: number[] = [];
@@ -193,7 +271,7 @@ export function AnalyticsPage() {
       if (m) values.push(Number(m.value));
     }
     if (values.length === 0) {
-      return { count: 0, avg: 0, min: 0, max: 0, exceedRate: 0 };
+      return { count: 0, avg: 0, min: 0, max: 0, exceedRate: 0, values: [] };
     }
     const sum = values.reduce((a, b) => a + b, 0);
     const avg = sum / values.length;
@@ -211,11 +289,70 @@ export function AnalyticsPage() {
       min,
       max,
       exceedRate: Math.round((exceeds / values.length) * 100),
+      values,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collections, indicatorId, days, activeSiteIds, rule]);
 
-  const fmt = (v: number) => v.toFixed(rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1);
+  /* ── Distribution histogram (10 bins) ── */
+  const distribution = useMemo(() => {
+    const { values } = indicatorStats;
+    if (values.length < 2) return null;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (min === max) return null;
+    const BINS = 10;
+    const range = max - min;
+    const bins = Array.from({ length: BINS }, () => 0);
+    for (const v of values) {
+      let idx = Math.floor(((v - min) / range) * BINS);
+      if (idx >= BINS) idx = BINS - 1;
+      bins[idx]! += 1;
+    }
+    const maxBin = Math.max(...bins);
+    return { min, max, bins, maxBin, total: values.length };
+  }, [indicatorStats]);
+
+  /* ── Top dépassements : 5 mesures les plus éloignées du seuil ── */
+  const topOutliers = useMemo(() => {
+    if (!rule) return [];
+    const cutoff = subDays(new Date(), days).getTime();
+    type Outlier = {
+      siteId: string;
+      siteName: string;
+      value: number;
+      excessPct: number;
+      collectedAt: string;
+    };
+    const rows: Outlier[] = [];
+    for (const c of collections) {
+      if (new Date(c.collectedAt).getTime() < cutoff) continue;
+      if (!isAllSelected && !activeSiteIds.has(c.siteId)) continue;
+      const m = c.measurements.find(
+        (x) => x.indicatorId === indicatorId && typeof x.value === 'number',
+      );
+      if (!m) continue;
+      const v = Number(m.value);
+      let excessPct = 0;
+      if (rule.maxOk !== undefined && v > rule.maxOk) {
+        excessPct = ((v - rule.maxOk) / rule.maxOk) * 100;
+      } else if (rule.minOk !== undefined && v < rule.minOk) {
+        excessPct = ((rule.minOk - v) / rule.minOk) * 100;
+      } else {
+        continue;
+      }
+      const site = sites.find((s) => s.id === c.siteId);
+      rows.push({
+        siteId: c.siteId,
+        siteName: site?.shortName ?? c.siteId,
+        value: v,
+        excessPct,
+        collectedAt: c.collectedAt,
+      });
+    }
+    return rows.sort((a, b) => b.excessPct - a.excessPct).slice(0, 5);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collections, indicatorId, days, rule, sites, activeSiteIds]);
 
   const isWithinThreshold = (v: number): boolean => {
     if (!rule) return true;
@@ -240,6 +377,46 @@ export function AnalyticsPage() {
           <h1 className={styles.heroTitle}>Analytics</h1>
         </div>
       </header>
+
+      {/* ── KPI hero strip ── */}
+      <section className={styles.kpiGrid} aria-label="Indicateurs clés de la période">
+        <KpiCard
+          icon={<Gauge size={18} />}
+          tone="primary"
+          label="Indice conformité"
+          value={`${heroKpis.conformity}`}
+          unit="/ 100"
+          delta={heroKpis.conformityDelta}
+          deltaSuffix=" pts"
+          hint="part des mesures conformes"
+        />
+        <KpiCard
+          icon={<Activity size={18} />}
+          tone="neutral"
+          label="Mesures collectées"
+          value={heroKpis.measureCount.toLocaleString('fr-FR')}
+          delta={heroKpis.measureDelta}
+          deltaIsRelative
+          hint={`sur ${days} jours`}
+        />
+        <KpiCard
+          icon={<MapPin size={18} />}
+          tone="neutral"
+          label="Sites surveillés"
+          value={heroKpis.sitesMonitored.toString()}
+          delta={heroKpis.sitesDelta}
+          hint="avec au moins 1 collecte"
+        />
+        <KpiCard
+          icon={<AlertTriangle size={18} />}
+          tone={heroKpis.hotIndicatorsCount > 0 ? 'danger' : 'success'}
+          label="Indicateurs critiques"
+          value={heroKpis.hotIndicatorsCount.toString()}
+          delta={heroKpis.hotDelta}
+          deltaInverse
+          hint="au moins 1 dépassement franc"
+        />
+      </section>
 
       <div className={styles.toolbar}>
         <div className={styles.toolbarRow}>
@@ -300,11 +477,7 @@ export function AnalyticsPage() {
           <span className={styles.statLabel}>Moyenne</span>
           <span className={styles.statValue}>
             {indicatorStats.count === 0 ? '—' : fmt(indicatorStats.avg)}
-            {rule?.unit ? (
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginLeft: 6 }}>
-                {rule.unit}
-              </span>
-            ) : null}
+            {rule?.unit ? <span className={styles.statUnit}>{rule.unit}</span> : null}
           </span>
           <span className={styles.statHint}>tous sites sélectionnés</span>
         </div>
@@ -340,7 +513,7 @@ export function AnalyticsPage() {
           <header className={styles.panelHeader}>
             <div className={styles.panelTitleGroup}>
               <h2 id="trend-heading" className={styles.panelTitle}>
-                <TrendingUp size={16} style={{ verticalAlign: 'text-bottom', marginRight: 6 }} />
+                <TrendingUp size={16} className={styles.panelTitleIcon} />
                 Tendance — {rule?.label}
               </h2>
               <span className={styles.panelCaption}>
@@ -352,7 +525,7 @@ export function AnalyticsPage() {
             {isLoading ? (
               <Skeleton height={280} />
             ) : trend.labels.length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+              <p className={styles.empty}>
                 Pas assez de données pour cet indicateur sur la période.
               </p>
             ) : (
@@ -402,11 +575,87 @@ export function AnalyticsPage() {
         </section>
       </div>
 
+      <div className={styles.split}>
+        <section className={styles.panel} aria-labelledby="distribution-heading">
+          <header className={styles.panelHeader}>
+            <div className={styles.panelTitleGroup}>
+              <h2 id="distribution-heading" className={styles.panelTitle}>
+                <BarChart3 size={16} className={styles.panelTitleIcon} />
+                Distribution — {rule?.label}
+              </h2>
+              <span className={styles.panelCaption}>
+                {distribution
+                  ? `${distribution.total} mesures · ${distribution.bins.length} classes`
+                  : 'pas assez de données'}
+              </span>
+            </div>
+          </header>
+          <div className={styles.panelBody}>
+            {isLoading ? (
+              <Skeleton height={220} />
+            ) : !distribution ? (
+              <p className={styles.empty}>Au moins 2 mesures distinctes requises.</p>
+            ) : (
+              <DistributionChart
+                bins={distribution.bins}
+                min={distribution.min}
+                max={distribution.max}
+                rule={rule}
+                fmt={fmt}
+              />
+            )}
+          </div>
+        </section>
+
+        <section className={styles.panel} aria-labelledby="outliers-heading">
+          <header className={styles.panelHeader}>
+            <div className={styles.panelTitleGroup}>
+              <h2 id="outliers-heading" className={styles.panelTitle}>
+                <TrendingDown size={16} className={styles.panelTitleIcon} />
+                Top dépassements
+              </h2>
+              <span className={styles.panelCaption}>5 mesures les plus éloignées du seuil</span>
+            </div>
+          </header>
+          <div className={styles.panelBody}>
+            {isLoading ? (
+              <Skeleton height={220} />
+            ) : topOutliers.length === 0 ? (
+              <p className={styles.empty}>Aucun dépassement sur la période.</p>
+            ) : (
+              <ul className={styles.outliersList}>
+                {topOutliers.map((o, i) => (
+                  <li key={`${o.siteId}-${o.collectedAt}-${i}`} className={styles.outlierRow}>
+                    <span className={styles.outlierRank}>#{i + 1}</span>
+                    <span className={styles.outlierBody}>
+                      <span className={styles.outlierSite}>{o.siteName}</span>
+                      <span className={styles.outlierDate}>
+                        {format(new Date(o.collectedAt), 'dd MMM yyyy', { locale: fr })}
+                      </span>
+                    </span>
+                    <span className={styles.outlierValue}>
+                      {fmt(o.value)}
+                      <span className={styles.outlierUnit}>{rule?.unit}</span>
+                    </span>
+                    <span
+                      className={styles.outlierExcess}
+                      data-tone={o.excessPct > 50 ? 'crit' : 'warn'}
+                    >
+                      +{o.excessPct.toFixed(0)}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      </div>
+
       <section className={styles.panel} aria-labelledby="comparator-heading">
         <header className={styles.panelHeader}>
           <div className={styles.panelTitleGroup}>
             <h2 id="comparator-heading" className={styles.panelTitle}>
-              <BarChart3 size={16} style={{ verticalAlign: 'text-bottom', marginRight: 6 }} />
+              <BarChart3 size={16} className={styles.panelTitleIcon} />
               Comparateur multi-sites — {rule?.label}
             </h2>
             <span className={styles.panelCaption}>
@@ -418,9 +667,7 @@ export function AnalyticsPage() {
           {isLoading ? (
             <Skeleton height={200} />
           ) : comparator.items.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
-              Aucune mesure pour cet indicateur sur la période.
-            </p>
+            <p className={styles.empty}>Aucune mesure pour cet indicateur sur la période.</p>
           ) : (
             <div className={styles.comparator}>
               {comparator.items.map((item) => {
@@ -446,15 +693,11 @@ export function AnalyticsPage() {
                       />
                     </span>
                     <span className={styles.comparatorMeta}>
-                      <span className={styles.comparatorValue}>
-                        {item.avg.toFixed(rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1)}
-                      </span>
+                      <span className={styles.comparatorValue}>{fmt(item.avg)}</span>
                       <span className={styles.comparatorUnit}>{rule?.unit}</span>
                     </span>
                     <span className={styles.comparatorRangeText}>
-                      {item.min.toFixed(rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1)}
-                      {' – '}
-                      {item.max.toFixed(rule?.unit === 'pH' || rule?.unit === '' ? 2 : 1)}
+                      {fmt(item.min)} – {fmt(item.max)}
                     </span>
                     <Sparkline values={item.series} tone={status} />
                   </div>
@@ -464,11 +707,183 @@ export function AnalyticsPage() {
           )}
         </div>
       </section>
-
     </div>
   );
 }
 
+/* ─────────────────────────────────────
+ * KPI Card (widget hero)
+ * ─────────────────────────────────────*/
+interface KpiCardProps {
+  icon: React.ReactNode;
+  tone: 'primary' | 'success' | 'danger' | 'neutral';
+  label: string;
+  value: string;
+  unit?: string;
+  delta: number;
+  deltaSuffix?: string;
+  deltaIsRelative?: boolean;
+  deltaInverse?: boolean;
+  hint: string;
+}
+
+function KpiCard({ icon, tone, label, value, unit, delta, deltaSuffix, deltaIsRelative, deltaInverse, hint }: KpiCardProps) {
+  const isPositive = delta > 0;
+  const isNeutral = delta === 0;
+  const isGood = deltaInverse ? delta < 0 : delta > 0;
+  const deltaTone = isNeutral ? 'neutral' : isGood ? 'pos' : 'neg';
+  const arrow = isNeutral ? '·' : isPositive ? '▲' : '▼';
+  const deltaText = deltaIsRelative && delta !== 0
+    ? `${arrow} ${Math.abs(delta).toLocaleString('fr-FR')}`
+    : `${arrow} ${Math.abs(delta)}${deltaSuffix ?? ''}`;
+  return (
+    <div className={styles.kpiCard} data-tone={tone}>
+      <div className={styles.kpiHead}>
+        <span className={styles.kpiIcon} aria-hidden="true">{icon}</span>
+        <span className={styles.kpiLabel}>{label}</span>
+      </div>
+      <div className={styles.kpiBody}>
+        <span className={styles.kpiValue}>
+          {value}
+          {unit ? <span className={styles.kpiUnit}>{unit}</span> : null}
+        </span>
+        <span className={styles.kpiDelta} data-tone={deltaTone}>
+          {deltaText}
+        </span>
+      </div>
+      <span className={styles.kpiHint}>{hint}</span>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────
+ * Distribution histogram (widget)
+ * ─────────────────────────────────────*/
+interface DistributionChartProps {
+  bins: number[];
+  min: number;
+  max: number;
+  rule: ReturnType<typeof findRule>;
+  fmt: (v: number) => string;
+}
+
+function DistributionChart({ bins, min, max, rule, fmt }: DistributionChartProps) {
+  const W = 600;
+  const H = 200;
+  const padL = 40;
+  const padR = 8;
+  const padT = 12;
+  const padB = 24;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const maxBin = Math.max(...bins, 1);
+  const binW = innerW / bins.length;
+  const range = max - min;
+
+  const xForValue = (v: number) => padL + ((v - min) / range) * innerW;
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label="Histogramme de distribution"
+      className={styles.distSvg}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      {/* axe Y ticks */}
+      {[0, 0.5, 1].map((p, i) => {
+        const y = padT + innerH - p * innerH;
+        return (
+          <g key={i}>
+            <line
+              x1={padL}
+              x2={W - padR}
+              y1={y}
+              y2={y}
+              stroke="var(--color-border)"
+              strokeDasharray={p === 0 ? '0' : '2 4'}
+              strokeWidth={1}
+            />
+            <text x={padL - 6} y={y + 3} textAnchor="end" className={styles.distAxisText}>
+              {Math.round(p * maxBin)}
+            </text>
+          </g>
+        );
+      })}
+      {/* barres */}
+      {bins.map((count, i) => {
+        const h = (count / maxBin) * innerH;
+        const x = padL + i * binW;
+        const y = padT + innerH - h;
+        const binMid = min + ((i + 0.5) / bins.length) * range;
+        const inThreshold =
+          (rule?.maxOk === undefined || binMid <= rule.maxOk) &&
+          (rule?.minOk === undefined || binMid >= rule.minOk);
+        const fill = inThreshold ? 'var(--color-primary)' : 'var(--color-danger)';
+        return (
+          <rect
+            key={i}
+            x={x + 1}
+            y={y}
+            width={binW - 2}
+            height={h}
+            rx={2}
+            fill={fill}
+            opacity={0.85}
+          >
+            <title>
+              {fmt(min + (i / bins.length) * range)} – {fmt(min + ((i + 1) / bins.length) * range)} {rule?.unit ?? ''} : {count} mesures
+            </title>
+          </rect>
+        );
+      })}
+      {/* lignes seuils */}
+      {rule?.maxOk !== undefined && rule.maxOk >= min && rule.maxOk <= max ? (
+        <g>
+          <line
+            x1={xForValue(rule.maxOk)}
+            x2={xForValue(rule.maxOk)}
+            y1={padT}
+            y2={padT + innerH}
+            stroke="var(--color-amber)"
+            strokeWidth={2}
+            strokeDasharray="4 3"
+          />
+          <text
+            x={xForValue(rule.maxOk)}
+            y={padT - 2}
+            textAnchor="middle"
+            className={styles.distThresholdText}
+          >
+            seuil {fmt(rule.maxOk)}
+          </text>
+        </g>
+      ) : null}
+      {rule?.minOk !== undefined && rule.minOk >= min && rule.minOk <= max ? (
+        <line
+          x1={xForValue(rule.minOk)}
+          x2={xForValue(rule.minOk)}
+          y1={padT}
+          y2={padT + innerH}
+          stroke="var(--color-amber)"
+          strokeWidth={2}
+          strokeDasharray="4 3"
+        />
+      ) : null}
+      {/* axe X labels */}
+      <text x={padL} y={H - 6} className={styles.distAxisText} textAnchor="start">
+        {fmt(min)} {rule?.unit ?? ''}
+      </text>
+      <text x={W - padR} y={H - 6} className={styles.distAxisText} textAnchor="end">
+        {fmt(max)} {rule?.unit ?? ''}
+      </text>
+    </svg>
+  );
+}
+
+/* ─────────────────────────────────────
+ * Composite rings (existant)
+ * ─────────────────────────────────────*/
 interface CompositeRingsProps {
   overall: number;
   env: number;
@@ -507,12 +922,9 @@ function CompositeRings({ overall, env, soc }: CompositeRingsProps) {
         className={styles.ringsSvg}
         aria-hidden="true"
       >
-        {/* Tracks */}
         <circle cx={center} cy={center} r={rOuter} fill="none" stroke="var(--color-surface-sunken)" strokeWidth={stroke} />
         <circle cx={center} cy={center} r={rMid} fill="none" stroke="var(--color-surface-sunken)" strokeWidth={stroke} />
         <circle cx={center} cy={center} r={rInner} fill="none" stroke="var(--color-surface-sunken)" strokeWidth={stroke} />
-
-        {/* Arcs */}
         <circle
           cx={center}
           cy={center}
