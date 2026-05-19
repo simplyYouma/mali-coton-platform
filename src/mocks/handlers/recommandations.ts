@@ -5,6 +5,7 @@ import type {
   RecommandationCreateInput,
   RecommandationUpdateInput,
 } from '@/features/recommandations/api/recommandations.types';
+import { appendAuditLog } from '../auditTrail';
 import { uuid } from '@/lib/uuid';
 
 const store: Recommandation[] = [...mockRecommandations];
@@ -66,6 +67,13 @@ export const recommandationsHandlers = [
       createdBy: body.createdBy,
     };
     store.push(created);
+    appendAuditLog({
+      actorId: body.createdBy,
+      action: 'recommandation.created',
+      resourceType: 'recommandation',
+      resourceId: created.id,
+      resourceLabel: created.titre.slice(0, 60),
+    });
     return HttpResponse.json(created, { status: 201 });
   }),
 
@@ -82,6 +90,14 @@ export const recommandationsHandlers = [
       updatedAt: new Date().toISOString(),
     };
     store[idx] = updated;
+    // Actor inconnu côté patch (UI ne le passe pas systématiquement) — on log avec createdBy comme fallback.
+    appendAuditLog({
+      actorId: current.createdBy ?? 'u-admin-1',
+      action: patch.statut === 'resolue' ? 'recommandation.resolved' : 'recommandation.updated',
+      resourceType: 'recommandation',
+      resourceId: updated.id,
+      resourceLabel: updated.titre.slice(0, 60),
+    });
     return HttpResponse.json(updated);
   }),
 
@@ -89,7 +105,15 @@ export const recommandationsHandlers = [
     await delay(120);
     const idx = store.findIndex((r) => r.id === params.id);
     if (idx === -1) return error404('Recommandation introuvable.');
+    const removed = store[idx]!;
     store.splice(idx, 1);
+    appendAuditLog({
+      actorId: removed.createdBy ?? 'u-admin-1',
+      action: 'recommandation.deleted',
+      resourceType: 'recommandation',
+      resourceId: removed.id,
+      resourceLabel: removed.titre.slice(0, 60),
+    });
     return new HttpResponse(null, { status: 204 });
   }),
 ];

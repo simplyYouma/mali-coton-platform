@@ -11,6 +11,7 @@ import { mockUsers } from '@/mocks/fixtures/users';
 import { formatRelativeTime } from '@/lib/format';
 import { ConformityHeatmap } from '../components/ConformityHeatmap';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { computeExecutiveSummary, RISK_LABEL, RISK_TONE } from '../lib/executiveSummary';
 import { STATUS_LABEL, STATUS_VARIANT } from '@/features/collection/api/collection.types';
 import styles from './DashboardPage.module.css';
 
@@ -165,6 +166,17 @@ export function DashboardPage() {
     [alertsPage, filterSiteId],
   );
 
+  const execSummary = useMemo(() => {
+    const filteredSites =
+      filterSiteId
+        ? (sitesPage?.items ?? []).filter((s) => s.id === filterSiteId)
+        : (sitesPage?.items ?? []);
+    const filteredAlerts = (alertsPage?.items ?? []).filter(
+      (a) => !filterSiteId || a.siteId === filterSiteId,
+    );
+    return computeExecutiveSummary(filteredSites, filteredAlerts);
+  }, [sitesPage, alertsPage, filterSiteId]);
+
   const usersById = useMemo(() => {
     const map = new Map<string, string>();
     mockUsers.forEach((u) => map.set(u.id, u.fullName));
@@ -199,6 +211,103 @@ export function DashboardPage() {
           </Button>
         </div>
       </header>
+
+      {/* ─── Executive summary (D1) : 4 KPIs stratégiques en grand ─── */}
+      <section className={styles.execGrid} aria-label="Vue exécutive">
+        <article
+          className={styles.execTile}
+          data-tone={
+            execSummary.envScore >= 75
+              ? 'success'
+              : execSummary.envScore >= 50
+                ? 'info'
+                : execSummary.envScore >= 25
+                  ? 'warning'
+                  : 'danger'
+          }
+        >
+          <span className={styles.execLabel}>Score environnemental</span>
+          <div className={styles.execMain}>
+            <span className={styles.execValue}>
+              {isLoading ? '—' : execSummary.envScore}
+            </span>
+            <span className={styles.execUnit}>/ 100</span>
+          </div>
+          <span className={styles.execCaption}>
+            {execSummary.envScore >= 75
+              ? 'Performance globale satisfaisante'
+              : execSummary.envScore >= 50
+                ? 'À surveiller, plusieurs points d\'attention'
+                : execSummary.envScore >= 25
+                  ? 'Situation préoccupante, actions requises'
+                  : 'Crise environnementale, intervention urgente'}
+          </span>
+        </article>
+
+        <article className={styles.execTile} data-tone={RISK_TONE[execSummary.riskLevel]}>
+          <span className={styles.execLabel}>Niveau de risque</span>
+          <div className={styles.execMain}>
+            <span className={styles.execLevel}>
+              {RISK_LABEL[execSummary.riskLevel]}
+            </span>
+          </div>
+          <span className={styles.execCaption}>
+            {execSummary.criticalAlerts === 0
+              ? 'Aucune alerte critique active'
+              : `${execSummary.criticalAlerts} alerte${execSummary.criticalAlerts > 1 ? 's' : ''} critique${execSummary.criticalAlerts > 1 ? 's' : ''} en cours`}
+          </span>
+        </article>
+
+        <article
+          className={styles.execTile}
+          data-tone={execSummary.conformityRate >= 80 ? 'success' : 'warning'}
+        >
+          <span className={styles.execLabel}>Conformité globale</span>
+          <div className={styles.execMain}>
+            <span className={styles.execValue}>
+              {isLoading ? '—' : execSummary.conformityRate}
+            </span>
+            <span className={styles.execUnit}>%</span>
+          </div>
+          <span className={styles.execCaption}>
+            {execSummary.conformityRate >= 80
+              ? 'Cible 80 % atteinte'
+              : `${80 - execSummary.conformityRate} pts sous la cible 80 %`}
+          </span>
+          <ConformityBar value={execSummary.conformityRate} />
+        </article>
+
+        <article
+          className={styles.execTile}
+          data-tone={execSummary.criticalAlerts === 0 ? 'success' : 'danger'}
+        >
+          <span className={styles.execLabel}>Alertes critiques</span>
+          <div className={styles.execMain}>
+            <span className={styles.execValue}>{execSummary.criticalAlerts}</span>
+          </div>
+          <span className={styles.execCaption}>
+            {execSummary.sitesAtRisk === 0
+              ? 'Aucun site en alerte'
+              : `${execSummary.sitesAtRisk} site${execSummary.sitesAtRisk > 1 ? 's' : ''} sur ${execSummary.sitesTotal} concerné${execSummary.sitesAtRisk > 1 ? 's' : ''}`}
+          </span>
+        </article>
+      </section>
+
+      {execSummary.breakdown.length > 0 && execSummary.envScore < 90 ? (
+        <details className={styles.execBreakdown}>
+          <summary>
+            Pourquoi {execSummary.envScore} / 100 ? — {execSummary.breakdown.length} facteur{execSummary.breakdown.length > 1 ? 's' : ''}
+          </summary>
+          <ul>
+            {execSummary.breakdown.map((b, i) => (
+              <li key={i}>
+                <span className={styles.execBreakdownWeight}>−{b.weight}</span>
+                <span>{b.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       {/* ─── Headline conformité + KPIs en bandeau hairline ─── */}
       <section className={styles.headline}>

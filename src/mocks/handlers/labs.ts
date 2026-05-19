@@ -2,6 +2,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { mockLabs } from '../fixtures/labs';
 import { uuid } from '@/lib/uuid';
 import type { Lab } from '@/features/collection/api/labs.types';
+import { appendAuditLog } from '../auditTrail';
 
 export const labsHandlers = [
   http.get('/api/v1/labs', async () => {
@@ -42,6 +43,13 @@ export const labsHandlers = [
       isActive: true,
     };
     mockLabs.push(created);
+    appendAuditLog({
+      actorId: 'u-sup-1',
+      action: 'lab.created',
+      resourceType: 'lab',
+      resourceId: created.id,
+      resourceLabel: `${created.name} (${created.city})`,
+    });
     return HttpResponse.json(created, { status: 201 });
   }),
 ];

@@ -2,7 +2,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { uuid } from '@/lib/uuid';
 import { mockUsers } from '../fixtures/users';
 import { mockThresholds } from '../fixtures/thresholds';
-import { mockAuditLogs } from '../fixtures/auditLogs';
+import { readAuditLogs } from '../auditTrail';
 import type {
   ManagedUser,
   ThresholdConfig,
@@ -135,7 +135,7 @@ export const adminHandlers = [
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
 
-    let items = [...mockAuditLogs];
+    let items = readAuditLogs();
     if (actorId) items = items.filter((l) => l.actorId === actorId);
     if (action) items = items.filter((l) => l.action === action);
     if (resourceType) items = items.filter((l) => l.resourceType === resourceType);

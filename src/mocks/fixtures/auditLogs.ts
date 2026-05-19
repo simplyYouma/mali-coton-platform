@@ -20,11 +20,21 @@ export type AuditAction =
   | 'collection.reject'
   | 'collection.correction_requested'
   | 'collection.lab_result'
+  | 'sample.sent'
+  | 'sample.received'
+  | 'sample.refused_by_lab'
   | 'sample.transmitted'
+  | 'sample.bordereau_rejected'
+  | 'recommandation.created'
+  | 'recommandation.updated'
+  | 'recommandation.resolved'
+  | 'recommandation.deleted'
+  | 'lab.created'
   | 'report.generated'
   | 'threshold.update'
   | 'alert.acknowledged'
-  | 'alert.resolved';
+  | 'alert.resolved'
+  | 'kobo.ingestion';
 
 export interface AuditLogEntry {
   id: string;
@@ -33,7 +43,7 @@ export interface AuditLogEntry {
   actorName: string;
   actorRole: 'admin' | 'superviseur' | 'agent' | 'lab' | 'visitor';
   action: AuditAction;
-  resourceType: 'user' | 'role' | 'site' | 'collection' | 'sample' | 'report' | 'threshold' | 'alert' | 'auth';
+  resourceType: 'user' | 'role' | 'site' | 'collection' | 'sample' | 'recommandation' | 'lab' | 'report' | 'threshold' | 'alert' | 'auth';
   resourceId: string | null;
   resourceLabel?: string;
   ipAddress?: string;

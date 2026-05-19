@@ -13,6 +13,7 @@ import {
   validateKoboSubmission,
   type KoboSubmission,
 } from '@/features/collection/api/../lib/koboIngestion';
+import { appendAuditLog } from '../auditTrail';
 import { uuid } from '@/lib/uuid';
 
 /**
@@ -249,12 +250,33 @@ export const collectionsHandlers = [
 
     // Génère la notification mock à l'agent en fonction de l'action superviseur.
     let kind: CollectionNotification['kind'] | null = null;
-    if (patch.status === 'needs_correction' && patch.correctionRequest) kind = 'correction_requested';
-    else if (patch.status === 'rejected') kind = 'rejected';
-    else if (patch.status === 'validated') kind = 'validated';
+    let auditAction: 'collection.validate' | 'collection.reject' | 'collection.correction_requested' | null = null;
+    let actorId: string | undefined;
+    if (patch.status === 'needs_correction' && patch.correctionRequest) {
+      kind = 'correction_requested';
+      auditAction = 'collection.correction_requested';
+      actorId = patch.correctionRequest.requestedBy;
+    } else if (patch.status === 'rejected') {
+      kind = 'rejected';
+      auditAction = 'collection.reject';
+      actorId = patch.validatedBy;
+    } else if (patch.status === 'validated') {
+      kind = 'validated';
+      auditAction = 'collection.validate';
+      actorId = patch.validatedBy;
+    }
     if (kind) {
       const newNotifs = buildNotifications(item.agentId, kind);
       item.notifications = [...(item.notifications ?? []), ...newNotifs];
+    }
+    if (auditAction && actorId) {
+      appendAuditLog({
+        actorId,
+        action: auditAction,
+        resourceType: 'collection',
+        resourceId: item.id,
+        resourceLabel: `#${item.id.slice(-6).toUpperCase()}`,
+      });
     }
 
     return HttpResponse.json(item);
@@ -301,6 +323,13 @@ export const collectionsHandlers = [
         status: 'refused_by_lab',
         refusalReason: body.reason,
       }));
+      appendAuditLog({
+        actorId: body.refusedBy,
+        action: 'sample.refused_by_lab',
+        resourceType: 'sample',
+        resourceId: String(params.containerId),
+        resourceLabel: body.reason.slice(0, 60),
+      });
       // Notifie l'agent + le superviseur (l'agent doit re-prélever)
       const supId = findSupervisor(item.siteId);
       const recipients = [item.agentId, supId].filter(Boolean) as string[];
@@ -340,6 +369,13 @@ export const collectionsHandlers = [
         const m = item.measurements.find((x) => x.indicatorId === v.indicatorId);
         if (m) m.value = v.value;
       }
+      appendAuditLog({
+        actorId: body.analyzedBy,
+        action: 'sample.transmitted',
+        resourceType: 'sample',
+        resourceId: String(params.containerId),
+        resourceLabel: body.bordereauRef,
+      });
       // Notifie le superviseur
       const supId = findSupervisor(item.siteId);
       if (supId) {
@@ -375,6 +411,13 @@ export const collectionsHandlers = [
         const notifs = buildLabNotifications(labId, 'bordereau_rejected_by_supervisor');
         item.notifications = [...(item.notifications ?? []), ...notifs];
       }
+      appendAuditLog({
+        actorId: body.rejectedBy,
+        action: 'sample.bordereau_rejected',
+        resourceType: 'sample',
+        resourceId: String(params.containerId),
+        resourceLabel: body.reason.slice(0, 60),
+      });
       return HttpResponse.json(item);
     },
   ),
@@ -432,6 +475,13 @@ export const collectionsHandlers = [
       existing.koboVersion = (existing.koboVersion ?? 1) + 1;
       existing.syncedAt = now;
       existing.status = hasPendingLabSamples(existing) ? 'awaiting_lab' : 'submitted';
+      appendAuditLog({
+        actorId: existing.agentId,
+        action: 'kobo.ingestion',
+        resourceType: 'collection',
+        resourceId: existing.id,
+        resourceLabel: `re-soumission v${existing.koboVersion} après correction`,
+      });
       return HttpResponse.json(
         {
           accepted: true,
@@ -470,6 +520,13 @@ export const collectionsHandlers = [
       notes: payload.obs_generales,
     };
     mockCollections.push(created);
+    appendAuditLog({
+      actorId: created.agentId,
+      action: 'kobo.ingestion',
+      resourceType: 'collection',
+      resourceId: id,
+      resourceLabel: `nouvelle collecte sur ${site.shortName}`,
+    });
     return HttpResponse.json(
       { accepted: true, collectionId: id, koboVersion: created.koboVersion, isUpdate: false },
       { status: 201 },
@@ -495,9 +552,15 @@ export const collectionsHandlers = [
         sentAt: now,
         expectedBy,
       }));
-      // Notifie le labo par e-mail/SMS qu'un flacon est en route
       const notifs = buildLabNotifications(body.labId, 'sample_sent_to_lab');
       item.notifications = [...(item.notifications ?? []), ...notifs];
+      appendAuditLog({
+        actorId: body.sentBy,
+        action: 'sample.sent',
+        resourceType: 'sample',
+        resourceId: String(params.containerId),
+        resourceLabel: chosenLab?.name,
+      });
       return HttpResponse.json(item);
     },
   ),
