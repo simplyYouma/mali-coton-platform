@@ -1,6 +1,13 @@
-import { useMemo, useState } from 'react';
-import { Database, Lock, Pencil, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
-import { Button, Input, Modal, PageHeader } from '@/components/common';
+import { useEffect, useMemo, useState } from 'react';
+import { Lock, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import {
+  Button,
+  FormField,
+  IconButton,
+  Input,
+  Modal,
+  Select,
+} from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
 import { uuid } from '@/lib/uuid';
 import {
@@ -24,33 +31,42 @@ const CATEGORIES: RefCategory[] = [
   'labCapabilities',
 ];
 
+const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }));
+
 export function RefDataPage() {
   const toast = useToast();
   const [data, setData] = useState(() => loadRefData());
   const [activeCategory, setActiveCategory] = useState<RefCategory>('units');
-  const [editing, setEditing] = useState<RefEntry | null>(null);
+  const [editing, setEditing] = useState<{ entry: RefEntry; category: RefCategory } | null>(
+    null,
+  );
   const [formOpen, setFormOpen] = useState(false);
-  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
 
   const items = useMemo(() => {
     const list = data[activeCategory] ?? [];
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
+    if (!query.trim()) return list;
+    const q = query.toLowerCase();
     return list.filter(
       (e) =>
         e.label.toLowerCase().includes(q) ||
         e.code.toLowerCase().includes(q) ||
         (e.description ?? '').toLowerCase().includes(q),
     );
-  }, [data, activeCategory, search]);
+  }, [data, activeCategory, query]);
 
   const counts = useMemo(() => {
     const map = {} as Record<RefCategory, number>;
     for (const c of CATEGORIES) {
-      map[c] = (data[c] ?? []).filter((e) => e.isActive).length;
+      map[c] = (data[c] ?? []).length;
     }
     return map;
   }, [data]);
+
+  const totalEntries = useMemo(
+    () => CATEGORIES.reduce((acc, c) => acc + counts[c], 0),
+    [counts],
+  );
 
   const persist = (next: Record<RefCategory, RefEntry[]>) => {
     setData(next);
@@ -61,26 +77,33 @@ export function RefDataPage() {
     setEditing(null);
     setFormOpen(true);
   };
-  const openEdit = (entry: RefEntry) => {
-    setEditing(entry);
+
+  const openEdit = (entry: RefEntry, category: RefCategory) => {
+    setEditing({ entry, category });
     setFormOpen(true);
   };
 
-  const submitEntry = (entry: RefEntry) => {
-    const list = [...(data[activeCategory] ?? [])];
-    const idx = list.findIndex((e) => e.id === entry.id);
-    if (idx >= 0) list[idx] = entry;
-    else list.unshift(entry);
-    persist({ ...data, [activeCategory]: list });
+  const submitEntry = (entry: RefEntry, targetCategory: RefCategory) => {
+    if (editing && editing.category !== targetCategory) {
+      // Catégorie modifiée à l'édition : on retire de l'ancienne, on ajoute à la nouvelle
+      const oldList = (data[editing.category] ?? []).filter((e) => e.id !== entry.id);
+      const newList = [entry, ...(data[targetCategory] ?? [])];
+      persist({
+        ...data,
+        [editing.category]: oldList,
+        [targetCategory]: newList,
+      });
+      setActiveCategory(targetCategory);
+    } else {
+      const list = [...(data[targetCategory] ?? [])];
+      const idx = list.findIndex((e) => e.id === entry.id);
+      if (idx >= 0) list[idx] = entry;
+      else list.unshift(entry);
+      persist({ ...data, [targetCategory]: list });
+      setActiveCategory(targetCategory);
+    }
     setFormOpen(false);
-    toast.success(idx >= 0 ? 'Entrée modifiée.' : 'Entrée ajoutée au référentiel.');
-  };
-
-  const toggleActive = (entry: RefEntry) => {
-    const list = (data[activeCategory] ?? []).map((e) =>
-      e.id === entry.id ? { ...e, isActive: !e.isActive } : e,
-    );
-    persist({ ...data, [activeCategory]: list });
+    toast.success(editing ? 'Entrée modifiée.' : 'Entrée ajoutée au référentiel.');
   };
 
   const removeEntry = (entry: RefEntry) => {
@@ -95,144 +118,133 @@ export function RefDataPage() {
   };
 
   const handleReset = () => {
-    if (!window.confirm('Réinitialiser tous les référentiels au socle CDC ? Vos ajouts seront perdus.')) return;
+    if (
+      !window.confirm(
+        'Réinitialiser tous les référentiels au socle CDC ? Vos ajouts seront perdus.',
+      )
+    )
+      return;
     setData(resetRefData());
     toast.info('Référentiels réinitialisés.');
   };
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        eyebrow="Administration"
-        title="Référentiels"
-        actions={
-          <>
-            <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
-              Réinitialiser
-            </Button>
-            <Button variant="primary" iconLeft={<Plus size={14} />} onClick={openCreate}>
-              Nouvelle entrée
-            </Button>
-          </>
-        }
-      />
-
-      <div className={styles.layout}>
-        <aside className={styles.sidePanel} aria-label="Catégories">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`${styles.catItem} ${c === activeCategory ? styles.catItemActive : ''}`}
-              onClick={() => {
-                setActiveCategory(c);
-                setSearch('');
-              }}
-            >
-              <span className={styles.catLabel}>{CATEGORY_LABEL[c]}</span>
-              <span className={styles.catCount}>{counts[c]}</span>
-            </button>
-          ))}
-        </aside>
-
-        <section className={styles.content}>
-          <header className={styles.contentHead}>
-            <div>
-              <h2 className={styles.contentTitle}>{CATEGORY_LABEL[activeCategory]}</h2>
-              <p className={styles.contentHint}>{CATEGORY_HINT[activeCategory]}</p>
-            </div>
-            <div className={styles.searchWrap}>
-              <Input
-                type="search"
-                placeholder="Rechercher…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Rechercher dans le référentiel"
-              />
-            </div>
-          </header>
-
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Libellé</th>
-                  <th>Description</th>
-                  <th>État</th>
-                  <th aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className={styles.empty}>
-                      Aucune entrée — ajoutez-en avec « Nouvelle entrée ».
-                    </td>
-                  </tr>
-                ) : (
-                  items.map((e) => (
-                    <tr key={e.id} data-inactive={!e.isActive ? 'true' : undefined}>
-                      <td>
-                        <span className={styles.code}>{e.code}</span>
-                      </td>
-                      <td className={styles.labelCell}>
-                        <span className={styles.label}>{e.label}</span>
-                        {e.locked ? (
-                          <span
-                            className={styles.lockIcon}
-                            title="Entrée socle CDC — modification autorisée, suppression bloquée"
-                            aria-label="Socle CDC"
-                          >
-                            <Lock size={11} />
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className={styles.description}>
-                        {e.description ?? <span className={styles.muted}>—</span>}
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className={`${styles.statusToggle} ${e.isActive ? styles.statusActive : styles.statusInactive}`}
-                          onClick={() => toggleActive(e)}
-                        >
-                          {e.isActive ? 'Active' : 'Inactive'}
-                        </button>
-                      </td>
-                      <td className={styles.actions}>
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          onClick={() => openEdit(e)}
-                          aria-label="Modifier"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                          onClick={() => removeEntry(e)}
-                          aria-label="Supprimer"
-                          disabled={e.locked}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      <header className={styles.hero}>
+        <div className={styles.heroLeft}>
+          <h1 className={styles.heroTitle}>Référentiels</h1>
+          <span className={styles.heroCount}>
+            {totalEntries} entrée{totalEntries > 1 ? 's' : ''} · {CATEGORIES.length} catégories
+          </span>
+        </div>
+        <div className={styles.heroRight}>
+          <div className={styles.search}>
+            <Search size={14} aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher dans la catégorie active…"
+              aria-label="Rechercher"
+            />
           </div>
-        </section>
+          <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
+            Réinitialiser
+          </Button>
+          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={openCreate}>
+            Ajouter
+          </Button>
+        </div>
+      </header>
+
+      <div className={styles.chips} role="tablist" aria-label="Catégorie">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            role="tab"
+            aria-selected={c === activeCategory}
+            className={`${styles.chip} ${c === activeCategory ? styles.chipActive : ''}`}
+            onClick={() => {
+              setActiveCategory(c);
+              setQuery('');
+            }}
+          >
+            {CATEGORY_LABEL[c]}
+            <span className={styles.chipCount}>{counts[c]}</span>
+          </button>
+        ))}
+      </div>
+
+      <p className={styles.contentHint}>{CATEGORY_HINT[activeCategory]}</p>
+
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Libellé</th>
+              <th>Description</th>
+              <th aria-label="Actions" />
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={4} className={styles.empty}>
+                  Aucune entrée dans cette catégorie.
+                </td>
+              </tr>
+            ) : (
+              items.map((e) => (
+                <tr key={e.id}>
+                  <td>
+                    <code className={styles.code}>{e.code}</code>
+                  </td>
+                  <td className={styles.labelCell}>
+                    <span className={styles.label}>{e.label}</span>
+                    {e.locked ? (
+                      <span
+                        className={styles.lockIcon}
+                        title="Socle CDC — suppression bloquée"
+                        aria-label="Socle CDC"
+                      >
+                        <Lock size={11} />
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className={styles.description}>
+                    {e.description ?? <span className={styles.muted}>—</span>}
+                  </td>
+                  <td className={styles.actions}>
+                    <IconButton
+                      aria-label="Modifier"
+                      variant="ghost"
+                      onClick={() => openEdit(e, activeCategory)}
+                    >
+                      <Pencil size={14} />
+                    </IconButton>
+                    <IconButton
+                      aria-label="Supprimer"
+                      variant="ghost"
+                      onClick={() => removeEntry(e)}
+                      disabled={e.locked}
+                    >
+                      <Trash2 size={14} />
+                    </IconButton>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       <RefEntryForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        category={activeCategory}
-        entry={editing}
+        defaultCategory={editing?.category ?? activeCategory}
+        entry={editing?.entry ?? null}
         onSubmit={submitEntry}
       />
     </div>
@@ -242,91 +254,101 @@ export function RefDataPage() {
 interface RefEntryFormProps {
   open: boolean;
   onClose: () => void;
-  category: RefCategory;
+  defaultCategory: RefCategory;
   entry: RefEntry | null;
-  onSubmit: (entry: RefEntry) => void;
+  onSubmit: (entry: RefEntry, category: RefCategory) => void;
 }
 
-function RefEntryForm({ open, onClose, category, entry, onSubmit }: RefEntryFormProps) {
+function RefEntryForm({
+  open,
+  onClose,
+  defaultCategory,
+  entry,
+  onSubmit,
+}: RefEntryFormProps) {
+  const [category, setCategory] = useState<RefCategory>(defaultCategory);
   const [code, setCode] = useState(entry?.code ?? '');
   const [label, setLabel] = useState(entry?.label ?? '');
   const [description, setDescription] = useState(entry?.description ?? '');
 
-  // Reset state when entry change (open with different entry)
-  useMemo(() => {
-    setCode(entry?.code ?? '');
-    setLabel(entry?.label ?? '');
-    setDescription(entry?.description ?? '');
-  }, [entry, open]);
+  useEffect(() => {
+    if (open) {
+      setCategory(defaultCategory);
+      setCode(entry?.code ?? '');
+      setLabel(entry?.label ?? '');
+      setDescription(entry?.description ?? '');
+    }
+  }, [entry, open, defaultCategory]);
 
   const handleSubmit = () => {
     if (!code.trim() || !label.trim()) return;
-    onSubmit({
-      id: entry?.id ?? uuid(),
-      code: code.trim(),
-      label: label.trim(),
-      description: description.trim() || undefined,
-      isActive: entry?.isActive ?? true,
-      locked: entry?.locked ?? false,
-    });
+    onSubmit(
+      {
+        id: entry?.id ?? uuid(),
+        code: code.trim(),
+        label: label.trim(),
+        description: description.trim() || undefined,
+        isActive: entry?.isActive ?? true,
+        locked: entry?.locked ?? false,
+      },
+      category,
+    );
   };
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={entry ? `Modifier — ${CATEGORY_LABEL[category]}` : `Ajouter à ${CATEGORY_LABEL[category]}`}
+      title={entry ? `Modifier ${entry.label}` : 'Nouvelle entrée'}
+      width={560}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose} iconLeft={<X size={14} />}>
+          <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
           <Button
             variant="primary"
             onClick={handleSubmit}
-            iconLeft={<Save size={14} />}
             disabled={!code.trim() || !label.trim()}
           >
-            Enregistrer
+            {entry ? 'Enregistrer' : 'Créer'}
           </Button>
         </>
       }
     >
       <div className={styles.formGrid}>
-        <label className={styles.formField}>
-          <span className={styles.formLabel}>Code</span>
+        <FormField label="Catégorie" required className={styles.formFull}>
+          <Select<RefCategory>
+            value={category}
+            onChange={(c) => setCategory(c)}
+            options={CATEGORY_OPTIONS}
+          />
+        </FormField>
+
+        <FormField label="Code" required>
           <Input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Ex. mg/L · OMS_AIR_2021 · GALA"
+            placeholder="mg/L · OMS_AIR_2021 · GALA"
             disabled={!!entry?.locked}
-            required
           />
-        </label>
-        <label className={styles.formField}>
-          <span className={styles.formLabel}>Libellé affiché</span>
+        </FormField>
+
+        <FormField label="Libellé" required>
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Ex. mg/L · OMS Air 2021 · GALA — chimique"
-            required
+            placeholder="Libellé affiché à l'utilisateur"
           />
-        </label>
-        <label className={styles.formField}>
-          <span className={styles.formLabel}>Description (optionnelle)</span>
+        </FormField>
+
+        <FormField label="Description" className={styles.formFull}>
           <Input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Détail affiché en glossaire"
+            placeholder="Détail (optionnel)"
           />
-        </label>
-        {entry?.locked ? (
-          <p className={styles.lockHint}>
-            <Database size={12} aria-hidden="true" />
-            Cette entrée fait partie du socle CDC : le code est verrouillé. Vous pouvez modifier
-            son libellé, sa description ou la désactiver.
-          </p>
-        ) : null}
+        </FormField>
       </div>
     </Modal>
   );
