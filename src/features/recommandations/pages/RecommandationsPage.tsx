@@ -302,7 +302,7 @@ export function RecommandationsPage() {
               }))}
             />
           </FormField>
-          <FormField label="Site concerné" hint="Laissez vide pour une recommandation transversale.">
+          <FormField label="Site concerné">
             <Select<string>
               value={form.siteId}
               onChange={(siteId) => setForm((s) => ({ ...s, siteId }))}
@@ -415,10 +415,6 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
           <header className={styles.notifHead}>
             <span className={styles.notifTitle}>
               Notifications envoyées au responsable
-            </span>
-            <span className={styles.notifHint}>
-              Le responsable ne consulte pas la plateforme — il reçoit les mises à
-              jour par e-mail / SMS.
             </span>
           </header>
           <ul className={styles.notifList}>

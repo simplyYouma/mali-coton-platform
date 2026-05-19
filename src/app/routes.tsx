@@ -14,7 +14,6 @@ import {
 import {
   UsersPage,
   RolesPage,
-  ThresholdsPage,
   AuditLogsPage,
   IndicatorsPage,
   RefDataPage,
@@ -123,14 +122,6 @@ export function AppRoutes() {
           element={
             <RoleGuard roles={['admin']}>
               <RolesPage />
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/admin/seuils"
-          element={
-            <RoleGuard roles={['admin']}>
-              <ThresholdsPage />
             </RoleGuard>
           }
         />
