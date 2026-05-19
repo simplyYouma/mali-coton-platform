@@ -6,7 +6,6 @@ import { useSidebar } from '@/app/providers/SidebarProvider';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { formatRelativeTime } from '@/lib/format';
 import { IconButton } from '../IconButton/IconButton';
-import { Select } from '../Select/Select';
 import type { UserRole } from '@/types/common';
 import styles from './Topbar.module.css';
 
@@ -20,7 +19,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 export function Topbar() {
   const navigate = useNavigate();
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
   const { toggleMobile } = useSidebar();
   const { data: collectionsPage } = useCollections();
 
@@ -77,23 +76,6 @@ export function Topbar() {
             <span className={styles.profileRole}>{ROLE_LABELS[user.role]}</span>
           </div>
         </div>
-
-        <Select<UserRole>
-          value={user.role}
-          onChange={(role) => {
-            switchRole(role);
-            if (role === 'lab') navigate('/labo/echantillons');
-            else navigate('/dashboard');
-          }}
-          options={[
-            { value: 'admin', label: 'Administrateur' },
-            { value: 'superviseur', label: 'Superviseur' },
-            { value: 'lab', label: 'Agent laboratoire' },
-            { value: 'visitor', label: 'Observateur' },
-          ]}
-          size="sm"
-          aria-label="Changer de rôle (démo)"
-        />
 
         <IconButton
           aria-label="Se déconnecter"

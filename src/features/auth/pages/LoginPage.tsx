@@ -7,7 +7,7 @@ import styles from './LoginPage.module.css';
 const DEMO_ACCOUNTS = [
   { role: 'Administrateur', email: 'admin@pnud.org' },
   { role: 'Superviseur', email: 'superviseur@sahel.com' },
-  { role: 'Agent laboratoire', email: 'labo@lne.gouv.ml' },
+  { role: 'Laboratoire', email: 'labo@lne.gouv.ml' },
   { role: 'Observateur', email: 'observateur@pnud.org' },
 ];
 
@@ -25,14 +25,14 @@ export function LoginPage() {
     <main className={styles.page}>
       <section className={styles.visual} aria-hidden="true">
         <div className={styles.visualOverlay}>
-          <p className={styles.eyebrow}>Plateforme officielle</p>
+          <p className={styles.eyebrow}>Plateforme officielle · UNDP-MLI-00492</p>
           <h2 className={styles.visualTitle}>
             Suivi socio-environnemental des teintureries artisanales du Mali.
           </h2>
           <ul className={styles.metaList}>
             <li><span>5</span> sites pilotes</li>
-            <li><span>6 mois</span> de collecte terrain</li>
-            <li><span>40+</span> indicateurs suivis</li>
+            <li><span>6 mois</span> de collecte</li>
+            <li><span>40+</span> indicateurs</li>
           </ul>
         </div>
       </section>
@@ -48,6 +48,7 @@ export function LoginPage() {
           </header>
 
           <h2 className={styles.title}>Connexion</h2>
+          <p className={styles.subtitle}>Accédez à votre espace de suivi.</p>
 
           <form onSubmit={onSubmit} className={styles.form} noValidate>
             <FormField label="Adresse e-mail" required>
@@ -73,6 +74,12 @@ export function LoginPage() {
                 required
               />
             </FormField>
+
+            <div className={styles.formMeta}>
+              <a href="#forgot" className={styles.forgotLink}>
+                Mot de passe oublié ?
+              </a>
+            </div>
 
             {login.isError ? (
               <p className={styles.error} role="alert">
@@ -102,10 +109,10 @@ export function LoginPage() {
                       setEmail(acc.email);
                       setPassword('demo');
                     }}
-                    className={styles.demoButton}
+                    className={styles.demoChip}
+                    title={acc.email}
                   >
-                    <span className={styles.demoRole}>{acc.role}</span>
-                    <span className={styles.demoEmail}>{acc.email}</span>
+                    {acc.role}
                   </button>
                 </li>
               ))}
@@ -115,7 +122,7 @@ export function LoginPage() {
         </div>
 
         <footer className={styles.footer}>
-          <p>© 2026 — PASET Mali</p>
+          <p>© 2026 — PASET Mali · PNUD Mali</p>
         </footer>
       </section>
     </main>
