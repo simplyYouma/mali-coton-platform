@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { FlaskConical, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import {
+  Badge,
   Button,
   FormField,
   IconButton,
   Input,
   Modal,
-  PageHeader,
   Select,
   Skeleton,
   Switch,
@@ -32,14 +32,12 @@ const DOMAIN_LABEL: Record<IndicatorDomain, string> = {
   socio: 'Socio-économique',
 };
 
-const DOMAIN_OPTIONS: Array<{ value: IndicatorDomain; label: string }> = [
-  { value: 'water', label: 'Eaux usées' },
-  { value: 'soil', label: 'Sol' },
-  { value: 'air', label: 'Air ambiant' },
-  { value: 'waste', label: 'Déchets solides' },
-  { value: 'health', label: 'Santé / SST' },
-  { value: 'socio', label: 'Socio-économique' },
-];
+const DOMAIN_ORDER: IndicatorDomain[] = ['water', 'soil', 'air', 'waste', 'health', 'socio'];
+
+const DOMAIN_OPTIONS: Array<{ value: IndicatorDomain; label: string }> = DOMAIN_ORDER.map((d) => ({
+  value: d,
+  label: DOMAIN_LABEL[d],
+}));
 
 interface FormState {
   domain: IndicatorDomain;
@@ -89,6 +87,16 @@ function toInput(f: FormState): IndicatorCreateInput {
   };
 }
 
+/** Formate les bornes de manière compacte et lisible. */
+function formatBounds(i: Indicator): string {
+  const hasMin = i.minOk !== undefined;
+  const hasMax = i.maxOk !== undefined;
+  if (!hasMin && !hasMax) return '—';
+  if (hasMin && hasMax) return `${i.minOk} – ${i.maxOk}`;
+  if (hasMax) return `≤ ${i.maxOk}`;
+  return `≥ ${i.minOk}`;
+}
+
 export function IndicatorsPage() {
   const toast = useToast();
   const { data, isLoading } = useIndicatorsAdmin();
@@ -99,8 +107,9 @@ export function IndicatorsPage() {
   const [editing, setEditing] = useState<Indicator | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
-  const [filterDomain, setFilterDomain] = useState<IndicatorDomain | ''>('');
+  const [filterDomain, setFilterDomain] = useState<IndicatorDomain | 'all'>('all');
   const [showInactive, setShowInactive] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (creating) setForm(EMPTY);
@@ -109,18 +118,34 @@ export function IndicatorsPage() {
 
   const items = data?.items ?? [];
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((i) => {
+      const isActive = i.isActive ?? true;
+      if (!showInactive && !isActive) return false;
+      if (filterDomain !== 'all' && i.domain !== filterDomain) return false;
+      if (
+        q &&
+        !i.label.toLowerCase().includes(q) &&
+        !i.id.toLowerCase().includes(q) &&
+        !i.method.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [items, filterDomain, showInactive, query]);
+
   const grouped = useMemo(() => {
     const map: Partial<Record<IndicatorDomain, Indicator[]>> = {};
-    for (const i of items) {
-      const isActive = i.isActive ?? true;
-      if (!showInactive && !isActive) continue;
-      if (filterDomain && i.domain !== filterDomain) continue;
+    for (const i of filtered) {
       (map[i.domain] ??= []).push(i);
     }
     return map;
-  }, [items, filterDomain, showInactive]);
+  }, [filtered]);
 
   const totalActive = items.filter((i) => i.isActive ?? true).length;
+  const totalLab = items.filter((i) => i.labOnly).length;
 
   const openCreate = () => {
     setEditing(null);
@@ -145,10 +170,10 @@ export function IndicatorsPage() {
     try {
       if (editing) {
         await updateMut.mutateAsync({ id: editing.id, patch: toInput(form) });
-        toast.success(`Indicateur ${form.label} mis à jour.`);
+        toast.success(`${form.label} mis à jour.`);
       } else {
         await createMut.mutateAsync(toInput(form));
-        toast.success(`Indicateur ${form.label} créé.`);
+        toast.success(`${form.label} créé.`);
       }
       closeModal();
     } catch (err) {
@@ -160,11 +185,7 @@ export function IndicatorsPage() {
     const next = !(i.isActive ?? true);
     try {
       await updateMut.mutateAsync({ id: i.id, patch: { isActive: next } });
-      toast.success(
-        next
-          ? `${i.label} réactivé — visible dans les nouvelles collectes.`
-          : `${i.label} désactivé — masqué dans le wizard.`,
-      );
+      toast.success(next ? `${i.label} réactivé.` : `${i.label} désactivé.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Échec.');
     }
@@ -172,10 +193,10 @@ export function IndicatorsPage() {
 
   const handleDelete = async (i: Indicator) => {
     if (!i.isCustom) {
-      toast.info('Seuls les indicateurs custom peuvent être supprimés. Désactivez ceux du référentiel.');
+      toast.info('Seuls les indicateurs personnalisés peuvent être supprimés.');
       return;
     }
-    if (!window.confirm(`Supprimer l'indicateur "${i.label}" ? Action irréversible.`)) return;
+    if (!window.confirm(`Supprimer "${i.label}" ? Action irréversible.`)) return;
     try {
       await deleteMut.mutateAsync(i.id);
       toast.success(`${i.label} supprimé.`);
@@ -186,106 +207,156 @@ export function IndicatorsPage() {
 
   return (
     <div className={styles.page}>
-      <PageHeader
-        eyebrow="Administration"
-        title="Indicateurs"
-        actions={
-          <Button variant="primary" iconLeft={<Plus size={16} />} onClick={openCreate}>
-            Nouvel indicateur
-          </Button>
-        }
-      />
-
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarSelect}>
-          <Select<IndicatorDomain | ''>
-            value={filterDomain}
-            onChange={(v) => setFilterDomain(v)}
-            options={[
-              { value: '', label: 'Tous les domaines' },
-              ...DOMAIN_OPTIONS,
-            ]}
-            aria-label="Filtrer par domaine"
-          />
-        </div>
-        <Switch
-          checked={showInactive}
-          onChange={(e) => setShowInactive(e.target.checked)}
-          label={showInactive ? 'Afficher inactifs : ON' : 'Afficher inactifs : OFF'}
-        />
-        <div className={styles.toolbarRight}>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-            <strong>{totalActive}</strong> indicateurs actifs · <strong>{items.length}</strong> au total
+      <header className={styles.hero}>
+        <div className={styles.heroLeft}>
+          <h1 className={styles.heroTitle}>Indicateurs</h1>
+          <span className={styles.heroCount}>
+            {totalActive} actifs · {totalLab} labo · {items.length} au total
           </span>
         </div>
+        <div className={styles.heroRight}>
+          <div className={styles.search}>
+            <Search size={14} aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher un indicateur…"
+              aria-label="Rechercher un indicateur"
+            />
+          </div>
+          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={openCreate}>
+            Ajouter
+          </Button>
+        </div>
+      </header>
+
+      <div className={styles.toolbar}>
+        <div className={styles.chips} role="group" aria-label="Filtrer par domaine">
+          <button
+            type="button"
+            className={`${styles.chip} ${filterDomain === 'all' ? styles.chipActive : ''}`}
+            onClick={() => setFilterDomain('all')}
+          >
+            Tous
+          </button>
+          {DOMAIN_OPTIONS.map((d) => (
+            <button
+              key={d.value}
+              type="button"
+              className={`${styles.chip} ${filterDomain === d.value ? styles.chipActive : ''}`}
+              onClick={() => setFilterDomain(d.value)}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+        <label className={styles.inactiveToggle}>
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          <span>Inclure inactifs</span>
+        </label>
       </div>
 
       {isLoading ? (
         <Skeleton height={320} />
+      ) : filtered.length === 0 ? (
+        <div className={styles.empty}>
+          Aucun indicateur ne correspond aux filtres.
+        </div>
       ) : (
-        (Object.keys(grouped) as IndicatorDomain[]).map((domain) => {
+        DOMAIN_ORDER.filter((d) => (grouped[d]?.length ?? 0) > 0).map((domain) => {
           const list = grouped[domain] ?? [];
-          if (list.length === 0) return null;
           return (
             <section key={domain} className={styles.block} aria-label={DOMAIN_LABEL[domain]}>
-              <header className={styles.blockHeader}>
+              <header className={styles.blockHead}>
                 <h2 className={styles.blockTitle}>{DOMAIN_LABEL[domain]}</h2>
-                <span className={styles.blockMeta}>{list.length} indicateurs</span>
+                <span className={styles.blockCount}>{list.length}</span>
               </header>
-
-              {list.map((i) => {
-                const isActive = i.isActive ?? true;
-                return (
-                  <div
-                    key={i.id}
-                    className={`${styles.row} ${!isActive ? styles.rowInactive : ''}`}
-                  >
-                    <div className={styles.indicatorMain}>
-                      <span className={styles.indicatorLabel}>
-                        {i.label}
-                        {i.isCustom ? (
-                          <span className={styles.badgeCustom}>
-                            <Sparkles size={10} aria-hidden="true" /> Custom
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className={styles.indicatorMeta}>
-                        {i.method} · {i.source}
-                      </span>
-                    </div>
-                    <span className={styles.unit}>{i.unit || '—'}</span>
-                    <span className={styles.bounds}>
-                      {i.minOk !== undefined || i.maxOk !== undefined
-                        ? `${i.minOk ?? '−∞'} — ${i.maxOk ?? '+∞'}`
-                        : '—'}
-                    </span>
-                    <Switch
-                      checked={isActive}
-                      onChange={() => void handleToggleActive(i)}
-                      label=""
-                      aria-label={`${isActive ? 'Désactiver' : 'Activer'} ${i.label}`}
-                    />
-                    <div className={styles.actions}>
-                      <IconButton
-                        aria-label={`Modifier ${i.label}`}
-                        variant="ghost"
-                        onClick={() => openEdit(i)}
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Indicateur</th>
+                    <th>Unité</th>
+                    <th>Bornes</th>
+                    <th>Source</th>
+                    <th>Actif</th>
+                    <th aria-label="Actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((i) => {
+                    const isActive = i.isActive ?? true;
+                    return (
+                      <tr
+                        key={i.id}
+                        className={!isActive ? styles.rowInactive : ''}
                       >
-                        <Pencil size={14} />
-                      </IconButton>
-                      {i.isCustom ? (
-                        <IconButton
-                          aria-label={`Supprimer ${i.label}`}
-                          variant="ghost"
-                          onClick={() => void handleDelete(i)}
-                        >
-                          <Trash2 size={14} />
-                        </IconButton>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
+                        <td>
+                          <div className={styles.indicatorMain}>
+                            <span className={styles.indicatorLabel}>
+                              {i.label}
+                              {i.labOnly ? (
+                                <Badge size="sm" variant="info">
+                                  <FlaskConical size={10} aria-hidden="true" />
+                                  Labo
+                                </Badge>
+                              ) : null}
+                              {i.isCustom ? (
+                                <Badge size="sm" variant="warning">
+                                  <Sparkles size={10} aria-hidden="true" />
+                                  Custom
+                                </Badge>
+                              ) : null}
+                            </span>
+                            <span className={styles.indicatorMeta}>{i.method}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <code className={styles.unitCode}>{i.unit || '—'}</code>
+                        </td>
+                        <td>
+                          <span className={styles.bounds}>{formatBounds(i)}</span>
+                        </td>
+                        <td>
+                          <span className={styles.source}>{i.source}</span>
+                        </td>
+                        <td>
+                          <Switch
+                            checked={isActive}
+                            onChange={() => void handleToggleActive(i)}
+                            label=""
+                            aria-label={`${isActive ? 'Désactiver' : 'Activer'} ${i.label}`}
+                          />
+                        </td>
+                        <td>
+                          <div className={styles.actions}>
+                            <IconButton
+                              aria-label={`Modifier ${i.label}`}
+                              variant="ghost"
+                              onClick={() => openEdit(i)}
+                            >
+                              <Pencil size={14} />
+                            </IconButton>
+                            {i.isCustom ? (
+                              <IconButton
+                                aria-label={`Supprimer ${i.label}`}
+                                variant="ghost"
+                                onClick={() => void handleDelete(i)}
+                              >
+                                <Trash2 size={14} />
+                              </IconButton>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </section>
           );
         })
@@ -295,12 +366,7 @@ export function IndicatorsPage() {
         open={creating || editing !== null}
         onClose={closeModal}
         title={editing ? `Modifier ${editing.label}` : 'Nouvel indicateur'}
-        description={
-          editing?.isCustom === false
-            ? "Indicateur du référentiel CDC §4 — vous pouvez modifier les bornes et la source mais pas le supprimer."
-            : 'Définissez un nouvel indicateur métier — disponible dans le wizard de collecte.'
-        }
-        width={680}
+        width={640}
         footer={
           <>
             <Button variant="ghost" onClick={closeModal}>
@@ -311,12 +377,20 @@ export function IndicatorsPage() {
               onClick={handleSubmit}
               loading={createMut.isPending || updateMut.isPending}
             >
-              {editing ? 'Enregistrer' : 'Créer l\'indicateur'}
+              {editing ? 'Enregistrer' : 'Créer'}
             </Button>
           </>
         }
       >
         <div className={styles.formGrid}>
+          <FormField label="Libellé" required className={styles.formFull}>
+            <Input
+              value={form.label}
+              onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+              placeholder="Ex : Demande chimique en oxygène"
+            />
+          </FormField>
+
           <FormField label="Domaine" required>
             <Select<IndicatorDomain>
               value={form.domain}
@@ -329,71 +403,51 @@ export function IndicatorsPage() {
             <Select<string>
               value={form.unit}
               onChange={(unit) => setForm((f) => ({ ...f, unit }))}
-              options={[{ value: '', label: '— Aucune unité —' }, ...refOptions('units')]}
-              placeholder="Sélectionner"
+              options={[{ value: '', label: '— Aucune —' }, ...refOptions('units')]}
             />
           </FormField>
 
-          <FormField label="Libellé affiché" required className={styles.formFull}>
-            <Input
-              value={form.label}
-              onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-              placeholder="Ex : Demande chimique en oxygène (DCO)"
-            />
-          </FormField>
-
-          <FormField label="Borne min de conformité" hint="Vide = pas de plancher.">
+          <FormField label="Borne minimale">
             <Input
               type="number"
               inputMode="decimal"
               value={form.minOk}
               onChange={(e) => setForm((f) => ({ ...f, minOk: e.target.value }))}
-              placeholder="Ex : 6.5"
+              placeholder="6.5"
             />
           </FormField>
 
-          <FormField label="Borne max de conformité" hint="Vide = pas de plafond.">
+          <FormField label="Borne maximale">
             <Input
               type="number"
               inputMode="decimal"
               value={form.maxOk}
               onChange={(e) => setForm((f) => ({ ...f, maxOk: e.target.value }))}
-              placeholder="Ex : 250"
+              placeholder="8.5"
             />
           </FormField>
 
-          <FormField
-            label="Méthode de mesure"
-            className={styles.formFull}
-          >
+          <FormField label="Méthode de mesure" className={styles.formFull}>
             <Select<string>
               value={form.method}
               onChange={(method) => setForm((f) => ({ ...f, method }))}
-              options={[{ value: '', label: '— Choisir une méthode —' }, ...refOptions('methods')]}
-              placeholder="Sélectionner"
+              options={[{ value: '', label: '— Choisir —' }, ...refOptions('methods')]}
             />
           </FormField>
 
-          <FormField
-            label="Source normative"
-            className={styles.formFull}
-          >
+          <FormField label="Source normative" className={styles.formFull}>
             <Select<string>
               value={form.source}
               onChange={(source) => setForm((f) => ({ ...f, source }))}
-              options={[{ value: '', label: '— Choisir une source —' }, ...refOptions('sources')]}
-              placeholder="Sélectionner"
+              options={[{ value: '', label: '— Choisir —' }, ...refOptions('sources')]}
             />
           </FormField>
 
-          <FormField
-            label="Mesure laboratoire"
-            hint="Si activé, l'indicateur exige un prélèvement labo et n'est pas saisi sur tablette."
-          >
+          <FormField label="Mesure laboratoire" className={styles.formFull}>
             <Switch
               checked={form.labOnly}
               onChange={(e) => setForm((f) => ({ ...f, labOnly: e.target.checked }))}
-              label={form.labOnly ? 'Oui — prélèvement labo' : 'Non — saisie in situ'}
+              label={form.labOnly ? 'Oui — exige un prélèvement' : 'Non — saisie in situ'}
             />
           </FormField>
         </div>
