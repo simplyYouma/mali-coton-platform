@@ -33,11 +33,15 @@
    *    Accent   = sable Sahel — highlights chaleureux dosés
    *    Ink      = noir — réservé typographie corps
    * ───────────────────────────────────────────── */
-  --color-primary: #418fde;
-  --color-primary-hover: #2f7bc9;
-  --color-primary-active: #2466ad;
-  --color-primary-soft: #e8f1fb;
-  --color-primary-soft-hover: #d4e6f7;
+  /* Primary alignée sur la sidebar (--color-ink-night) — palette plus sobre,
+   * institutionnelle. L'ancien bleu ONU #418fde est conservé via --color-info
+   * si besoin d'un accent ponctuel. */
+  --color-primary: #0e1730;
+  --color-primary-hover: #1a2545;
+  --color-primary-active: #050b1c;
+  --color-primary-soft: #eceef4;
+  --color-primary-soft-hover: #dde1eb;
+  --color-info: #418fde; /* ancien primary UN-blue — disponible si accent */
 
   --color-secondary: #14253a;
   --color-secondary-hover: #0c1828;
