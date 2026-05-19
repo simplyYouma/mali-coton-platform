@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlaskConical, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FlaskConical, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -110,6 +110,18 @@ export function IndicatorsPage() {
   const [filterDomain, setFilterDomain] = useState<IndicatorDomain | 'all'>('all');
   const [showInactive, setShowInactive] = useState(false);
   const [query, setQuery] = useState('');
+  /** Domaines ouverts. Vide par défaut = tout fermé. Une recherche ou un filtre
+   * spécifique ouvre automatiquement le(s) bloc(s) concerné(s). */
+  const [openDomains, setOpenDomains] = useState<Set<IndicatorDomain>>(new Set());
+
+  const toggleDomain = (d: IndicatorDomain) => {
+    setOpenDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(d)) next.delete(d);
+      else next.add(d);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (creating) setForm(EMPTY);
@@ -270,12 +282,27 @@ export function IndicatorsPage() {
       ) : (
         DOMAIN_ORDER.filter((d) => (grouped[d]?.length ?? 0) > 0).map((domain) => {
           const list = grouped[domain] ?? [];
+          // Si une recherche est active, on force l'ouverture des blocs ayant des matches.
+          const isOpen = openDomains.has(domain) || query.trim().length > 0;
           return (
             <section key={domain} className={styles.block} aria-label={DOMAIN_LABEL[domain]}>
-              <header className={styles.blockHead}>
-                <h2 className={styles.blockTitle}>{DOMAIN_LABEL[domain]}</h2>
+              <button
+                type="button"
+                className={styles.blockHead}
+                onClick={() => toggleDomain(domain)}
+                aria-expanded={isOpen}
+              >
+                <span className={styles.blockHeadLeft}>
+                  {isOpen ? (
+                    <ChevronDown size={14} aria-hidden="true" />
+                  ) : (
+                    <ChevronRight size={14} aria-hidden="true" />
+                  )}
+                  <h2 className={styles.blockTitle}>{DOMAIN_LABEL[domain]}</h2>
+                </span>
                 <span className={styles.blockCount}>{list.length}</span>
-              </header>
+              </button>
+              {isOpen ? (
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -357,6 +384,7 @@ export function IndicatorsPage() {
                   })}
                 </tbody>
               </table>
+              ) : null}
             </section>
           );
         })
