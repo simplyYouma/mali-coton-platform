@@ -41,6 +41,7 @@ import type {
 import {
   LAB_SAMPLE_STATUS_LABEL,
   LAB_SAMPLE_STATUS_VARIANT,
+  POINT_PRELEVEMENT_LABEL,
 } from '../api/collection.types';
 import { useRejectBordereau } from '../hooks/useCollectionMutations';
 import { STATUS_LABEL, STATUS_VARIANT } from '../api/collection.types';
@@ -373,8 +374,21 @@ export function CollectionDetailPage() {
       <section className={styles.summaryGrid} aria-label="Résumé">
         <div className={styles.summaryItem}>
           <span className={styles.summaryLabel}>Site</span>
-          <span className={styles.summaryValue}>{site?.shortName ?? '—'}</span>
+          <span className={styles.summaryValue}>
+            {site?.shortName ?? '—'}
+            {site?.codeSite ? (
+              <span className={styles.summaryHint}> · {site.codeSite}</span>
+            ) : null}
+          </span>
         </div>
+        {collection.pointPrelevement ? (
+          <div className={styles.summaryItem}>
+            <span className={styles.summaryLabel}>Point de prélèvement</span>
+            <span className={styles.summaryValue}>
+              {POINT_PRELEVEMENT_LABEL[collection.pointPrelevement]}
+            </span>
+          </div>
+        ) : null}
         <div className={styles.summaryItem}>
           <span className={styles.summaryLabel}>Date / heure</span>
           <span className={styles.summaryValue}>{formatDateTime(collection.collectedAt)}</span>
@@ -438,7 +452,7 @@ export function CollectionDetailPage() {
                           {rule?.label ?? m.indicatorId}
                         </span>
                         <span className={styles.measureSource}>
-                          {m.thresholdSource ?? rule?.source ?? '—'}
+                          {rule?.method ?? m.thresholdSource ?? rule?.source ?? '—'}
                         </span>
                       </div>
                       {m.acquisition === 'lab_pending' ? (

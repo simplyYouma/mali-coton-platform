@@ -1,7 +1,13 @@
 import type { AuthenticatedUser } from '@/types/common';
 
 interface MockUser extends AuthenticatedUser {
-  password: string;
+  /**
+   * Mot de passe de connexion. `null` = agent terrain, ne se connecte pas à
+   * la plateforme (il travaille uniquement via Kobo Toolbox). Le record reste
+   * néanmoins dans la table pour servir de référentiel (notif e-mail/SMS,
+   * jointure agentId → nom dans la fiche collecte).
+   */
+  password: string | null;
 }
 
 export const mockUsers: MockUser[] = [
@@ -27,6 +33,8 @@ export const mockUsers: MockUser[] = [
     koboUsername: 'm.coulibaly',
     password: 'demo',
   },
+  // Agents terrain — référentiel pour la jointure agentId / nom + notif e-mail/SMS.
+  // Ne se connectent pas à la plateforme (password: null) — saisie via Kobo.
   {
     id: 'u-agent-bko',
     email: 'agent.bamako@sahel.com',
@@ -36,7 +44,7 @@ export const mockUsers: MockUser[] = [
     locale: 'fr',
     phone: '+22376112233',
     koboUsername: 'aicha.toure',
-    password: 'demo',
+    password: null,
   },
   {
     id: 'u-agent-segou',
@@ -47,7 +55,7 @@ export const mockUsers: MockUser[] = [
     locale: 'fr',
     phone: '+22376998877',
     koboUsername: 'issa.traore',
-    password: 'demo',
+    password: null,
   },
   {
     id: 'u-visitor-1',
@@ -62,7 +70,10 @@ export const mockUsers: MockUser[] = [
 
 export function findMockUser(email: string, password: string): AuthenticatedUser | null {
   const user = mockUsers.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password,
+    (u) =>
+      u.email.toLowerCase() === email.toLowerCase() &&
+      u.password !== null &&
+      u.password === password,
   );
   if (!user) return null;
   const { password: _pwd, ...safe } = user;

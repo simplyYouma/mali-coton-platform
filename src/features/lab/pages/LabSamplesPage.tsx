@@ -804,6 +804,9 @@ function FlaconDetail({
                 <li key={m.indicatorId} className={styles.indicatorItem}>
                   <div className={styles.indicatorMain}>
                     <span className={styles.indicatorLabel}>{rule?.label ?? m.indicatorId}</span>
+                    {rule?.method ? (
+                      <span className={styles.indicatorRef}>{rule.method}</span>
+                    ) : null}
                     {hasValue && rangeText ? (
                       <span className={styles.indicatorRef}>
                         seuil {rangeText}

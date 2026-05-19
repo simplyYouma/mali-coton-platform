@@ -26,10 +26,9 @@ import { AnalyticsPage } from '@/features/analytics';
 import { ReportingPage } from '@/features/reporting';
 import { LabSamplesPage } from '@/features/lab';
 import { RoleGuard } from '@/components/common';
-import type { UserRole } from '@/types/common';
 
 export function AppRoutes() {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return (
@@ -42,9 +41,9 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to={defaultRoute(role)} replace />} />
+      <Route path="/login" element={<Navigate to={defaultRoute()} replace />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Navigate to={defaultRoute(role)} replace />} />
+        <Route path="/" element={<Navigate to={defaultRoute()} replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/sites" element={<SitesListPage />} />
         <Route path="/sites/:id" element={<SiteDetailPage />} />
@@ -60,7 +59,7 @@ export function AppRoutes() {
         <Route
           path="/collecte/import"
           element={
-            <RoleGuard roles={['agent', 'admin', 'superviseur']}>
+            <RoleGuard roles={['admin', 'superviseur']}>
               <CollectionImportPage />
             </RoleGuard>
           }
@@ -150,13 +149,12 @@ export function AppRoutes() {
             </RoleGuard>
           }
         />
-        <Route path="*" element={<Navigate to={defaultRoute(role)} replace />} />
+        <Route path="*" element={<Navigate to={defaultRoute()} replace />} />
       </Route>
     </Routes>
   );
 }
 
-function defaultRoute(role: UserRole | null): string {
-  if (role === 'agent') return '/collecte';
+function defaultRoute(): string {
   return '/dashboard';
 }

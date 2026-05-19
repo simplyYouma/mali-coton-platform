@@ -42,14 +42,14 @@ const ALL_NAV: NavSpec[] = [
     to: '/sites',
     label: 'Sites',
     icon: <MapPin size={18} />,
-    roles: ['admin', 'superviseur', 'agent', 'visitor'],
+    roles: ['admin', 'superviseur', 'visitor'],
     section: 'main',
   },
   {
     to: '/collecte',
     label: 'Collectes',
     icon: <ClipboardList size={18} />,
-    roles: ['admin', 'superviseur', 'agent'],
+    roles: ['admin', 'superviseur'],
     section: 'main',
   },
   {

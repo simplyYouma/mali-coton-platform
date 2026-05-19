@@ -349,6 +349,16 @@ export const mockCollections: Collection[] = (() => {
       | 'refused_by_lab'
       | 'rejected_by_supervisor'
       | 'accepted';
+    pointPrelevement?:
+      | 'effluent_sortie'
+      | 'canal_drainage'
+      | 'cours_eau_amont'
+      | 'cours_eau_aval'
+      | 'puits_temoin'
+      | 'sol_direct'
+      | 'sol_reference'
+      | 'air_interieur'
+      | 'air_exterieur';
     sulfatesValue?: number;
     heavyMetalsValue?: number;
     bordereauRef?: string;
@@ -356,13 +366,13 @@ export const mockCollections: Collection[] = (() => {
     rejectionReason?: string;
   }> = [
     // À envoyer (juste sortis de Kobo, étiquetés, le sup choisira le labo)
-    { siteId: 'site-atpek', daysSinceSent: 0.1, labId: '', status: 'prepared' },
-    { siteId: 'site-djiguiyaso', daysSinceSent: 0.2, labId: '', status: 'prepared' },
-    { siteId: 'site-galanimassiriw', daysSinceSent: 0.3, labId: '', status: 'prepared' },
+    { siteId: 'site-atpek', daysSinceSent: 0.1, labId: '', status: 'prepared', pointPrelevement: 'effluent_sortie' },
+    { siteId: 'site-djiguiyaso', daysSinceSent: 0.2, labId: '', status: 'prepared', pointPrelevement: 'canal_drainage' },
+    { siteId: 'site-galanimassiriw', daysSinceSent: 0.3, labId: '', status: 'prepared', pointPrelevement: 'effluent_sortie' },
     // En cours d'analyse côté labo (le sup ne sait pas exactement où ça en est)
-    { siteId: 'site-atpek', daysSinceSent: 1.2, labId: 'lab.lne', status: 'sent' },
-    { siteId: 'site-dianeguela', daysSinceSent: 2.1, labId: 'lab.lne', status: 'sent' },
-    { siteId: 'site-galanimassiriw', daysSinceSent: 2.9, labId: 'lab.lns-bamako', status: 'sent' },
+    { siteId: 'site-atpek', daysSinceSent: 1.2, labId: 'lab.lne', status: 'sent', pointPrelevement: 'cours_eau_aval' },
+    { siteId: 'site-dianeguela', daysSinceSent: 2.1, labId: 'lab.lne', status: 'sent', pointPrelevement: 'effluent_sortie' },
+    { siteId: 'site-galanimassiriw', daysSinceSent: 2.9, labId: 'lab.lns-bamako', status: 'sent', pointPrelevement: 'puits_temoin' },
     { siteId: 'site-djiguiyaso', daysSinceSent: 4.0, labId: 'lab.lne', status: 'sent' },
     { siteId: 'site-dianeguela', daysSinceSent: 5.4, labId: 'lab.lne', status: 'sent' },
     { siteId: 'site-ndomo', daysSinceSent: 6.8, labId: 'lab.sotuba', status: 'sent' },
@@ -465,6 +475,7 @@ export const mockCollections: Collection[] = (() => {
       koboSubmissionUuid: koboUuid(counter),
       koboVersion: 1,
       siteId: lc.siteId,
+      pointPrelevement: lc.pointPrelevement,
       agentId: lc.siteId === 'site-ndomo' ? 'u-agent-segou' : 'u-agent-bko',
       collectedAt: collectedIso,
       status: collectionStatus,

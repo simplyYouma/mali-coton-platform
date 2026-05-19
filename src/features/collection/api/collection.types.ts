@@ -131,6 +131,41 @@ export interface ConditionalContext {
 }
 
 /**
+ * Référentiel canonique des points de prélèvement physique (cf. questionnaire
+ * Kobo Sahel Environnement, voir docs/CAHIER_PROJET.md §2.3).
+ * Une visite (Collection) cible UN point de prélèvement précis du site.
+ */
+export type PointPrelevement =
+  | 'effluent_sortie'
+  | 'canal_drainage'
+  | 'cours_eau_amont'
+  | 'cours_eau_aval'
+  | 'puits_temoin'
+  | 'sol_direct'
+  | 'sol_reference'
+  | 'air_interieur'
+  | 'air_exterieur';
+
+export const POINT_PRELEVEMENT_LABEL: Record<PointPrelevement, string> = {
+  effluent_sortie: 'Effluent en sortie d\'atelier',
+  canal_drainage: 'Canal de drainage',
+  cours_eau_amont: 'Cours d\'eau en amont',
+  cours_eau_aval: 'Cours d\'eau en aval',
+  puits_temoin: 'Puits témoin',
+  sol_direct: 'Sol à l\'aplomb du rejet',
+  sol_reference: 'Sol de référence',
+  air_interieur: 'Air intérieur de l\'atelier',
+  air_exterieur: 'Air extérieur (cour, périphérie)',
+};
+
+/** Milieu (eau / sol / air) déduit du point de prélèvement. */
+export function milieuOf(point: PointPrelevement): 'eau' | 'sol' | 'air' {
+  if (point.startsWith('sol_')) return 'sol';
+  if (point.startsWith('air_')) return 'air';
+  return 'eau';
+}
+
+/**
  * Une révision = un état antérieur de la collecte (avant ré-soumission Kobo).
  * Chaque ré-soumission Kobo conserve le `koboSubmissionUuid` d'origine mais
  * incrémente la version — c'est ainsi qu'on relie sans ambiguïté la
@@ -187,6 +222,11 @@ export interface Collection {
    */
   koboVersion: number;
   siteId: string;
+  /**
+   * Point de prélèvement physique au sein du site (effluent_sortie, canal_drainage…).
+   * Aligné backend `Prelevement.pointPrelevement` (cf. CAHIER_PROJET §2.3).
+   */
+  pointPrelevement?: PointPrelevement;
   agentId: string;
   collectedAt: string;
   status: CollectionStatus;
