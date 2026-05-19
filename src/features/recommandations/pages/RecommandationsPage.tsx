@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ListChecks, Plus, Search, Trash2 } from 'lucide-react';
+import { Bell, CheckCircle2, Info, ListChecks, Plus, Search, Trash2 } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -418,10 +418,18 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
       </dl>
 
       {reco.notifications && reco.notifications.length > 0 ? (
-        <section className={styles.notifSection} aria-label="Notifications envoyées">
+        <section className={styles.notifSection} aria-label="Notifications déclenchées">
           <header className={styles.notifHead}>
             <span className={styles.notifTitle}>
-              Notifications envoyées au responsable
+              <Bell size={12} aria-hidden="true" />
+              Notifications déclenchées
+              <span className={styles.notifBadge} title="Simulation maquette : aucun e-mail ni SMS réel n'est envoyé. Le backend de production déclenchera ces envois via le service de notification.">
+                Simulation maquette
+              </span>
+            </span>
+            <span className={styles.notifHint}>
+              <Info size={11} aria-hidden="true" />
+              Trace des messages que le backend déclenchera (création + chaque changement de statut). Coordonnées résolues depuis l'annuaire interne.
             </span>
           </header>
           <ul className={styles.notifList}>

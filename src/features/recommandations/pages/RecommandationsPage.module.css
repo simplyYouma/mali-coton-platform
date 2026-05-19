@@ -298,16 +298,41 @@
   gap: 2px;
 }
 .notifTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
   font-weight: var(--weight-bold);
 }
+.notifBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-amber-soft);
+  color: var(--color-amber-hover);
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: help;
+  margin-left: 4px;
+}
 .notifHint {
-  font-size: var(--text-xs);
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--text-2xs);
   color: var(--color-text-muted);
-  font-style: italic;
+  font-style: normal;
+  line-height: 1.5;
+}
+.notifHint svg {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 .notifList {
   list-style: none;
