@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Eye, Pencil, RotateCcw, Save, X } from 'lucide-react';
 import { Button, PageHeader } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import {
   DEFAULT_MATRIX,
   GROUP_LABEL,
@@ -22,6 +23,7 @@ const NEXT: Record<PermissionLevel, PermissionLevel> = {
 
 export function RolesPage() {
   const toast = useToast();
+  const confirm = useConfirm();
   const [matrix, setMatrix] = useState(() => loadMatrix());
   const [dirty, setDirty] = useState(false);
 
@@ -53,10 +55,14 @@ export function RolesPage() {
     toast.success('Matrice de permissions enregistrée.');
   };
 
-  const handleReset = () => {
-    if (!window.confirm('Réinitialiser au socle CDC ? Toutes les modifications seront perdues.')) {
-      return;
-    }
+  const handleReset = async () => {
+    const ok = await confirm({
+      title: 'Réinitialiser la matrice ?',
+      message: 'Toutes les modifications de permissions seront perdues. Seul le socle CDC sera conservé.',
+      confirmLabel: 'Réinitialiser',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setMatrix(resetMatrix());
     setDirty(false);
     toast.info('Matrice réinitialisée au socle CDC.');

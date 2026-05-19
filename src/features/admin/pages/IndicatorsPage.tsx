@@ -12,6 +12,7 @@ import {
   Switch,
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import type { Indicator, IndicatorDomain } from '@/features/collection/api/collection.types';
 import {
   useCreateIndicator,
@@ -99,6 +100,7 @@ function formatBounds(i: Indicator): string {
 
 export function IndicatorsPage() {
   const toast = useToast();
+  const confirm = useConfirm();
   const { data, isLoading } = useIndicatorsAdmin();
   const createMut = useCreateIndicator();
   const updateMut = useUpdateIndicator();
@@ -217,7 +219,13 @@ export function IndicatorsPage() {
       toast.info('Seuls les indicateurs personnalisés peuvent être supprimés.');
       return;
     }
-    if (!window.confirm(`Supprimer "${i.label}" ? Action irréversible.`)) return;
+    const ok = await confirm({
+      title: `Supprimer "${i.label}" ?`,
+      message: 'Action irréversible.',
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteMut.mutateAsync(i.id);
       toast.success(`${i.label} supprimé.`);

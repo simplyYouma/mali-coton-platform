@@ -22,6 +22,7 @@ import {
   Skeleton,
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import {
@@ -56,6 +57,7 @@ export function AgentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const confirm = useConfirm();
   const { data: usersPage, isLoading } = useUsers();
   const { data: sitesPage } = useSites();
   const { data: collectionsPage } = useCollections({ agentId: id });
@@ -151,9 +153,13 @@ export function AgentDetailPage() {
 
   const handleDelete = async () => {
     if (!agent) return;
-    if (!window.confirm(`Supprimer définitivement ${agent.fullName} ? L'historique de ses collectes est conservé.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Supprimer ${agent.fullName} ?`,
+      message: 'Suppression définitive de la fiche agent. L\'historique de ses collectes est conservé.',
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteMut.mutateAsync(agent.id);
       toast.success('Agent supprimé.');

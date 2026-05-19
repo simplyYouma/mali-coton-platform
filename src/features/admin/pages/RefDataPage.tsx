@@ -9,6 +9,7 @@ import {
   Select,
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { uuid } from '@/lib/uuid';
 import {
   CATEGORY_HINT,
@@ -35,6 +36,7 @@ const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABE
 
 export function RefDataPage() {
   const toast = useToast();
+  const confirm = useConfirm();
   const [data, setData] = useState(() => loadRefData());
   const [activeCategory, setActiveCategory] = useState<RefCategory>('units');
   const [editing, setEditing] = useState<{ entry: RefEntry; category: RefCategory } | null>(
@@ -106,24 +108,30 @@ export function RefDataPage() {
     toast.success(editing ? 'Entrée modifiée.' : 'Entrée ajoutée au référentiel.');
   };
 
-  const removeEntry = (entry: RefEntry) => {
+  const removeEntry = async (entry: RefEntry) => {
     if (entry.locked) {
       toast.error('Cette entrée du socle CDC ne peut être supprimée.');
       return;
     }
-    if (!window.confirm(`Supprimer « ${entry.label} » ?`)) return;
+    const ok = await confirm({
+      title: `Supprimer « ${entry.label} » ?`,
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     const list = (data[activeCategory] ?? []).filter((e) => e.id !== entry.id);
     persist({ ...data, [activeCategory]: list });
     toast.success('Entrée supprimée.');
   };
 
-  const handleReset = () => {
-    if (
-      !window.confirm(
-        'Réinitialiser tous les référentiels au socle CDC ? Vos ajouts seront perdus.',
-      )
-    )
-      return;
+  const handleReset = async () => {
+    const ok = await confirm({
+      title: 'Réinitialiser les référentiels ?',
+      message: 'Tous vos ajouts personnalisés seront perdus. Seul le socle CDC sera conservé.',
+      confirmLabel: 'Réinitialiser',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setData(resetRefData());
     toast.info('Référentiels réinitialisés.');
   };
@@ -229,7 +237,7 @@ export function RefDataPage() {
                     <IconButton
                       aria-label="Supprimer"
                       variant="ghost"
-                      onClick={() => removeEntry(e)}
+                      onClick={() => void removeEntry(e)}
                       disabled={e.locked}
                     >
                       <Trash2 size={14} />

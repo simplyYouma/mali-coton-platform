@@ -13,6 +13,7 @@ import {
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useDeleteSite, useSites } from '../hooks/useSites';
 import { SiteForm } from '../components/SiteForm';
 import { ConformityBadge } from '../components/ConformityBadge';
@@ -32,6 +33,7 @@ const CONFORMITY_TABS: Array<{ value: 'all' | ConformityLevel; label: string }> 
 export function SitesListPage() {
   const { role } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const canManage = role === 'admin';
   const deleteMut = useDeleteSite();
 
@@ -71,13 +73,13 @@ export function SitesListPage() {
   };
 
   const handleDelete = async (site: Site) => {
-    if (
-      !window.confirm(
-        `Supprimer définitivement le site "${site.shortName}" ? Les collectes associées resteront archivées.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Supprimer "${site.shortName}" ?`,
+      message: 'Suppression définitive du site. Les collectes associées resteront archivées.',
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteMut.mutateAsync(site.id);
       toast.success(`Site ${site.shortName} supprimé.`);

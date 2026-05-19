@@ -14,6 +14,7 @@ import {
   Switch,
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { formatRelativeTime } from '@/lib/format';
 import type { UserRole } from '@/types/common';
@@ -80,6 +81,7 @@ type RoleFilter = 'all' | LoginableRole;
 
 export function UsersPage() {
   const toast = useToast();
+  const confirm = useConfirm();
   const { data: usersPage, isLoading } = useUsers();
   const { data: sitesPage } = useSites();
   const createMut = useCreateUser();
@@ -205,12 +207,13 @@ export function UsersPage() {
   };
 
   const handleDelete = async (user: ManagedUser) => {
-    if (
-      !window.confirm(
-        `Supprimer définitivement ${user.fullName} ? Cette action est tracée dans le journal d'audit.`,
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `Supprimer ${user.fullName} ?`,
+      message: 'Suppression définitive. L\'action est tracée dans le journal d\'audit.',
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteMut.mutateAsync(user.id);
       toast.success('Utilisateur supprimé.');

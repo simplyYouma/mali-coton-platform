@@ -23,6 +23,7 @@ import {
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { mockUsers } from '@/mocks/fixtures/users';
 import { findRule, computeLocalConformity } from '@/features/collection/lib/indicatorRules';
@@ -83,6 +84,7 @@ export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const { data: site, isLoading, isError } = useSite(id);
   const deleteMut = useDeleteSite();
 
@@ -201,7 +203,13 @@ export function SiteDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm(`Supprimer définitivement ${site.shortName} ?`)) return;
+    const ok = await confirm({
+      title: `Supprimer ${site.shortName} ?`,
+      message: 'Suppression définitive du site et de toutes ses données associées.',
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteMut.mutateAsync(site.id);
       toast.success(`${site.shortName} supprimé.`);

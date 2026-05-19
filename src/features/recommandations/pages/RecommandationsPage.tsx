@@ -14,6 +14,7 @@ import {
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import {
@@ -59,6 +60,7 @@ const EMPTY_FORM: FormState = {
 export function RecommandationsPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const { data: page, isLoading } = useRecommandations();
   const { data: sitesPage } = useSites();
   const createMut = useCreateRecommandation();
@@ -137,7 +139,12 @@ export function RecommandationsPage() {
   };
 
   const handleDelete = async (r: Recommandation) => {
-    if (!window.confirm(`Supprimer la recommandation "${r.titre}" ?`)) return;
+    const ok = await confirm({
+      title: `Supprimer "${r.titre}" ?`,
+      confirmLabel: 'Supprimer',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteMut.mutateAsync(r.id);
       toast.success('Recommandation supprimée.');
