@@ -1,6 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Beaker, CloudOff, Download, Eye, ShieldAlert } from 'lucide-react';
+import {
+  ArrowRight,
+  Beaker,
+  CloudOff,
+  Download,
+  Eye,
+  FlaskConical,
+  Gauge,
+  Siren,
+  ShieldAlert,
+  ShieldCheck,
+  UsersRound,
+} from 'lucide-react';
 import type { AlertCategory } from '@/features/alerts/api/alerts.types';
 import { Badge, Button, Select, Skeleton, Tabs } from '@/components/common';
 import { LineChart } from '@/components/common/charts';
@@ -199,21 +211,34 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      {/* ─── Hero éditorial ─── */}
+      {/* ─── Hero + barre de contrôle (période, site, export) ─── */}
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>{sites.length} sites · {today}</span>
           <h1 className={styles.heroTitle}>Tableau de bord</h1>
         </div>
-        <div className={styles.heroRight}>
+        <div className={styles.heroControls}>
+          <Tabs
+            value={period}
+            onChange={setPeriod}
+            items={PERIODS}
+            variant="pill"
+            aria-label="Période"
+          />
+          <Select<string>
+            value={siteFilter}
+            onChange={setSiteFilter}
+            options={siteOptions}
+            aria-label="Filtrer par site"
+          />
           <Button variant="secondary" iconLeft={<Download size={14} />}>
             Exporter
           </Button>
         </div>
       </header>
 
-      {/* ─── Executive summary (D1) : 4 KPIs stratégiques en grand ─── */}
-      <section className={styles.execGrid} aria-label="Vue exécutive">
+      {/* ─── Vue stratégique (4 tiles : Score · Risque · Conformité · Alertes) ─── */}
+      <section className={styles.execGrid} aria-label="Vue stratégique">
         <article
           className={styles.execTile}
           data-tone={
@@ -226,7 +251,10 @@ export function DashboardPage() {
                   : 'danger'
           }
         >
-          <span className={styles.execLabel}>Score environnemental</span>
+          <header className={styles.execTileHead}>
+            <Gauge size={14} aria-hidden="true" />
+            <span className={styles.execLabel}>Score environnemental</span>
+          </header>
           <div className={styles.execMain}>
             <span className={styles.execValue}>
               {isLoading ? '—' : execSummary.envScore}
@@ -245,7 +273,10 @@ export function DashboardPage() {
         </article>
 
         <article className={styles.execTile} data-tone={RISK_TONE[execSummary.riskLevel]}>
-          <span className={styles.execLabel}>Niveau de risque</span>
+          <header className={styles.execTileHead}>
+            <Siren size={14} aria-hidden="true" />
+            <span className={styles.execLabel}>Niveau de risque</span>
+          </header>
           <div className={styles.execMain}>
             <span className={styles.execLevel}>
               {RISK_LABEL[execSummary.riskLevel]}
@@ -262,7 +293,10 @@ export function DashboardPage() {
           className={styles.execTile}
           data-tone={execSummary.conformityRate >= 80 ? 'success' : 'warning'}
         >
-          <span className={styles.execLabel}>Conformité globale</span>
+          <header className={styles.execTileHead}>
+            <ShieldCheck size={14} aria-hidden="true" />
+            <span className={styles.execLabel}>Conformité globale</span>
+          </header>
           <div className={styles.execMain}>
             <span className={styles.execValue}>
               {isLoading ? '—' : execSummary.conformityRate}
@@ -281,7 +315,10 @@ export function DashboardPage() {
           className={styles.execTile}
           data-tone={execSummary.criticalAlerts === 0 ? 'success' : 'danger'}
         >
-          <span className={styles.execLabel}>Alertes critiques</span>
+          <header className={styles.execTileHead}>
+            <ShieldAlert size={14} aria-hidden="true" />
+            <span className={styles.execLabel}>Alertes critiques</span>
+          </header>
           <div className={styles.execMain}>
             <span className={styles.execValue}>{execSummary.criticalAlerts}</span>
           </div>
@@ -293,56 +330,72 @@ export function DashboardPage() {
         </article>
       </section>
 
-      {/* ─── KPIs secondaires (non redondants avec l'exec summary) ─── */}
-      <section className={styles.kpiStrip}>
-        <KpiInline
-          label={`Collectes ${days} j`}
-          value={isLoading ? '—' : String(kpis.totalCollections30d)}
-          trend={
-            periodInsights.collectionsTrend === 0
-              ? '='
-              : `${periodInsights.collectionsTrend > 0 ? '+' : ''}${periodInsights.collectionsTrend}%`
-          }
-          tone={periodInsights.collectionsTrend >= 0 ? 'positive' : 'warning'}
-          caption={`précédent · ${periodInsights.collectionsPrev}`}
-          spark={periodInsights.collectionsSpark}
-          sparkColor="var(--color-primary)"
-        />
-        <KpiInline
-          label="Agents actifs"
-          value={isLoading ? '—' : String(kpis.activeAgents)}
-          caption={`sur ${sites.length} sites`}
-          tone="neutral"
-        />
-        <KpiInline
-          label="Bordereaux en attente"
-          value={isLoading ? '—' : String(kpis.pendingLab ?? 0)}
-          caption="à transmettre au labo"
-          tone={(kpis.pendingLab ?? 0) > 5 ? 'warning' : 'neutral'}
-        />
-      </section>
+      {/* ─── Activité opérationnelle (collectes · agents · bordereaux) ─── */}
+      <section className={styles.activityCard} aria-label="Activité opérationnelle">
+        <header className={styles.activityHead}>
+          <h2 className={styles.activityTitle}>Activité sur la période</h2>
+          <span className={styles.activityMeta}>
+            {kpis.totalCollections30d} collecte{kpis.totalCollections30d > 1 ? 's' : ''} · {days} derniers jours
+          </span>
+        </header>
+        <div className={styles.activityGrid}>
+          <div className={styles.activityItem}>
+            <header className={styles.activityItemHead}>
+              <FlaskConical size={14} aria-hidden="true" />
+              <span>Collectes {days} j</span>
+              {periodInsights.collectionsTrend !== 0 ? (
+                <span
+                  className={styles.activityTrend}
+                  data-tone={periodInsights.collectionsTrend >= 0 ? 'positive' : 'warning'}
+                >
+                  {periodInsights.collectionsTrend > 0 ? '+' : ''}
+                  {periodInsights.collectionsTrend}%
+                </span>
+              ) : null}
+            </header>
+            <span className={styles.activityValue}>
+              {isLoading ? '—' : kpis.totalCollections30d}
+            </span>
+            <footer className={styles.activityFoot}>
+              <span>précédent · {periodInsights.collectionsPrev}</span>
+              {periodInsights.collectionsSpark.length > 1 ? (
+                <Sparkline values={periodInsights.collectionsSpark} color="var(--color-primary)" />
+              ) : null}
+            </footer>
+          </div>
 
-      {/* ─── Filtres période / site ─── */}
-      <div className={styles.toolbar}>
-        <Tabs
-          value={period}
-          onChange={setPeriod}
-          items={PERIODS}
-          variant="pill"
-          aria-label="Période"
-        />
-        <div className={styles.toolbarSelect}>
-          <Select<string>
-            value={siteFilter}
-            onChange={setSiteFilter}
-            options={siteOptions}
-            aria-label="Filtrer par site"
-          />
+          <div className={styles.activityItem}>
+            <header className={styles.activityItemHead}>
+              <UsersRound size={14} aria-hidden="true" />
+              <span>Agents actifs</span>
+            </header>
+            <span className={styles.activityValue}>
+              {isLoading ? '—' : kpis.activeAgents}
+            </span>
+            <footer className={styles.activityFoot}>
+              <span>sur {sites.length} sites couverts</span>
+            </footer>
+          </div>
+
+          <div className={styles.activityItem}>
+            <header className={styles.activityItemHead}>
+              <Beaker size={14} aria-hidden="true" />
+              <span>Bordereaux en attente</span>
+              {(kpis.pendingLab ?? 0) > 5 ? (
+                <span className={styles.activityTrend} data-tone="warning">
+                  élevé
+                </span>
+              ) : null}
+            </header>
+            <span className={styles.activityValue}>
+              {isLoading ? '—' : (kpis.pendingLab ?? 0)}
+            </span>
+            <footer className={styles.activityFoot}>
+              <span>à transmettre au laboratoire</span>
+            </footer>
+          </div>
         </div>
-        <span className={styles.toolbarMeta}>
-          {kpis.totalCollections30d} collectes sur la période
-        </span>
-      </div>
+      </section>
 
       {/* ─── Charts ─── */}
       <div className={styles.split}>
@@ -504,46 +557,6 @@ function ConformityBar({ value }: { value: number }) {
   return (
     <div className={styles.confBar} aria-hidden="true">
       <div className={styles.confBarFill} style={{ width: `${Math.max(2, Math.min(100, value))}%` }} />
-    </div>
-  );
-}
-
-interface KpiInlineProps {
-  label: string;
-  value: string;
-  trend?: string;
-  tone?: 'positive' | 'warning' | 'neutral';
-  caption?: string;
-  spark?: number[];
-  sparkColor?: string;
-}
-
-function KpiInline({
-  label,
-  value,
-  trend,
-  tone = 'neutral',
-  caption,
-  spark,
-  sparkColor = 'var(--color-primary)',
-}: KpiInlineProps) {
-  return (
-    <div className={styles.kpiInline}>
-      <div className={styles.kpiInlineHead}>
-        <span className={styles.kpiInlineLabel}>{label}</span>
-        {trend ? (
-          <span className={styles.kpiInlineTrend} data-tone={tone}>
-            {trend}
-          </span>
-        ) : null}
-      </div>
-      <span className={styles.kpiInlineValue}>{value}</span>
-      <div className={styles.kpiInlineFooter}>
-        {caption ? <span className={styles.kpiInlineCaption}>{caption}</span> : null}
-        {spark && spark.length > 1 ? (
-          <Sparkline values={spark} color={sparkColor} />
-        ) : null}
-      </div>
     </div>
   );
 }
