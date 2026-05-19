@@ -8,6 +8,7 @@ import {
   Map,
   BarChart3,
   FileText,
+  Lightbulb,
   Users,
   UsersRound,
   SlidersHorizontal,
@@ -71,6 +72,13 @@ const ALL_NAV: NavSpec[] = [
     label: 'Alertes',
     icon: <AlertTriangle size={18} />,
     roles: ['admin', 'superviseur'],
+    section: 'main',
+  },
+  {
+    to: '/recommandations',
+    label: 'Recommandations',
+    icon: <Lightbulb size={18} />,
+    roles: ['admin', 'superviseur', 'visitor'],
     section: 'main',
   },
   {

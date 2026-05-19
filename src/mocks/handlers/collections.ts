@@ -2,11 +2,17 @@ import { http, HttpResponse, delay } from 'msw';
 import { mockCollections } from '../fixtures/collections';
 import { mockUsers } from '../fixtures/users';
 import { mockLabs } from '../fixtures/labs';
+import { mockSites } from '../fixtures/sites';
 import {
   hasPendingLabSamples,
   type Collection,
   type CollectionNotification,
+  type Measurement,
 } from '@/features/collection/api/collection.types';
+import {
+  validateKoboSubmission,
+  type KoboSubmission,
+} from '@/features/collection/api/../lib/koboIngestion';
 import { uuid } from '@/lib/uuid';
 
 /**
@@ -372,6 +378,103 @@ export const collectionsHandlers = [
       return HttpResponse.json(item);
     },
   ),
+
+  /**
+   * POST /api/v1/kobo/webhook — point d'entrée d'ingestion Kobo (cf. CAHIER_PROJET §5).
+   * En prod : webhook configuré côté Kobo, payload validé puis transformé en
+   * CollecteTerrain + Prelevement + Echantillons + AnalyseLab + Resultats.
+   * En maquette : valide la structure, crée ou MAJ une Collection mockée,
+   * incrémente koboVersion si même id_collecte_sa déjà connu.
+   */
+  http.post('/api/v1/kobo/webhook', async ({ request }) => {
+    await delay(280);
+    const payload = (await request.json()) as Partial<KoboSubmission>;
+    const knownSiteCodes = mockSites.map((s) => s.codeSite);
+
+    const validation = validateKoboSubmission(payload, knownSiteCodes);
+    if (!validation.ok) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: validation.errorCode,
+            message: validation.message,
+            correlationId: uuid(),
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const site = mockSites.find((s) => s.codeSite === payload.site_code);
+    if (!site) {
+      return HttpResponse.json(
+        { error: { code: 'unknown_site', message: 'Site introuvable', correlationId: uuid() } },
+        { status: 404 },
+      );
+    }
+
+    // Cherche une collection existante par externalId (= id_collecte_sa)
+    const existing = mockCollections.find((c) => c.koboSubmissionUuid === payload.id_collecte_sa);
+    const now = new Date().toISOString();
+
+    if (existing) {
+      // Re-soumission : incrémente la version, archive l'état actuel en revisions.
+      existing.revisions = [
+        ...(existing.revisions ?? []),
+        {
+          version: existing.koboVersion,
+          submittedAt: existing.syncedAt ?? existing.collectedAt,
+          measurementsCount: existing.measurements.length,
+          photosCount: existing.photos.length,
+          reason: 'correction_requested',
+        },
+      ];
+      existing.koboVersion = (existing.koboVersion ?? 1) + 1;
+      existing.syncedAt = now;
+      existing.status = hasPendingLabSamples(existing) ? 'awaiting_lab' : 'submitted';
+      return HttpResponse.json(
+        {
+          accepted: true,
+          collectionId: existing.id,
+          koboVersion: existing.koboVersion,
+          isUpdate: true,
+        },
+        { status: 200 },
+      );
+    }
+
+    // Nouvelle collection
+    const id = `col-${uuid().slice(0, 8)}`;
+    const measurements: Measurement[] = Object.entries(payload.mesures ?? {}).map(
+      ([indicatorId, value]) => ({
+        indicatorId,
+        acquisition: value === null ? 'lab_pending' : 'in_situ',
+        value,
+        unit: '',
+      }),
+    );
+    const created: Collection = {
+      id,
+      koboSubmissionUuid: payload.id_collecte_sa!,
+      koboVersion: payload._version ?? 1,
+      siteId: site.id,
+      pointPrelevement: payload.point_prelev,
+      agentId:
+        mockUsers.find((u) => u.koboUsername === payload.agent)?.id ?? 'u-agent-bko',
+      collectedAt: payload.date_prelevement!,
+      status: measurements.some((m) => m.acquisition === 'lab_pending') ? 'awaiting_lab' : 'submitted',
+      syncedAt: now,
+      gps: payload.gps_prelevement ?? null,
+      measurements,
+      photos: [],
+      notes: payload.obs_generales,
+    };
+    mockCollections.push(created);
+    return HttpResponse.json(
+      { accepted: true, collectionId: id, koboVersion: created.koboVersion, isUpdate: false },
+      { status: 201 },
+    );
+  }),
 
   /** POST .../lab-samples/:containerId/send — superviseur marque le flacon comme parti au labo. */
   http.post(

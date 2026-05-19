@@ -37,11 +37,13 @@ import type {
 import { POINT_PRELEVEMENT_LABEL } from '../api/collection.types';
 import { STATUS_LABEL, STATUS_VARIANT } from '../api/collection.types';
 import { findRule } from '../lib/indicatorRules';
+import { computeQualityScore, QUALITY_LEVEL_LABEL } from '../lib/qualityScore';
+import { detectAnomalies } from '../lib/anomalyDetection';
 import { PhotoLightbox } from '../components/PhotoLightbox';
 import { CorrectionStepsPicker } from '../components/CorrectionStepsPicker';
 import { correctionStepLabel } from '../lib/correctionSteps';
 import { buildCollectionTimeline, type TimelineEvent } from '../lib/collectionTimeline';
-import { useCollection } from '../hooks/useCollections';
+import { useCollection, useCollections } from '../hooks/useCollections';
 import {
   useRejectCollection,
   useRequestCorrection,
@@ -113,7 +115,7 @@ export function CollectionDetailPage() {
   const { user, role } = useAuth();
   const { data: collection, isLoading, error } = useCollection(id);
   const { data: sitesPage } = useSites();
-  const { data: labs } = useLabs();
+  const { data: collectionsPage } = useCollections();
   const validateMut = useValidateCollection();
   const rejectMut = useRejectCollection();
   const correctionMut = useRequestCorrection();
@@ -170,6 +172,19 @@ export function CollectionDetailPage() {
     mockUsers.forEach((u) => map.set(u.id, u.fullName));
     return map;
   }, []);
+
+  const qualityScore = useMemo(
+    () => (collection ? computeQualityScore(collection) : null),
+    [collection],
+  );
+
+  const anomalies = useMemo(
+    () =>
+      collection && collectionsPage
+        ? detectAnomalies(collection, collectionsPage.items)
+        : [],
+    [collection, collectionsPage],
+  );
 
   const grouped = useMemo(
     () => (collection ? groupByDomain(collection.measurements) : null),
@@ -450,6 +465,76 @@ export function CollectionDetailPage() {
           </span>
         </div>
       </section>
+
+      {qualityScore ? (
+        <section
+          className={styles.qualityCard}
+          data-level={qualityScore.level}
+          aria-label="Score qualité de la collecte"
+        >
+          <div className={styles.qualityHead}>
+            <div className={styles.qualityScoreBlock}>
+              <span className={styles.qualityScoreValue}>{qualityScore.score}</span>
+              <span className={styles.qualityScoreOver}>/100</span>
+            </div>
+            <div className={styles.qualityMeta}>
+              <span className={styles.qualityLevel}>
+                Qualité {QUALITY_LEVEL_LABEL[qualityScore.level]}
+              </span>
+              <span className={styles.qualityHint}>
+                {qualityScore.issues.length === 0
+                  ? 'Aucun défaut détecté — collecte conforme aux exigences structurelles.'
+                  : `${qualityScore.issues.length} point${qualityScore.issues.length > 1 ? 's' : ''} d'attention détecté${qualityScore.issues.length > 1 ? 's' : ''}.`}
+              </span>
+            </div>
+          </div>
+          {qualityScore.issues.length > 0 ? (
+            <ul className={styles.qualityIssues}>
+              {qualityScore.issues.map((issue, i) => (
+                <li key={`${issue.code}-${i}`}>
+                  <span className={styles.qualityIssueWeight}>−{issue.weight}</span>
+                  <span>{issue.label}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
+      {anomalies.length > 0 ? (
+        <section
+          className={styles.anomaliesBlock}
+          aria-label="Valeurs aberrantes détectées"
+        >
+          <header className={styles.anomaliesHead}>
+            <span className={styles.anomaliesTitle}>
+              {anomalies.length} valeur{anomalies.length > 1 ? 's' : ''} inhabituelle{anomalies.length > 1 ? 's' : ''} vs historique du site
+            </span>
+            <span className={styles.anomaliesHint}>
+              Calculé par déviation médiane robuste (MAD). Vérifier les mesures concernées.
+            </span>
+          </header>
+          <ul className={styles.anomaliesList}>
+            {anomalies.map((a) => {
+              const rule = findRule(a.indicatorId);
+              return (
+                <li key={a.indicatorId} data-level={a.level}>
+                  <span className={styles.anomaliesIndicator}>{rule?.label ?? a.indicatorId}</span>
+                  <span className={styles.anomaliesValue}>
+                    {a.value}{rule?.unit ? ` ${rule.unit}` : ''}
+                  </span>
+                  <span className={styles.anomaliesMedian}>
+                    médiane site : {Number(a.median.toFixed(2))}{rule?.unit ? ` ${rule.unit}` : ''}
+                  </span>
+                  <span className={styles.anomaliesZ}>
+                    z<sub>robust</sub> = {a.zRobust.toFixed(1)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       {grouped ? (
         <section className={styles.section} aria-label="Mesures par domaine">

@@ -6,6 +6,7 @@ import { collectionsHandlers } from './collections';
 import { labsHandlers } from './labs';
 import { adminHandlers } from './admin';
 import { alertsHandlers } from './alerts';
+import { recommandationsHandlers } from './recommandations';
 
 export const handlers: HttpHandler[] = [
   ...authHandlers,
@@ -15,4 +16,5 @@ export const handlers: HttpHandler[] = [
   ...labsHandlers,
   ...adminHandlers,
   ...alertsHandlers,
+  ...recommandationsHandlers,
 ];

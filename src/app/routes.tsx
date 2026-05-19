@@ -20,6 +20,7 @@ import {
   RefDataPage,
 } from '@/features/admin';
 import { AlertsPage } from '@/features/alerts';
+import { RecommandationsPage } from '@/features/recommandations';
 import { TeamListPage, AgentDetailPage } from '@/features/team';
 import { MappingPage } from '@/features/mapping';
 import { AnalyticsPage } from '@/features/analytics';
@@ -82,6 +83,14 @@ export function AppRoutes() {
           }
         />
         <Route path="/alertes" element={<AlertsPage />} />
+        <Route
+          path="/recommandations"
+          element={
+            <RoleGuard roles={['admin', 'superviseur', 'visitor']}>
+              <RecommandationsPage />
+            </RoleGuard>
+          }
+        />
         <Route
           path="/agents"
           element={
