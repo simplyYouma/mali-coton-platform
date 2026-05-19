@@ -33,6 +33,7 @@ export function AnalyticsPage() {
 
   const [indicatorId, setIndicatorId] = useState<string>('water.ph');
   const [activeSiteIds, setActiveSiteIds] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<'trend' | 'distribution' | 'comparison'>('trend');
 
   const { data: sitesPage } = useSites();
   const { data: collectionsPage, isLoading } = useCollections({});
@@ -508,12 +509,29 @@ export function AnalyticsPage() {
         </div>
       </section>
 
+      <div className={styles.analyticsTabs}>
+        <Tabs<'trend' | 'distribution' | 'comparison'>
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: 'trend', label: 'Tendance & composite' },
+            { value: 'distribution', label: 'Distribution & dépassements' },
+            { value: 'comparison', label: 'Comparaison multi-sites' },
+          ]}
+          variant="underline"
+          aria-label="Vue d'analyse"
+        />
+      </div>
+
+      {tab === 'trend' ? (
       <div className={styles.split}>
         <section className={styles.panel} aria-labelledby="trend-heading">
           <header className={styles.panelHeader}>
+            <span className={styles.panelHeaderIcon} aria-hidden="true">
+              <TrendingUp size={18} />
+            </span>
             <div className={styles.panelTitleGroup}>
               <h2 id="trend-heading" className={styles.panelTitle}>
-                <TrendingUp size={16} className={styles.panelTitleIcon} />
                 Tendance — {rule?.label}
               </h2>
               <span className={styles.panelCaption}>
@@ -574,13 +592,17 @@ export function AnalyticsPage() {
           </p>
         </section>
       </div>
+      ) : null}
 
+      {tab === 'distribution' ? (
       <div className={styles.split}>
         <section className={styles.panel} aria-labelledby="distribution-heading">
           <header className={styles.panelHeader}>
+            <span className={styles.panelHeaderIcon} aria-hidden="true">
+              <BarChart3 size={18} />
+            </span>
             <div className={styles.panelTitleGroup}>
               <h2 id="distribution-heading" className={styles.panelTitle}>
-                <BarChart3 size={16} className={styles.panelTitleIcon} />
                 Distribution — {rule?.label}
               </h2>
               <span className={styles.panelCaption}>
@@ -609,9 +631,11 @@ export function AnalyticsPage() {
 
         <section className={styles.panel} aria-labelledby="outliers-heading">
           <header className={styles.panelHeader}>
+            <span className={styles.panelHeaderIcon} data-tone="danger" aria-hidden="true">
+              <TrendingDown size={18} />
+            </span>
             <div className={styles.panelTitleGroup}>
               <h2 id="outliers-heading" className={styles.panelTitle}>
-                <TrendingDown size={16} className={styles.panelTitleIcon} />
                 Top dépassements
               </h2>
               <span className={styles.panelCaption}>5 mesures les plus éloignées du seuil</span>
@@ -650,12 +674,16 @@ export function AnalyticsPage() {
           </div>
         </section>
       </div>
+      ) : null}
 
+      {tab === 'comparison' ? (
       <section className={styles.panel} aria-labelledby="comparator-heading">
         <header className={styles.panelHeader}>
+          <span className={styles.panelHeaderIcon} aria-hidden="true">
+            <BarChart3 size={18} />
+          </span>
           <div className={styles.panelTitleGroup}>
             <h2 id="comparator-heading" className={styles.panelTitle}>
-              <BarChart3 size={16} className={styles.panelTitleIcon} />
               Comparateur multi-sites — {rule?.label}
             </h2>
             <span className={styles.panelCaption}>
@@ -707,6 +735,7 @@ export function AnalyticsPage() {
           )}
         </div>
       </section>
+      ) : null}
     </div>
   );
 }

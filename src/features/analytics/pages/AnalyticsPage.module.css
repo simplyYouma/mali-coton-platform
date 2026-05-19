@@ -303,11 +303,25 @@
 }
 .panelHeader {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
+}
+.panelHeaderIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.panelHeaderIcon[data-tone='danger'] {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 .panelTitleGroup {
   display: flex;
@@ -627,10 +641,9 @@
   margin-left: 6px;
   font-weight: var(--weight-medium);
 }
-.panelTitleIcon {
-  vertical-align: text-bottom;
-  margin-right: 6px;
-  color: var(--color-primary);
+/* Onglets analytiques (entre stats strip et widgets) */
+.analyticsTabs {
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* ── Widget : Distribution histogram ── */
