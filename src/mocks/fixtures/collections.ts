@@ -101,6 +101,59 @@ const VALIDATION_NOTES_BANK: string[] = [
   "Confirmation visuelle des cuves et du caniveau de rejet. Validation après recoupement avec la collecte précédente.",
 ];
 
+/**
+ * Génère les mesures complémentaires d'une collecte pour couvrir l'ensemble
+ * des sections du questionnaire Sahel Environnement (§2.1 du cahier) :
+ * B (eaux usées in-situ — reste), C (eaux usées labo + métaux),
+ * D (sol in-situ — reste), E (sol labo — sélection métaux),
+ * F (air in-situ — reste), G (air labo COV).
+ *
+ * Le site `dianeguela` porte la chronique critique (effluent industriel) :
+ * conductivité, MES, DBO5/DCO, métaux et plomb du sol en dépassement.
+ */
+function buildExtraMeasurements(siteId: string): Collection['measurements'] {
+  const isCritical = siteId === 'site-dianeguela';
+  const r = (min: number, max: number) => min + Math.random() * (max - min);
+  return [
+    // Section B — Eaux usées in-situ (reste)
+    { indicatorId: 'water.temperature', acquisition: 'in_situ', value: r(25, 32), unit: '°C' },
+    { indicatorId: 'water.conductivity', acquisition: 'in_situ', value: isCritical ? r(3500, 5200) : r(800, 2200), unit: 'µS/cm' },
+    { indicatorId: 'water.turbidity', acquisition: 'in_situ', value: isCritical ? r(80, 180) : r(8, 45), unit: 'NTU' },
+    { indicatorId: 'water.tds', acquisition: 'in_situ', value: isCritical ? r(1800, 2600) : r(400, 1100), unit: 'mg/L' },
+    // Section C — Eaux usées labo (reste, hors sulfates déjà présent)
+    { indicatorId: 'water.mes', acquisition: 'lab_received', value: isCritical ? r(280, 420) : r(40, 160), unit: 'mg/L' },
+    { indicatorId: 'water.color', acquisition: 'lab_received', value: isCritical ? r(700, 1100) : r(80, 350), unit: 'Pt-Co' },
+    { indicatorId: 'water.dbo5', acquisition: 'lab_received', value: isCritical ? r(180, 240) : r(30, 110), unit: 'mg O₂/L' },
+    { indicatorId: 'water.dco', acquisition: 'lab_received', value: isCritical ? r(480, 640) : r(80, 280), unit: 'mg O₂/L' },
+    { indicatorId: 'water.nh4', acquisition: 'lab_received', value: r(0.4, 4.2), unit: 'mg/L' },
+    { indicatorId: 'water.no2', acquisition: 'lab_received', value: r(0.05, 0.5), unit: 'mg/L' },
+    { indicatorId: 'water.no3', acquisition: 'lab_received', value: r(5, 25), unit: 'mg/L' },
+    { indicatorId: 'water.phosphorus', acquisition: 'lab_received', value: r(0.5, 4.0), unit: 'mg/L' },
+    // Métaux eaux (sélection 7/12)
+    { indicatorId: 'water.metals.fe', acquisition: 'lab_received', value: r(0.2, 2.4), unit: 'mg/L' },
+    { indicatorId: 'water.metals.cr3', acquisition: 'lab_received', value: r(0.02, 0.4), unit: 'mg/L' },
+    { indicatorId: 'water.metals.cr6', acquisition: 'lab_received', value: isCritical ? r(0.15, 0.6) : r(0.005, 0.05), unit: 'mg/L' },
+    { indicatorId: 'water.metals.cu', acquisition: 'lab_received', value: r(0.1, 1.5), unit: 'mg/L' },
+    { indicatorId: 'water.metals.zn', acquisition: 'lab_received', value: r(0.3, 3.5), unit: 'mg/L' },
+    { indicatorId: 'water.metals.pb', acquisition: 'lab_received', value: r(0.01, 0.15), unit: 'mg/L' },
+    { indicatorId: 'water.metals.cd', acquisition: 'lab_received', value: r(0.001, 0.04), unit: 'mg/L' },
+    // Section D — Sol in-situ (reste, hors soil.ph déjà présent)
+    { indicatorId: 'soil.conductivity', acquisition: 'in_situ', value: isCritical ? r(2200, 3800) : r(300, 1200), unit: 'µS/cm' },
+    // Section E — Sol labo (sélection métaux critiques)
+    { indicatorId: 'soil.metals.pb', acquisition: 'lab_received', value: isCritical ? r(80, 240) : r(8, 45), unit: 'mg/kg' },
+    { indicatorId: 'soil.metals.cd', acquisition: 'lab_received', value: r(0.5, 5.0), unit: 'mg/kg' },
+    { indicatorId: 'soil.metals.cr6', acquisition: 'lab_received', value: isCritical ? r(30, 80) : r(3, 15), unit: 'mg/kg' },
+    // Section F — Air in-situ (reste, hors air.pm25 déjà présent)
+    { indicatorId: 'air.pm10', acquisition: 'in_situ', value: r(30, 70), unit: 'µg/m³' },
+    { indicatorId: 'air.co', acquisition: 'in_situ', value: r(1.5, 6.5), unit: 'mg/m³' },
+    { indicatorId: 'air.no2', acquisition: 'in_situ', value: r(20, 120), unit: 'µg/m³' },
+    { indicatorId: 'air.co2', acquisition: 'in_situ', value: r(500, 1300), unit: 'ppm' },
+    { indicatorId: 'air.so2', acquisition: 'in_situ', value: r(10, 80), unit: 'µg/m³' },
+    // Section G — Air labo (COV)
+    { indicatorId: 'air.voc', acquisition: 'lab_received', value: r(0.05, 0.6), unit: 'mg/m³' },
+  ];
+}
+
 export const mockCollections: Collection[] = (() => {
   const list: Collection[] = [];
   let counter = 0;
@@ -195,6 +248,7 @@ export const mockCollections: Collection[] = (() => {
             value: Math.floor(15 + Math.random() * 30),
             unit: 'pers.',
           },
+          ...buildExtraMeasurements(site.id),
         ],
         photos: [],
         notes: i === 0 ? 'Visite régulière. RAS sur les conditions d\'accueil.' : undefined,

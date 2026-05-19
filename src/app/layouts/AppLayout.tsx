@@ -23,6 +23,7 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { useSyncQueue } from '@/features/collection/hooks/useSyncQueue';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
+import { useRecommandations } from '@/features/recommandations/hooks/useRecommandations';
 import type { UserRole } from '@/types/common';
 
 interface NavSpec extends NavItem {
@@ -169,6 +170,11 @@ export function AppLayout() {
     ? (alertsQ.data?.items ?? []).filter((a) => a.severity === 'critical').length
     : 0;
 
+  const recoQ = useRecommandations();
+  const openRecoCount = (recoQ.data?.items ?? []).filter(
+    (r) => r.statut === 'proposee' || r.statut === 'en_cours',
+  ).length;
+
   const groups: Record<string, NavItem[]> = { main: [], tools: [], admin: [] };
   ALL_NAV.forEach((item) => {
     if (!role || !item.roles.includes(role)) return;
@@ -180,6 +186,10 @@ export function AppLayout() {
     if (rest.to === '/alertes' && criticalAlertsCount > 0) {
       rest.badge = criticalAlertsCount;
       rest.badgeTone = 'danger';
+    }
+    if (rest.to === '/recommandations' && openRecoCount > 0) {
+      rest.badge = openRecoCount;
+      rest.badgeTone = 'warning';
     }
     groups[section]!.push(rest);
   });

@@ -708,7 +708,8 @@
   text-overflow: ellipsis;
 }
 
-/* ── Dock flottant des actions superviseur ── */
+/* ── Dock flottant des actions superviseur — container transparent, les
+ * boutons portent leur propre tone ── */
 .supDock {
   position: fixed;
   right: var(--space-5);
@@ -716,11 +717,11 @@
   z-index: 40;
   display: inline-flex;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  box-shadow: 0 10px 24px -10px rgba(15, 23, 42, 0.25);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 @media (max-width: 768px) {
   .supDock {

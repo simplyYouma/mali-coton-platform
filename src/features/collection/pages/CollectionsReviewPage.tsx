@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Beaker,
@@ -53,6 +53,33 @@ export function CollectionsReviewPage() {
   const isLoading = submittedQ.isLoading || labCompleteQ.isLoading;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  /* Etat "lu" : on stocke les ids deja ouverts en localStorage pour les
+   * marquer comme tels au reload (comportement boite mail). */
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('mali-coton.validation.read.v1');
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? new Set<string>(arr) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  useEffect(() => {
+    localStorage.setItem(
+      'mali-coton.validation.read.v1',
+      JSON.stringify(Array.from(readIds)),
+    );
+  }, [readIds]);
+  const markRead = (id: string) => {
+    setReadIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
   const [rejectOpen, setRejectOpen] = useState(false);
   const [validateOpen, setValidateOpen] = useState(false);
   const [correctOpen, setCorrectOpen] = useState(false);
@@ -163,7 +190,16 @@ export function CollectionsReviewPage() {
         <aside className={styles.listPanel} aria-label="Collectes en attente de validation">
           <header className={styles.listHeader}>
             <span className={styles.listTitle}>En attente</span>
-            <span className={styles.listCount}>{items.length}</span>
+            {(() => {
+              const unread = items.filter((c) => !readIds.has(c.id)).length;
+              return unread > 0 ? (
+                <span className={styles.listUnreadBadge} aria-label={`${unread} non lu`}>
+                  {unread} nouveau{unread > 1 ? 'x' : ''}
+                </span>
+              ) : (
+                <span className={styles.listCount}>{items.length}</span>
+              );
+            })()}
           </header>
           <div className={styles.listScroll}>
             {isLoading ? (
@@ -183,20 +219,26 @@ export function CollectionsReviewPage() {
                 const site = sitesById.get(c.siteId);
                 const isActive = (selected?.id ?? items[0]?.id) === c.id;
                 const isLab = c.status === 'lab_complete';
+                const isUnread = !readIds.has(c.id);
                 const Icon = isLab ? Beaker : Inbox;
                 return (
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => setSelectedId(c.id)}
-                    className={`${styles.row} ${isActive ? styles.rowActive : ''}`}
+                    onClick={() => {
+                      setSelectedId(c.id);
+                      markRead(c.id);
+                    }}
+                    className={`${styles.row} ${isActive ? styles.rowActive : ''} ${isUnread ? styles.rowUnread : ''}`}
                     data-tone={isLab ? 'accent' : 'primary'}
+                    aria-label={isUnread ? 'Non lu' : undefined}
                   >
                     <span className={styles.rowIcon} aria-hidden="true">
                       <Icon size={14} />
                     </span>
                     <div className={styles.rowMain}>
                       <span className={styles.rowSite}>
+                        {isUnread ? <span className={styles.unreadDot} aria-hidden="true" /> : null}
                         {site?.shortName ?? c.siteId}
                       </span>
                       <span className={styles.rowMeta}>
