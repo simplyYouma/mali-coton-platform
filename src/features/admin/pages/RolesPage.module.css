@@ -2,39 +2,107 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
 }
 
-/* ── Légende ── */
-.legend {
+/* ── Hero ── */
+.hero {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.heroLeft {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.heroTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-h1);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 0;
+}
+.heroCount {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.heroRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Toolbar : chips + légende ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.chips {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+.chipActive {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.chipActive:hover {
+  background: var(--color-primary-hover);
+  color: #fff;
+}
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 .legendItem {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: var(--text-xs);
-  color: var(--color-text);
-  font-weight: var(--weight-medium);
-}
-.legendHint {
-  margin-left: auto;
+  gap: 6px;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+  font-weight: var(--weight-medium);
 }
 
-/* ── Table ── */
+/* ── Tableau ── */
 .tableWrap {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow-x: auto;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 .table {
   width: 100%;
@@ -43,15 +111,13 @@
 }
 .cornerCell,
 .roleCell {
-  position: sticky;
-  top: 0;
   background: var(--color-surface-2);
   padding: var(--space-3) var(--space-4);
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-bold);
   border-bottom: 1px solid var(--color-border);
 }
 .cornerCell {
@@ -60,7 +126,15 @@
 }
 .roleCell {
   text-align: center;
-  min-width: 130px;
+  min-width: 140px;
+}
+.roleHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lockIcon {
+  color: var(--color-primary);
 }
 
 .groupRow td {
@@ -70,10 +144,16 @@
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--color-text-muted);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-bold);
+  border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
 }
-
+.moduleRow {
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.moduleRow:hover {
+  background: var(--color-surface-2);
+}
 .moduleCell {
   padding: var(--space-3) var(--space-4);
   color: var(--color-text);
@@ -90,8 +170,8 @@
 .permCell[data-modified='true']::after {
   content: '';
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -114,7 +194,7 @@
 }
 .cellLocked {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
 .pill {
@@ -138,4 +218,31 @@
   background: var(--color-surface-2);
   color: var(--color-text-disabled);
   border-color: var(--color-border);
+}
+
+.footnote {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .legend {
+    justify-content: flex-start;
+  }
+  .cornerCell {
+    min-width: 160px;
+  }
+  .roleCell {
+    min-width: 100px;
+  }
 }
