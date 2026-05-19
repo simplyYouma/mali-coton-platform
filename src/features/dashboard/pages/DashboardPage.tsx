@@ -293,88 +293,33 @@ export function DashboardPage() {
         </article>
       </section>
 
-      {execSummary.breakdown.length > 0 && execSummary.envScore < 90 ? (
-        <details className={styles.execBreakdown}>
-          <summary>
-            Pourquoi {execSummary.envScore} / 100 ? — {execSummary.breakdown.length} facteur{execSummary.breakdown.length > 1 ? 's' : ''}
-          </summary>
-          <ul>
-            {execSummary.breakdown.map((b, i) => (
-              <li key={i}>
-                <span className={styles.execBreakdownWeight}>−{b.weight}</span>
-                <span>{b.reason}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-
-      {/* ─── Headline conformité + KPIs en bandeau hairline ─── */}
-      <section className={styles.headline}>
-        <div className={styles.headlineMain}>
-          <span className={styles.headlineLabel}>Conformité globale · {days} j</span>
-          <span className={styles.headlineValue}>
-            {isLoading ? '—' : `${conformity}`}
-            <span className={styles.headlineUnit}>%</span>
-          </span>
-          <ConformityBar value={conformity} />
-        </div>
-        <div className={styles.kpiStrip}>
-          <KpiInline
-            label={`Collectes ${days} j`}
-            value={isLoading ? '—' : String(kpis.totalCollections30d)}
-            trend={
-              periodInsights.collectionsTrend === 0
-                ? '='
-                : `${periodInsights.collectionsTrend > 0 ? '+' : ''}${periodInsights.collectionsTrend}%`
-            }
-            tone={periodInsights.collectionsTrend >= 0 ? 'positive' : 'warning'}
-            caption={`précédent · ${periodInsights.collectionsPrev}`}
-            spark={periodInsights.collectionsSpark}
-            sparkColor="var(--color-primary)"
-          />
-          <KpiInline
-            label="Alertes critiques"
-            value={isLoading ? '—' : String(kpis.criticalAlerts)}
-            trend={
-              periodInsights.alertsDelta === 0
-                ? '='
-                : `${periodInsights.alertsDelta > 0 ? '+' : ''}${periodInsights.alertsDelta}`
-            }
-            tone={periodInsights.alertsDelta <= 0 ? 'positive' : 'warning'}
-            caption={`précédent · ${periodInsights.alertsPrev}`}
-            spark={periodInsights.alertsSpark}
-            sparkColor="var(--color-danger)"
-          />
-          <KpiInline
-            label="Agents actifs"
-            value={isLoading ? '—' : String(kpis.activeAgents)}
-            caption={`sur ${sites.length} sites`}
-            tone="neutral"
-          />
-          <KpiInline
-            label="Sites en alerte"
-            value={
-              isLoading
-                ? '—'
-                : String(
-                    new Set(
-                      (alertsPage?.items ?? [])
-                        .filter(
-                          (a) =>
-                            a.status === 'active' &&
-                            a.severity === 'critical' &&
-                            (!filterSiteId || a.siteId === filterSiteId),
-                        )
-                        .map((a) => a.siteId)
-                        .filter(Boolean),
-                    ).size,
-                  )
-            }
-            caption={`sur ${sites.length} suivis`}
-            tone="warning"
-          />
-        </div>
+      {/* ─── KPIs secondaires (non redondants avec l'exec summary) ─── */}
+      <section className={styles.kpiStrip}>
+        <KpiInline
+          label={`Collectes ${days} j`}
+          value={isLoading ? '—' : String(kpis.totalCollections30d)}
+          trend={
+            periodInsights.collectionsTrend === 0
+              ? '='
+              : `${periodInsights.collectionsTrend > 0 ? '+' : ''}${periodInsights.collectionsTrend}%`
+          }
+          tone={periodInsights.collectionsTrend >= 0 ? 'positive' : 'warning'}
+          caption={`précédent · ${periodInsights.collectionsPrev}`}
+          spark={periodInsights.collectionsSpark}
+          sparkColor="var(--color-primary)"
+        />
+        <KpiInline
+          label="Agents actifs"
+          value={isLoading ? '—' : String(kpis.activeAgents)}
+          caption={`sur ${sites.length} sites`}
+          tone="neutral"
+        />
+        <KpiInline
+          label="Bordereaux en attente"
+          value={isLoading ? '—' : String(kpis.pendingLab ?? 0)}
+          caption="à transmettre au labo"
+          tone={(kpis.pendingLab ?? 0) > 5 ? 'warning' : 'neutral'}
+        />
       </section>
 
       {/* ─── Filtres période / site ─── */}
