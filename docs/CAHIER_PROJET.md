@@ -584,11 +584,57 @@ Une valeur hors plage normative → **non-conformité** → alerte.
 
 ### Phase E — Branchement live API
 
-Quand prêt :
-- Substituer MSW par un client HTTP qui pointe sur `http://187.127.225.182/api/`.
-- Auth (à confirmer : JWT, OAuth, …).
-- Mapping IRI ↔ objets locaux (JSON-LD `@id` resolution).
-- Garder MSW activable en dev pour offline.
+**Statut : socle posé, à compléter au fur et à mesure du seeding backend.**
+
+#### Mode switch
+- `VITE_API_MODE=mock` (défaut) → MSW intercepte tout, `/api/v1/...`.
+- `VITE_API_MODE=live` + `VITE_API_BASE_URL=http://187.127.225.182` → MSW désactivé, requêtes vers `${VITE_API_BASE_URL}/api/...`.
+- Implémenté dans `src/lib/apiConfig.ts`. Voir `.env.example`.
+
+#### Helpers JSON-LD (`src/lib/jsonld.ts`)
+- `unwrapPaginated<T>(raw)` : convertit une réponse Hydra (`hydra:member`, `hydra:totalItems`) en notre `Paginated<T>` standard.
+- `iriToId(iri)` : extrait l'ID d'un IRI (`/api/site_teintures/3` → `3`).
+- `iriOf(segment, id)` : construit un IRI pour les POST/PATCH live.
+
+#### Resource mapping (`RESOURCE_PATH`)
+| Frontend | URL en mock | URL en live |
+|---|---|---|
+| sites | `/sites` | `/site_teintures` |
+| collections | `/collections` | `/collecte_terrains` |
+| labs | `/labs` | `/laboratoires` |
+| indicators | `/indicators` | `/parametre_analyses` |
+| thresholds | `/thresholds` | `/norme_rejets` |
+| users | `/users` | `/users` |
+| roles | `/roles` | `/roles` |
+| recommandations | `/recommandations` | `/recommandations` |
+
+#### Pattern d'adapter (exemple `sites.adapter.ts`)
+Chaque entité avec un écart de schéma a son adapter :
+- `SiteTeintureBackend` : forme JSON-LD reçue (snake_case, IRI, `@id`/`@type`).
+- `toSite(b)` : mappe vers notre `Site` frontend (camelCase, IDs simples, conformity neutre par défaut).
+
+`src/features/sites/api/sites.ts` switche entre `http<Paginated<Site>>` (mock) et `http<unknown>` + `unwrapPaginated` + `toSite` (live) selon `API_MODE`.
+
+#### Reste à brancher (1 endpoint = 1 adapter + 1 switch dans le fichier api)
+- [ ] `Collection` ↔ `CollecteTerrain` (le plus gros — multi-niveaux : prelevements, echantillons, analyses, resultats, validations).
+- [ ] `Lab` ↔ `Laboratoire`.
+- [ ] `IndicatorRule` ↔ `ParametreAnalyse` + `ParametreUnite`.
+- [ ] `NormeRejet` ↔ nos `minOk/maxOk`.
+- [ ] `Recommandation` (champs alignés à 95 %).
+- [ ] `Region`, `Cercle`, `Commune` (nouvelles entités).
+
+#### Auth (à confirmer côté backend)
+L'OpenAPI ne définit pas de schéma d'authentification global. À l'usage :
+1. Tester si POST sans token marche (probablement non en prod) ou si JWT requis.
+2. Si JWT : ajouter intercept dans `http.ts` qui lit le token (`localStorage` ou `Cookie`) et le pose en header `Authorization: Bearer …`.
+3. Brancher `/api/auth/login` (à confirmer son existence — l'API Platform ajoute souvent un endpoint custom hors OpenAPI).
+
+#### CORS
+Tester d'abord `curl http://187.127.225.182/api -H "Origin: http://localhost:5173"` — voir si `Access-Control-Allow-Origin` est posé. Sinon : reverse-proxy Vite dev (`vite.config.ts.server.proxy`) ou changement côté backend.
+
+#### Smoke test actuel
+- `curl http://187.127.225.182/api/site_teintures` répond `hydra:totalItems: 0` → endpoint reachable, schéma OK, base vide.
+- Quand le backend sera seedé (script `app:fixtures:load` Symfony), le frontend en mode live affichera les sites réels sans changement de code.
 
 ---
 
