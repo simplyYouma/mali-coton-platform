@@ -286,11 +286,88 @@
   grid-column: 1 / -1;
 }
 
+/* ── Notifications envoyées au responsable ── */
+.notifSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.notifHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.notifTitle {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-bold);
+}
+.notifHint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.notifList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notifItem {
+  display: grid;
+  grid-template-columns: 90px 1.5fr 2fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 12px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+.notifItem[data-kind='status_changed'] {
+  background: var(--color-primary-soft);
+}
+.notifChannel {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--weight-bold);
+}
+.notifLabel {
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+.notifMeta {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notifMeta code {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+.notifDate {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
 @media (max-width: 1024px) {
   .split {
     grid-template-columns: 1fr;
   }
   .formGrid {
     grid-template-columns: 1fr;
+  }
+  .notifItem {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }

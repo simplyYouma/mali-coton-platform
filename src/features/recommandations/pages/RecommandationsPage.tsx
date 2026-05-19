@@ -410,6 +410,46 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
         ) : null}
       </dl>
 
+      {reco.notifications && reco.notifications.length > 0 ? (
+        <section className={styles.notifSection} aria-label="Notifications envoyées">
+          <header className={styles.notifHead}>
+            <span className={styles.notifTitle}>
+              Notifications envoyées au responsable
+            </span>
+            <span className={styles.notifHint}>
+              Le responsable ne consulte pas la plateforme — il reçoit les mises à
+              jour par e-mail / SMS.
+            </span>
+          </header>
+          <ul className={styles.notifList}>
+            {[...reco.notifications]
+              .sort(
+                (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+              )
+              .map((n) => (
+                <li key={n.id} className={styles.notifItem} data-kind={n.kind}>
+                  <span className={styles.notifChannel}>
+                    {n.channel === 'email' ? '✉' : '✆'} {n.channel === 'email' ? 'E-mail' : 'SMS'}
+                  </span>
+                  <span className={styles.notifLabel}>
+                    {n.kind === 'created'
+                      ? 'Création de la recommandation'
+                      : n.kind === 'status_changed'
+                        ? `Statut → ${n.statutSnapshot ? STATUT_LABEL[n.statutSnapshot] : ''}`
+                        : 'Relance d\'échéance'}
+                  </span>
+                  <span className={styles.notifMeta}>
+                    {n.recipientName} · <code>{n.recipient}</code>
+                  </span>
+                  <span className={styles.notifDate}>
+                    {formatRelativeTime(n.sentAt)}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
+
       <footer className={styles.detailActions}>
         <span className={styles.detailActionsLabel}>Changer le statut :</span>
         {(Object.keys(STATUT_LABEL) as RecommandationStatut[]).map((s) => (

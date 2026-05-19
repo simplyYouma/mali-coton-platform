@@ -16,6 +16,22 @@ export type RecommandationStatut =
   | 'resolue'
   | 'annulee';
 
+/**
+ * Notification mock envoyée au responsable d'une recommandation. Aligne le
+ * pattern utilisé sur les collectes (e-mail + SMS, traçabilité dans la fiche).
+ */
+export interface RecommandationNotification {
+  id: string;
+  channel: 'email' | 'sms';
+  recipient: string;
+  recipientName: string;
+  kind: 'created' | 'status_changed' | 'reminder';
+  /** Statut snapshot au moment de l'envoi (pour kind=status_changed). */
+  statutSnapshot?: RecommandationStatut;
+  sentAt: string;
+  ref?: string;
+}
+
 export interface Recommandation {
   id: string;
   titre: string;
@@ -34,6 +50,8 @@ export interface Recommandation {
   updatedAt?: string;
   /** Auteur de la recommandation. */
   createdBy?: string;
+  /** Journal des notifications mock envoyées au responsable. */
+  notifications?: RecommandationNotification[];
 }
 
 export interface RecommandationCreateInput {
