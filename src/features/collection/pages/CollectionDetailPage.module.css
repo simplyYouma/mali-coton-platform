@@ -82,12 +82,14 @@
 }
 
 /* ───── Summary strip segmentée ─────
- * Layout : Point prélev (large) | Date | GPS | Météo | Cours d'eau (compact)
- *          | Agent (distinctif, cliquable, à droite)
+ * Layout auto-adjust : que 5 ou 6 cartes, elles prennent la meme largeur
+ * et restent sur une seule ligne en desktop. grid-auto-flow:column +
+ * grid-auto-columns:1fr fait le boulot quelque soit le nombre d'enfants.
  */
 .summaryGrid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1.3fr 1.2fr 0.7fr 1.3fr;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -97,6 +99,7 @@
 }
 @media (max-width: 1024px) {
   .summaryGrid {
+    grid-auto-flow: row;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

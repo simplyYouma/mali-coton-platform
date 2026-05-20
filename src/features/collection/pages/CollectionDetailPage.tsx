@@ -685,7 +685,7 @@ export function CollectionDetailPage() {
               Annuler
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               onClick={confirmValidate}
               loading={validateMut.isPending}
               iconLeft={<CheckCircle2 size={16} />}

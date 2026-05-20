@@ -79,6 +79,17 @@
   border-color: #8c1f2c;
 }
 
+/* Success — actions affirmatives (Valider, Approuver, Confirmer) */
+.variant-success {
+  background: var(--color-success);
+  color: #fff;
+  border-color: var(--color-success);
+}
+.variant-success:hover:not(:disabled):not([aria-busy='true']) {
+  background: var(--color-success-hover, #0a8a5b);
+  border-color: var(--color-success-hover, #0a8a5b);
+}
+
 .fullWidth {
   width: 100%;
 }

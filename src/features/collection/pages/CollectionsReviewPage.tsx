@@ -363,7 +363,7 @@ export function CollectionsReviewPage() {
               Annuler
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               onClick={confirmValidate}
               loading={validateMut.isPending}
               iconLeft={<Check size={14} />}
@@ -583,7 +583,7 @@ function ReviewDetail({
             Demander correction
           </Button>
           <Button
-            variant="primary"
+            variant="success"
             iconLeft={<Check size={14} />}
             onClick={onValidate}
             loading={isValidating}
