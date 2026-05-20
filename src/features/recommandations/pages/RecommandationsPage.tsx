@@ -1,6 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, CheckCircle2, Info, ListChecks, Plus, Search, Trash2 } from 'lucide-react';
+import {
+  AlertOctagon,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Inbox,
+  ListChecks,
+  MapPin,
+  Plus,
+  Search,
+  Target,
+  Trash2,
+  User,
+} from 'lucide-react';
 import {
   Badge,
   Button,
@@ -158,52 +171,74 @@ export function RecommandationsPage() {
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Recommandations</h1>
-          <span className={styles.heroCount}>
-            {stats.total} au total · {stats.critiques} critique{stats.critiques > 1 ? 's' : ''} · {stats.enCours} en cours · {stats.resolues} résolue{stats.resolues > 1 ? 's' : ''}
+          <span className={styles.heroSubtitle}>
+            Boîte de réception des actions correctives identifiées sur les sites
           </span>
         </div>
-        <div className={styles.heroRight}>
-          <div className={styles.search}>
-            <Search size={14} aria-hidden="true" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher…"
-              aria-label="Rechercher une recommandation"
-            />
+        <div className={styles.heroKpis}>
+          <div className={styles.kpiTile} data-tone="neutral">
+            <Inbox size={14} aria-hidden="true" />
+            <span className={styles.kpiValue}>{stats.total}</span>
+            <span className={styles.kpiLabel}>Total</span>
           </div>
-          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
-            Ajouter
-          </Button>
+          <div className={styles.kpiTile} data-tone="danger">
+            <AlertOctagon size={14} aria-hidden="true" />
+            <span className={styles.kpiValue}>{stats.critiques}</span>
+            <span className={styles.kpiLabel}>Critiques</span>
+          </div>
+          <div className={styles.kpiTile} data-tone="warning">
+            <Clock size={14} aria-hidden="true" />
+            <span className={styles.kpiValue}>{stats.enCours}</span>
+            <span className={styles.kpiLabel}>En cours</span>
+          </div>
+          <div className={styles.kpiTile} data-tone="success">
+            <CheckCircle2 size={14} aria-hidden="true" />
+            <span className={styles.kpiValue}>{stats.resolues}</span>
+            <span className={styles.kpiLabel}>Résolues</span>
+          </div>
         </div>
       </header>
 
       <div className={styles.toolbar}>
-        <Select<StatutFilter>
-          value={statutFilter}
-          onChange={setStatutFilter}
-          options={[
-            { value: 'all', label: 'Tous statuts' },
-            ...(Object.keys(STATUT_LABEL) as RecommandationStatut[]).map((s) => ({
-              value: s,
-              label: STATUT_LABEL[s],
-            })),
-          ]}
-          aria-label="Filtrer par statut"
-        />
-        <Select<PrioriteFilter>
-          value={prioriteFilter}
-          onChange={setPrioriteFilter}
-          options={[
-            { value: 'all', label: 'Toutes priorités' },
-            ...(Object.keys(PRIORITE_LABEL) as RecommandationPriorite[]).map((p) => ({
-              value: p,
-              label: PRIORITE_LABEL[p],
-            })),
-          ]}
-          aria-label="Filtrer par priorité"
-        />
+        <label className={styles.search}>
+          <Search size={14} aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Rechercher par titre, description…"
+            aria-label="Rechercher une recommandation"
+          />
+        </label>
+        <div className={styles.toolbarFilters}>
+          <Select<StatutFilter>
+            value={statutFilter}
+            onChange={setStatutFilter}
+            options={[
+              { value: 'all', label: 'Tous statuts' },
+              ...(Object.keys(STATUT_LABEL) as RecommandationStatut[]).map((s) => ({
+                value: s,
+                label: STATUT_LABEL[s],
+              })),
+            ]}
+            aria-label="Filtrer par statut"
+          />
+          <Select<PrioriteFilter>
+            value={prioriteFilter}
+            onChange={setPrioriteFilter}
+            options={[
+              { value: 'all', label: 'Toutes priorités' },
+              ...(Object.keys(PRIORITE_LABEL) as RecommandationPriorite[]).map((p) => ({
+                value: p,
+                label: PRIORITE_LABEL[p],
+              })),
+            ]}
+            aria-label="Filtrer par priorité"
+          />
+          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
+            Nouvelle recommandation
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -220,34 +255,49 @@ export function RecommandationsPage() {
         />
       ) : (
         <div className={styles.split}>
-          <aside className={styles.list} aria-label="Liste des recommandations">
-            {items.map((r) => {
-              const active = (selected?.id ?? items[0]?.id) === r.id;
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  className={`${styles.row} ${active ? styles.rowActive : ''}`}
-                  onClick={() => setSelectedId(r.id)}
-                  data-priorite={r.niveauPriorite}
-                >
-                  <div className={styles.rowMain}>
-                    <span className={styles.rowTitle}>{r.titre}</span>
-                    <span className={styles.rowMeta}>
-                      {r.siteId ? sitesById.get(r.siteId) ?? r.siteId : 'Transversal'}
-                      {' · '}
-                      {STATUT_LABEL[r.statut]}
+          <aside className={styles.list} aria-label="Boîte de réception des recommandations">
+            <header className={styles.listHead}>
+              <span className={styles.listTitle}>Boîte de réception</span>
+              <span className={styles.listCount}>{items.length}</span>
+            </header>
+            <div className={styles.listScroll}>
+              {items.map((r) => {
+                const active = (selected?.id ?? items[0]?.id) === r.id;
+                const siteLabel = r.siteId ? sitesById.get(r.siteId) ?? r.siteId : 'Transversal';
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className={`${styles.row} ${active ? styles.rowActive : ''}`}
+                    onClick={() => setSelectedId(r.id)}
+                    data-priorite={r.niveauPriorite}
+                  >
+                    <span className={styles.rowMain}>
+                      <span className={styles.rowTitle}>{r.titre}</span>
+                      <span className={styles.rowMeta}>
+                        <MapPin size={11} aria-hidden="true" /> {siteLabel}
+                        {r.dateEcheance ? (
+                          <>
+                            <span className={styles.rowDot} aria-hidden="true" />
+                            <Calendar size={11} aria-hidden="true" />
+                            {formatDateTime(r.dateEcheance, 'dd MMM yyyy')}
+                          </>
+                        ) : null}
+                      </span>
                     </span>
-                  </div>
-                  <Badge size="sm" variant={PRIORITE_VARIANT[r.niveauPriorite]}>
-                    {PRIORITE_LABEL[r.niveauPriorite]}
-                  </Badge>
-                </button>
-              );
-            })}
+                    <span className={styles.rowRight}>
+                      <Badge size="sm" variant={STATUT_VARIANT[r.statut]}>
+                        {STATUT_LABEL[r.statut]}
+                      </Badge>
+                      <span className={styles.rowDate}>{formatRelativeTime(r.createdAt)}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </aside>
 
-          <section className={styles.detail} aria-label="Détail recommandation">
+          <section className={styles.detail} aria-label="Lecture de la recommandation">
             {selected ? (
               <RecommandationDetail
                 reco={selected}
@@ -257,7 +307,7 @@ export function RecommandationsPage() {
                 isUpdating={updateMut.isPending}
               />
             ) : (
-              <div className={styles.empty}>Sélectionnez une recommandation.</div>
+              <div className={styles.empty}>Sélectionnez une recommandation à gauche.</div>
             )}
           </section>
         </div>
@@ -348,13 +398,31 @@ interface DetailProps {
 }
 
 function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }: DetailProps) {
+  /* Historique métier : la fixture contient une trace par changement
+   * (creation + chaque changement de statut). On la dédupliques par
+   * timestamp + kind pour éviter les doublons email/sms. */
+  const history = useMemo(() => {
+    const list = reco.notifications ?? [];
+    const seen = new Set<string>();
+    const events: Array<{ id: string; kind: string; at: string; statut?: RecommandationStatut }> = [];
+    for (const n of [...list].sort(
+      (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
+    )) {
+      const key = `${n.kind}|${n.sentAt}|${n.statutSnapshot ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      events.push({ id: n.id, kind: n.kind, at: n.sentAt, statut: n.statutSnapshot });
+    }
+    return events;
+  }, [reco.notifications]);
+
   return (
     <>
       <header className={styles.detailHead}>
         <div className={styles.detailHeadMain}>
           <div className={styles.detailEyebrow}>
             <Badge size="sm" variant={PRIORITE_VARIANT[reco.niveauPriorite]}>
-              {PRIORITE_LABEL[reco.niveauPriorite]}
+              Priorité {PRIORITE_LABEL[reco.niveauPriorite].toLowerCase()}
             </Badge>
             <Badge size="sm" variant={STATUT_VARIANT[reco.statut]}>
               {STATUT_LABEL[reco.statut]}
@@ -364,21 +432,21 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
           <div className={styles.detailMeta}>
             {siteName ? (
               <Link to={`/sites/${reco.siteId}`} className={styles.detailMetaLink}>
-                {siteName}
+                <MapPin size={12} aria-hidden="true" /> {siteName}
               </Link>
             ) : (
-              <span>Recommandation transversale</span>
+              <span className={styles.detailMetaItem}>
+                <MapPin size={12} aria-hidden="true" /> Recommandation transversale
+              </span>
             )}
             {reco.collectionId ? (
-              <>
-                <span>·</span>
-                <Link to={`/collecte/${reco.collectionId}`} className={styles.detailMetaLink}>
-                  Collecte associée
-                </Link>
-              </>
+              <Link to={`/collecte/${reco.collectionId}`} className={styles.detailMetaLink}>
+                Collecte associée
+              </Link>
             ) : null}
-            <span>·</span>
-            <span>créée {formatRelativeTime(reco.createdAt)}</span>
+            <span className={styles.detailMetaItem}>
+              <Clock size={12} aria-hidden="true" /> créée {formatRelativeTime(reco.createdAt)}
+            </span>
           </div>
         </div>
         <Button
@@ -386,95 +454,93 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
           size="sm"
           iconLeft={<Trash2 size={14} />}
           onClick={onDelete}
-          aria-label="Supprimer"
+          aria-label="Supprimer la recommandation"
         >
           Supprimer
         </Button>
       </header>
 
-      <p className={styles.detailDescription}>{reco.description}</p>
+      <article className={styles.detailBody}>
+        <section className={styles.descriptionBlock} aria-label="Description">
+          <p className={styles.detailDescription}>{reco.description}</p>
+        </section>
 
-      <dl className={styles.detailStrip}>
-        {reco.responsableSuivi ? (
-          <span>
-            <dt>Responsable</dt>
-            <dd>{reco.responsableSuivi}</dd>
-          </span>
-        ) : null}
-        {reco.dateEcheance ? (
-          <span>
-            <dt>Échéance</dt>
-            <dd>{formatDateTime(reco.dateEcheance, 'dd MMM yyyy')}</dd>
-          </span>
-        ) : null}
-        {reco.resultatIndicatorId ? (
-          <span>
-            <dt>Indicateur ciblé</dt>
-            <dd>
-              <code>{reco.resultatIndicatorId}</code>
-            </dd>
-          </span>
-        ) : null}
-      </dl>
-
-      {reco.notifications && reco.notifications.length > 0 ? (
-        <section className={styles.notifSection} aria-label="Notifications déclenchées">
-          <header className={styles.notifHead}>
-            <span className={styles.notifTitle}>
-              <Bell size={12} aria-hidden="true" />
-              Notifications déclenchées
-              <span className={styles.notifBadge} title="Simulation maquette : aucun e-mail ni SMS réel n'est envoyé. Le backend de production déclenchera ces envois via le service de notification.">
-                Simulation maquette
+        <section className={styles.detailStrip} aria-label="Suivi">
+          <div className={styles.detailStripItem}>
+            <span className={styles.detailStripLabel}>
+              <User size={11} aria-hidden="true" /> Responsable
+            </span>
+            <span className={styles.detailStripValue}>
+              {reco.responsableSuivi || <span className={styles.muted}>Non assigné</span>}
+            </span>
+          </div>
+          <div className={styles.detailStripItem}>
+            <span className={styles.detailStripLabel}>
+              <Calendar size={11} aria-hidden="true" /> Échéance
+            </span>
+            <span className={styles.detailStripValue}>
+              {reco.dateEcheance ? (
+                formatDateTime(reco.dateEcheance, 'dd MMM yyyy')
+              ) : (
+                <span className={styles.muted}>Non fixée</span>
+              )}
+            </span>
+          </div>
+          {reco.resultatIndicatorId ? (
+            <div className={styles.detailStripItem}>
+              <span className={styles.detailStripLabel}>
+                <Target size={11} aria-hidden="true" /> Indicateur ciblé
               </span>
-            </span>
-            <span className={styles.notifHint}>
-              <Info size={11} aria-hidden="true" />
-              Trace des messages que le backend déclenchera (création + chaque changement de statut). Coordonnées résolues depuis l'annuaire interne.
-            </span>
-          </header>
-          <ul className={styles.notifList}>
-            {[...reco.notifications]
-              .sort(
-                (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
-              )
-              .map((n) => (
-                <li key={n.id} className={styles.notifItem} data-kind={n.kind}>
-                  <span className={styles.notifChannel}>
-                    {n.channel === 'email' ? '✉' : '✆'} {n.channel === 'email' ? 'E-mail' : 'SMS'}
+              <span className={styles.detailStripValue}>
+                <code>{reco.resultatIndicatorId}</code>
+              </span>
+            </div>
+          ) : null}
+        </section>
+
+        {history.length > 0 ? (
+          <section className={styles.historySection} aria-label="Historique de la recommandation">
+            <header className={styles.historyHead}>
+              <span className={styles.historyTitle}>Historique</span>
+            </header>
+            <ol className={styles.historyList}>
+              {history.map((e, i) => (
+                <li key={e.id} className={styles.historyItem} data-current={i === history.length - 1}>
+                  <span className={styles.historyDot} aria-hidden="true" />
+                  <span className={styles.historyLabel}>
+                    {e.kind === 'created'
+                      ? 'Recommandation créée'
+                      : e.kind === 'status_changed'
+                        ? `Statut → ${e.statut ? STATUT_LABEL[e.statut] : ''}`
+                        : "Relance d'échéance envoyée"}
                   </span>
-                  <span className={styles.notifLabel}>
-                    {n.kind === 'created'
-                      ? 'Création de la recommandation'
-                      : n.kind === 'status_changed'
-                        ? `Statut → ${n.statutSnapshot ? STATUT_LABEL[n.statutSnapshot] : ''}`
-                        : 'Relance d\'échéance'}
-                  </span>
-                  <span className={styles.notifMeta}>
-                    {n.recipientName} · <code>{n.recipient}</code>
-                  </span>
-                  <span className={styles.notifDate}>
-                    {formatRelativeTime(n.sentAt)}
+                  <span className={styles.historyTime} title={formatDateTime(e.at)}>
+                    {formatRelativeTime(e.at)}
                   </span>
                 </li>
               ))}
-          </ul>
-        </section>
-      ) : null}
+            </ol>
+          </section>
+        ) : null}
+      </article>
 
       <footer className={styles.detailActions}>
-        <span className={styles.detailActionsLabel}>Changer le statut :</span>
-        {(Object.keys(STATUT_LABEL) as RecommandationStatut[]).map((s) => (
-          <button
-            key={s}
-            type="button"
-            className={`${styles.statusBtn} ${reco.statut === s ? styles.statusBtnActive : ''}`}
-            onClick={() => onStatut(s)}
-            disabled={reco.statut === s || isUpdating}
-          >
-            {s === 'resolue' ? <CheckCircle2 size={12} /> : null}
-            {STATUT_LABEL[s]}
-          </button>
-        ))}
+        <span className={styles.detailActionsLabel}>Faire évoluer le statut</span>
+        <div className={styles.statusBar} role="group" aria-label="Changer le statut">
+          {(Object.keys(STATUT_LABEL) as RecommandationStatut[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`${styles.statusBtn} ${reco.statut === s ? styles.statusBtnActive : ''}`}
+              onClick={() => onStatut(s)}
+              disabled={reco.statut === s || isUpdating}
+              data-statut={s}
+            >
+              {s === 'resolue' ? <CheckCircle2 size={12} aria-hidden="true" /> : null}
+              {STATUT_LABEL[s]}
+            </button>
+          ))}
+        </div>
       </footer>
     </>
   );
