@@ -100,12 +100,6 @@ export function CollectionsReviewPage() {
     return map;
   }, []);
 
-  const stats = useMemo(() => {
-    const submitted = submittedQ.data?.items.length ?? 0;
-    const labComplete = labCompleteQ.data?.items.length ?? 0;
-    return { submitted, labComplete, total: submitted + labComplete };
-  }, [submittedQ.data, labCompleteQ.data]);
-
   const confirmValidate = async () => {
     if (!selected || !user) return;
     try {
@@ -147,23 +141,6 @@ export function CollectionsReviewPage() {
           <p className={styles.heroDescription}>
             File de revue des collectes soumises et bordereaux reçus du laboratoire.
           </p>
-        </div>
-        <div className={styles.heroStats}>
-          {/* Soumises = action requise du sup → amber */}
-          <div className={styles.heroStat} data-tone="warning">
-            <span className={styles.heroStatValue}>{stats.submitted}</span>
-            <span className={styles.heroStatLabel}>Soumises</span>
-          </div>
-          {/* Bordereaux recus = etape labo, donnee neutre informationelle */}
-          <div className={styles.heroStat} data-tone="info">
-            <span className={styles.heroStatValue}>{stats.labComplete}</span>
-            <span className={styles.heroStatLabel}>Bordereaux reçus</span>
-          </div>
-          {/* Total = agrégat neutre */}
-          <div className={styles.heroStat}>
-            <span className={styles.heroStatValue}>{stats.total}</span>
-            <span className={styles.heroStatLabel}>Total à valider</span>
-          </div>
         </div>
       </header>
 

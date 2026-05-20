@@ -130,17 +130,6 @@ export function AlertsPage() {
     return m;
   }, []);
 
-  const stats = useMemo(() => {
-    const critical = scopedItems.filter(
-      (a) => a.status === 'active' && a.severity === 'critical',
-    ).length;
-    const warning = scopedItems.filter(
-      (a) => a.status === 'active' && a.severity === 'warning',
-    ).length;
-    const resolved = scopedItems.filter((a) => a.status === 'resolved').length;
-    return { critical, warning, resolved, total: scopedItems.length };
-  }, [scopedItems]);
-
   const update = (patch: Partial<AlertFilter>) => setFilter((f) => ({ ...f, ...patch }));
 
   const handleAcknowledge = async () => {
@@ -174,20 +163,6 @@ export function AlertsPage() {
           <p className={styles.heroDescription}>
             Boîte de réception des dépassements de seuils et anomalies à traiter.
           </p>
-        </div>
-        <div className={styles.heroStats}>
-          <div className={styles.heroStat} data-tone="critical">
-            <span className={styles.heroStatValue}>{stats.critical}</span>
-            <span className={styles.heroStatLabel}>Critiques</span>
-          </div>
-          <div className={styles.heroStat} data-tone="warning">
-            <span className={styles.heroStatValue}>{stats.warning}</span>
-            <span className={styles.heroStatLabel}>À surveiller</span>
-          </div>
-          <div className={styles.heroStat}>
-            <span className={styles.heroStatValue}>{stats.resolved}</span>
-            <span className={styles.heroStatLabel}>Résolues</span>
-          </div>
         </div>
       </header>
 

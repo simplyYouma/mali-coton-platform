@@ -5,7 +5,6 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  Inbox,
   ListChecks,
   MapPin,
   Plus,
@@ -168,16 +167,6 @@ export function RecommandationsPage() {
     return list;
   }, [sitesPage]);
 
-  const stats = useMemo(() => {
-    const all = page?.items ?? [];
-    return {
-      total: all.length,
-      critiques: all.filter((r) => r.niveauPriorite === 'critique').length,
-      enCours: all.filter((r) => r.statut === 'en_cours' || r.statut === 'suivie').length,
-      resolues: all.filter((r) => r.statut === 'resolue').length,
-    };
-  }, [page]);
-
   const handleCreate = async () => {
     if (!user) return;
     if (!form.titre.trim() || !form.description.trim()) {
@@ -236,28 +225,6 @@ export function RecommandationsPage() {
           <p className={styles.heroDescription}>
             Boîte de réception des actions correctives identifiées sur les sites.
           </p>
-        </div>
-        <div className={styles.heroKpis}>
-          <div className={styles.kpiTile} data-tone="neutral">
-            <Inbox size={14} aria-hidden="true" />
-            <span className={styles.kpiValue}>{stats.total}</span>
-            <span className={styles.kpiLabel}>Total</span>
-          </div>
-          <div className={styles.kpiTile} data-tone="danger">
-            <AlertOctagon size={14} aria-hidden="true" />
-            <span className={styles.kpiValue}>{stats.critiques}</span>
-            <span className={styles.kpiLabel}>Critiques</span>
-          </div>
-          <div className={styles.kpiTile} data-tone="warning">
-            <Clock size={14} aria-hidden="true" />
-            <span className={styles.kpiValue}>{stats.enCours}</span>
-            <span className={styles.kpiLabel}>En cours</span>
-          </div>
-          <div className={styles.kpiTile} data-tone="success">
-            <CheckCircle2 size={14} aria-hidden="true" />
-            <span className={styles.kpiValue}>{stats.resolues}</span>
-            <span className={styles.kpiLabel}>Résolues</span>
-          </div>
         </div>
       </header>
 

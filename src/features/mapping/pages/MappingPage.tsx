@@ -122,19 +122,6 @@ export function MappingPage() {
     return site.conformityByDomain[domain];
   };
 
-  /** Compteurs hero — recalculés selon le domaine sélectionné. */
-  const stats = useMemo(() => {
-    const c = { conforming: 0, warning: 0, critical: 0 };
-    for (const s of sites) {
-      const lvl = domain === 'all' ? s.conformity : s.conformityByDomain[domain];
-      c[lvl] += 1;
-    }
-    const activeCritical = (alertsPage?.items ?? []).filter(
-      (a) => a.status === 'active' && a.severity === 'critical',
-    ).length;
-    return { ...c, total: sites.length, activeCritical };
-  }, [sites, domain, alertsPage]);
-
   /** Collectes des 30 derniers jours avec coordonnées GPS valides. */
   const recentCollections = useMemo(() => {
     if (!showCollections) return [];
@@ -220,31 +207,6 @@ export function MappingPage() {
           <p className={styles.heroDescription}>
             Géolocalisation des sites et heatmaps de conformité.
           </p>
-        </div>
-        <div className={styles.heroStats}>
-          <div className={styles.heroStat}>
-            <span className={styles.heroStatValue}>{stats.total}</span>
-            <span className={styles.heroStatLabel}>Sites</span>
-          </div>
-          <div className={styles.heroStat} data-tone="success">
-            <span className={styles.heroStatValue}>{stats.conforming}</span>
-            <span className={styles.heroStatLabel}>Conformes</span>
-          </div>
-          <div className={styles.heroStat} data-tone="warning">
-            <span className={styles.heroStatValue}>{stats.warning}</span>
-            <span className={styles.heroStatLabel}>À surveiller</span>
-          </div>
-          <div className={styles.heroStat} data-tone="critical">
-            <span className={styles.heroStatValue}>{stats.critical}</span>
-            <span className={styles.heroStatLabel}>Hors seuil</span>
-          </div>
-          <div className={styles.heroStat} data-tone="alert">
-            <span className={styles.heroStatValue}>
-              <AlertTriangle size={18} aria-hidden="true" />
-              {stats.activeCritical}
-            </span>
-            <span className={styles.heroStatLabel}>Alertes critiques</span>
-          </div>
         </div>
       </header>
 

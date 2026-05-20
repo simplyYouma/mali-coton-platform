@@ -179,13 +179,6 @@ export function LabSamplesPage() {
   const selected =
     list.find((f) => `${f.collection.id}::${f.containerId}` === selectedKey) ?? list[0] ?? null;
 
-  const stats = {
-    to_send: byTab.to_send.length,
-    at_lab: byTab.at_lab.length,
-    returned: byTab.returned.length,
-    overdue: allFlacons.filter((f) => f.isOverdue).length,
-  };
-
   const isLoading = l1 || l2;
 
   // ── Actions superviseur ──────────────────────────────────────────
@@ -361,12 +354,6 @@ export function LabSamplesPage() {
           <p className={styles.heroDescription}>
             Pipeline des flacons : envoi au labo, suivi, bordereaux et clôture.
           </p>
-        </div>
-        <div className={styles.heroStats}>
-          <Stat label="À envoyer" value={stats.to_send} tone="warning" />
-          <Stat label="Au labo" value={stats.at_lab} tone="info" />
-          <Stat label="Bordereaux reçus" value={stats.returned} tone="warning" />
-          <Stat label="En retard SLA" value={stats.overdue} tone="danger" />
         </div>
       </header>
 
@@ -982,23 +969,6 @@ function FlaconDetail({
         </div>
       </Modal>
     </>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: 'danger' | 'warning' | 'info' | 'success';
-}) {
-  return (
-    <div className={styles.stat} data-tone={tone ?? 'neutral'}>
-      <span className={styles.statValue}>{value}</span>
-      <span className={styles.statLabel}>{label}</span>
-    </div>
   );
 }
 
