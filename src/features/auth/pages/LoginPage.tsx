@@ -25,6 +25,10 @@ export function LoginPage() {
     <main className={styles.page}>
       <section className={styles.visual} aria-hidden="true">
         <div className={styles.visualOverlay}>
+          <div className={styles.brand}>
+            <span className={styles.brandWordmarkTop}>PASET</span>
+            <span className={styles.brandWordmarkBottom}>MALI</span>
+          </div>
           <p className={styles.eyebrow}>PNUD Mali · UNDP-MLI-00492</p>
           <h2 className={styles.visualTitle}>
             Suivi socio-environnemental des sites de teinture artisanale.
@@ -127,7 +131,7 @@ export function LoginPage() {
         </div>
 
         <footer className={styles.footer}>
-          <p>© 2026 · PNUD Mali · Consortium Sahel Analytics</p>
+          <p>© 2026 · <strong>PASET Mali</strong> — PNUD Mali · Consortium Sahel Analytics</p>
         </footer>
       </section>
     </main>
