@@ -395,6 +395,9 @@ export function AnalyticsPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Tendances inter-sites</span>
           <h1 className={styles.heroTitle}>Analytics</h1>
+          <p className={styles.heroDescription}>
+            Drilldown indicateur par indicateur, par site et par période.
+          </p>
         </div>
         <div className={styles.heroControls}>
           <Tabs

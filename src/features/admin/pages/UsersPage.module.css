@@ -20,6 +20,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-3);
+  flex-wrap: wrap;
 }
 .heroTitle {
   font-family: var(--font-display);
@@ -33,6 +34,14 @@
 .heroCount {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+}
+.heroDescription {
+  margin: 4px 0 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  max-width: 60ch;
+  line-height: 1.5;
+  flex-basis: 100%;
 }
 .heroRight {
   display: inline-flex;

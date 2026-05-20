@@ -102,6 +102,9 @@ export function RolesPage() {
             {ROLES.length} rôles · {MODULES.length} modules
             {modifiedCount > 0 ? ` · ${modifiedCount} ajustement${modifiedCount > 1 ? 's' : ''}` : ''}
           </span>
+          <p className={styles.heroDescription}>
+            Matrice des permissions par rôle, ajustable par module.
+          </p>
         </div>
         <div className={styles.heroRight}>
           <Button

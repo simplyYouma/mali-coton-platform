@@ -358,6 +358,9 @@ export function LabSamplesPage() {
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Échantillons</h1>
+          <p className={styles.heroDescription}>
+            Pipeline des flacons : envoi au labo, suivi, bordereaux et clôture.
+          </p>
         </div>
         <div className={styles.heroStats}>
           <Stat label="À envoyer" value={stats.to_send} tone="warning" />

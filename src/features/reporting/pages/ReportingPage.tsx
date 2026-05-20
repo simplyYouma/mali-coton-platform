@@ -207,6 +207,9 @@ export function ReportingPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Reporting automatisé</span>
           <h1 className={styles.heroTitle}>Rapports</h1>
+          <p className={styles.heroDescription}>
+            Génération de bilans mensuels, trimestriels et finaux pour le PNUD.
+          </p>
         </div>
       </header>
 

@@ -231,6 +231,9 @@ export function UsersPage() {
           <span className={styles.heroCount}>
             {totalActive} actif{totalActive > 1 ? 's' : ''} · {allUsers.length} au total
           </span>
+          <p className={styles.heroDescription}>
+            Gestion des comptes plateforme — admin, superviseur, observateur.
+          </p>
         </div>
         <div className={styles.heroRight}>
           <div className={styles.search}>

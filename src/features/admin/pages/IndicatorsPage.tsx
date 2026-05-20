@@ -242,6 +242,9 @@ export function IndicatorsPage() {
           <span className={styles.heroCount}>
             {totalActive} actifs · {totalLab} labo · {items.length} au total
           </span>
+          <p className={styles.heroDescription}>
+            Catalogue normatif des paramètres mesurés.
+          </p>
         </div>
         <div className={styles.heroRight}>
           <div className={styles.search}>

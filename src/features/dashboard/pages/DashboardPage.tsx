@@ -214,6 +214,9 @@ export function DashboardPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>{sites.length} sites · {today}</span>
           <h1 className={styles.heroTitle}>Tableau de bord</h1>
+          <p className={styles.heroDescription}>
+            Vue stratégique consolidée — score environnemental, conformité, alertes et activité récente.
+          </p>
         </div>
         <div className={styles.heroControls}>
           <Tabs

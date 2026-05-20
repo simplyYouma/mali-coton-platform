@@ -169,6 +169,9 @@ export function CollectionsReviewPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>File de validation</span>
           <h1 className={styles.heroTitle}>Revue des collectes</h1>
+          <p className={styles.heroDescription}>
+            File de revue des collectes soumises et bordereaux reçus du laboratoire.
+          </p>
         </div>
         <div className={styles.heroStats}>
           {/* Soumises = action requise du sup → amber */}

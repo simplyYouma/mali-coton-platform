@@ -148,6 +148,9 @@ export function MappingPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Vue géospatiale</span>
           <h1 className={styles.heroTitle}>Cartographie</h1>
+          <p className={styles.heroDescription}>
+            Géolocalisation des sites et heatmaps de conformité.
+          </p>
         </div>
         <div className={styles.heroStats}>
           <div className={styles.heroStat}>

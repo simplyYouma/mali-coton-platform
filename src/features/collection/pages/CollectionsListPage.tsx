@@ -135,6 +135,9 @@ export function CollectionsListPage() {
           <h1 className={styles.heroTitle}>
             {isAgent ? 'Mes collectes terrain' : 'Collectes'}
           </h1>
+          <p className={styles.heroDescription}>
+            Visites terrain enregistrées par les agents Sahel Environnement.
+          </p>
         </div>
         <div className={styles.heroActions}>
           <Link to="/collecte/import">

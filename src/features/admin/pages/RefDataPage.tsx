@@ -144,6 +144,9 @@ export function RefDataPage() {
           <span className={styles.heroCount}>
             {totalEntries} entrée{totalEntries > 1 ? 's' : ''} · {CATEGORIES.length} catégories
           </span>
+          <p className={styles.heroDescription}>
+            Vocabulaires contrôlés : unités, méthodes, types de site.
+          </p>
         </div>
         <div className={styles.heroRight}>
           <div className={styles.search}>

@@ -133,6 +133,9 @@ export function TeamListPage() {
           <span className={styles.heroCount}>
             {agents.length} actif{agents.length > 1 ? 's' : ''}
           </span>
+          <p className={styles.heroDescription}>
+            Référentiel des agents terrain et leurs coordonnées de contact.
+          </p>
         </div>
         <div className={styles.heroRight}>
           <div className={styles.search}>

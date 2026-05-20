@@ -93,6 +93,7 @@ export function SitesListPage() {
       <PageHeader
         eyebrow={`${sites.length} site${sites.length > 1 ? 's' : ''}`}
         title="Sites"
+        description="Référentiel des sites pilotes et leur conformité actuelle."
         actions={
           <>
             <Link to="/cartographie">

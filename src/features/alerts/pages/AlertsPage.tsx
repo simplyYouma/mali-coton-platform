@@ -171,6 +171,9 @@ export function AlertsPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Surveillance temps réel</span>
           <h1 className={styles.heroTitle}>Alertes</h1>
+          <p className={styles.heroDescription}>
+            Boîte de réception des dépassements de seuils et anomalies à traiter.
+          </p>
         </div>
         <div className={styles.heroStats}>
           <div className={styles.heroStat} data-tone="critical">

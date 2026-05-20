@@ -90,6 +90,9 @@ export function AuditLogsPage() {
           <span className={styles.heroCount}>
             {items.length} entrée{items.length > 1 ? 's' : ''}
           </span>
+          <p className={styles.heroDescription}>
+            Journal complet des actions tracées sur la plateforme.
+          </p>
         </div>
         <div className={styles.heroRight}>
           <label className={styles.search}>

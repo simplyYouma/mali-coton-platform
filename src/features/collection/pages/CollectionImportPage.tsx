@@ -128,6 +128,9 @@ export function CollectionImportPage() {
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Source terrain · KoboToolbox / ODK</span>
           <h1 className={styles.heroTitle}>Importer depuis Kobo</h1>
+          <p className={styles.heroDescription}>
+            Téléverser un export CSV depuis Kobo Toolbox pour ingestion.
+          </p>
         </div>
         <Button
           variant="ghost"
