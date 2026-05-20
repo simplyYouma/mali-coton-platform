@@ -47,8 +47,7 @@ export const REPORT_TEMPLATES: Record<ReportTemplateId, ReportTemplate> = {
     title: 'Bilan mensuel',
     cadenceLabel: 'Mensuel',
     audience: 'Superviseurs · PNUD',
-    description:
-      "Synthèse des collectes et alertes du mois écoulé : conformité par domaine, top dépassements, suivi laboratoire. Document opérationnel destiné au pilotage interne.",
+    description: 'Synthèse mensuelle : KPIs, conformité par domaine, dépassements, suivi labo.',
     sections: ['cover', 'executive', 'kpis', 'domains', 'exceedances', 'alerts', 'lab', 'silences', 'appendix'],
     approxPages: 8,
     schedule: {
@@ -63,8 +62,7 @@ export const REPORT_TEMPLATES: Record<ReportTemplateId, ReportTemplate> = {
     title: 'Rapport trimestriel',
     cadenceLabel: 'Trimestriel',
     audience: 'Comité de pilotage · PNUD',
-    description:
-      "Livrable contractuel destiné au comité de pilotage. Tendances inter-sites, indice composite, comparatif aux périodes précédentes, recommandations.",
+    description: 'Livrable comité de pilotage : tendances inter-sites, recommandations, cadre légal.',
     sections: ['cover', 'executive', 'kpis', 'domains', 'exceedances', 'alerts', 'lab', 'silences', 'recommendations', 'legal', 'appendix'],
     approxPages: 18,
     schedule: {
@@ -79,8 +77,7 @@ export const REPORT_TEMPLATES: Record<ReportTemplateId, ReportTemplate> = {
     title: 'Rapport final consolidé',
     cadenceLabel: 'Final',
     audience: 'PNUD · Ministère de l\'Environnement',
-    description:
-      "Livrable final de la mission : bilan socio-environnemental complet, comparaison aux valeurs de référence du Diagnostic 2025, conformité légale, leçons apprises.",
+    description: 'Bilan final mission : comparaison référence 2025, conformité légale, leçons apprises.',
     sections: [
       'cover',
       'executive',

@@ -250,13 +250,8 @@ export function ReportingPage() {
               <h3 className={styles.templateTitle}>{t.title}</h3>
               <p className={styles.templateDesc}>{t.description}</p>
               <footer className={styles.templateFoot}>
-                <span>{t.audience}</span>
-                <span aria-hidden="true">·</span>
                 <span>~{t.approxPages} pages</span>
               </footer>
-              <span className={styles.templateSchedule}>
-                Cadence · {t.schedule.humanCron}
-              </span>
             </button>
           );
         })}

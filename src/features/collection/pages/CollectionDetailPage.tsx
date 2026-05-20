@@ -273,7 +273,7 @@ export function CollectionDetailPage() {
           </span>
           <h1 className={styles.heroTitle}>
             {site ? site.shortName : 'Collecte'} —{' '}
-            <span style={{ color: 'var(--color-text-muted)', fontWeight: 'var(--weight-regular)' }}>
+            <span style={{ color: 'rgba(255, 255, 255, 0.78)', fontWeight: 'var(--weight-regular)' }}>
               {formatDateTime(collection.collectedAt, 'dd MMM yyyy · HH:mm')}
             </span>
           </h1>
