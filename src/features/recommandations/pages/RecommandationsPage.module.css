@@ -207,31 +207,61 @@
   background: var(--color-surface);
   border: none;
   border-bottom: 1px solid var(--color-border);
-  border-left: 3px solid transparent;
   text-align: left;
   width: 100%;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-out),
-    border-left-color var(--duration-fast) var(--ease-out);
+    opacity var(--duration-fast) var(--ease-out);
 }
 .row:hover {
   background: var(--color-surface-2);
 }
-.row[data-priorite='critique'] {
-  border-left-color: var(--color-danger);
-}
-.row[data-priorite='haute'] {
-  border-left-color: var(--color-amber);
-}
-.row[data-priorite='moyenne'] {
-  border-left-color: var(--color-primary);
-}
-.row[data-priorite='basse'] {
-  border-left-color: var(--color-border-strong);
-}
 .rowActive {
   background: var(--color-surface-2);
+  box-shadow: inset 2px 0 0 0 var(--color-text);
+}
+
+/* Effets par statut — l'etat de la reco se voit au premier coup d'oeil
+ * sans bruit visuel. Les terminees (resolue / annulee) sont legerement
+ * desaturees mais restent lisibles ; les en cours / suivie ressortent
+ * normales ; les proposees portent un point bleu (etat nouveau, non
+ * encore traite). */
+.row[data-statut='proposee'] .rowTitle::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.row[data-statut='resolue'] {
+  background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
+}
+.row[data-statut='resolue']:hover {
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+}
+.row[data-statut='resolue'] .rowTitle {
+  color: color-mix(in srgb, var(--color-text) 65%, var(--color-success) 35%);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--color-success) 50%, transparent);
+  text-decoration-thickness: 1px;
+}
+.row[data-statut='resolue'] .rowMeta {
+  opacity: 0.7;
+}
+.row[data-statut='annulee'] {
+  opacity: 0.55;
+}
+.row[data-statut='annulee'] .rowTitle {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-disabled);
+  font-style: italic;
+}
+.row[data-statut='annulee']:hover {
+  opacity: 0.85;
 }
 
 .rowMain {

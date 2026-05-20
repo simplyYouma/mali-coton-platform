@@ -270,7 +270,7 @@ export function RecommandationsPage() {
                     type="button"
                     className={`${styles.row} ${active ? styles.rowActive : ''}`}
                     onClick={() => setSelectedId(r.id)}
-                    data-priorite={r.niveauPriorite}
+                    data-statut={r.statut}
                   >
                     <span className={styles.rowMain}>
                       <span className={styles.rowTitle}>{r.titre}</span>
