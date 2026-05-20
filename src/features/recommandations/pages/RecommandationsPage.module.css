@@ -222,46 +222,50 @@
   box-shadow: inset 2px 0 0 0 var(--color-text);
 }
 
-/* Effets par statut — l'etat de la reco se voit au premier coup d'oeil
- * sans bruit visuel. Les terminees (resolue / annulee) sont legerement
- * desaturees mais restent lisibles ; les en cours / suivie ressortent
- * normales ; les proposees portent un point bleu (etat nouveau, non
- * encore traite). */
-.row[data-statut='proposee'] .rowTitle::before {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  margin-right: 8px;
-  vertical-align: middle;
+/* Effets par statut — fonds tres subtils, l'etat se lit au premier
+ * coup d'oeil sans bruit visuel. Pas de point ni de barre, juste des
+ * teintes legeres et l'opacite pour les recos terminees. */
+
+/* Proposee : fond bleu tres subtil (nouvelle, a traiter) */
+.row[data-statut='proposee'] {
+  background: color-mix(in srgb, var(--color-primary) 3.5%, var(--color-surface));
 }
+.row[data-statut='proposee']:hover {
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+}
+
+/* En cours : fond ambre tres subtil (en traitement actif) */
+.row[data-statut='en_cours'] {
+  background: color-mix(in srgb, var(--color-amber) 4%, var(--color-surface));
+}
+.row[data-statut='en_cours']:hover {
+  background: color-mix(in srgb, var(--color-amber) 8%, var(--color-surface));
+}
+
+/* Suivie : style standard (surveillance routine) */
+
+/* Resolue : vert grise discret, titre teinte success-text, restent
+ * en bas de liste grace au tri. Lisibles, simplement 'finies'. */
 .row[data-statut='resolue'] {
-  background: color-mix(in srgb, var(--color-success) 4%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-success) 5%, var(--color-surface));
 }
 .row[data-statut='resolue']:hover {
-  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
 }
 .row[data-statut='resolue'] .rowTitle {
-  color: color-mix(in srgb, var(--color-text) 65%, var(--color-success) 35%);
-  text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--color-success) 50%, transparent);
-  text-decoration-thickness: 1px;
+  color: color-mix(in srgb, var(--color-text) 60%, var(--color-success) 40%);
 }
 .row[data-statut='resolue'] .rowMeta {
   opacity: 0.7;
 }
+
+/* Annulee : opacite reduite (annulation = effacement visuel), redevient
+ * lisible au hover. Pas de barre, pas d'italique. */
 .row[data-statut='annulee'] {
   opacity: 0.55;
 }
-.row[data-statut='annulee'] .rowTitle {
-  text-decoration: line-through;
-  text-decoration-color: var(--color-text-disabled);
-  font-style: italic;
-}
 .row[data-statut='annulee']:hover {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .rowMain {

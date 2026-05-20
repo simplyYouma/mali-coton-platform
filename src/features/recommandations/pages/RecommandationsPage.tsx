@@ -91,13 +91,26 @@ export function RecommandationsPage() {
   const items = useMemo(() => {
     const all = page?.items ?? [];
     const q = query.trim().toLowerCase();
-    return all.filter((r) => {
-      if (statutFilter !== 'all' && r.statut !== statutFilter) return false;
-      if (prioriteFilter !== 'all' && r.niveauPriorite !== prioriteFilter) return false;
-      if (q && !r.titre.toLowerCase().includes(q) && !r.description.toLowerCase().includes(q))
-        return false;
-      return true;
-    });
+    /* Tri secondaire : on pousse les recos terminees (resolue, annulee)
+     * en bas de la boite de reception — les actives restent visibles en
+     * priorite. On preserve l'ordre serveur (createdAt desc) au sein
+     * de chaque groupe. */
+    const statutOrder: Record<RecommandationStatut, number> = {
+      proposee: 0,
+      en_cours: 0,
+      suivie: 0,
+      resolue: 1,
+      annulee: 2,
+    };
+    return all
+      .filter((r) => {
+        if (statutFilter !== 'all' && r.statut !== statutFilter) return false;
+        if (prioriteFilter !== 'all' && r.niveauPriorite !== prioriteFilter) return false;
+        if (q && !r.titre.toLowerCase().includes(q) && !r.description.toLowerCase().includes(q))
+          return false;
+        return true;
+      })
+      .sort((a, b) => statutOrder[a.statut] - statutOrder[b.statut]);
   }, [page, statutFilter, prioriteFilter, query]);
 
   const selected = items.find((r) => r.id === selectedId) ?? items[0] ?? null;
