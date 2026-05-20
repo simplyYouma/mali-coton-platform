@@ -63,7 +63,7 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-4);
-  border-bottom: 1px solid var(--color-ink-line);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   min-height: 64px;
 }
 .workspaceName {
@@ -98,13 +98,13 @@
   font-size: 13px;
   font-weight: 300;
   letter-spacing: 0.32em;
-  color: var(--color-ink-muted);
+  color: rgba(255, 255, 255, 0.72);
   margin-top: 3px;
   text-transform: uppercase;
 }
 .workspacePlan {
   font-size: 9px;
-  color: var(--color-ink-faint);
+  color: rgba(255, 255, 255, 0.55);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -125,15 +125,15 @@
   border: none;
   background: transparent;
   border-radius: 6px;
-  color: var(--color-ink-muted);
+  color: rgba(255, 255, 255, 0.65);
   cursor: pointer;
   transition:
     color var(--duration-fast) var(--ease-out),
     background-color var(--duration-fast) var(--ease-out);
 }
 .collapseToggle:hover {
-  color: var(--color-ink-text);
-  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.10);
 }
 
 /* ───── Nav ───── */
@@ -158,7 +158,7 @@
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--color-ink-faint);
+  color: rgba(255, 255, 255, 0.58);
   margin: var(--space-2) 0 var(--space-2) var(--space-3);
   font-weight: 700;
 }
@@ -179,7 +179,7 @@
   padding: 0 var(--space-3);
   height: 40px;
   border-radius: 999px;
-  color: var(--color-ink-muted);
+  color: rgba(255, 255, 255, 0.78);
   font-size: 13.5px;
   font-weight: 500;
   text-decoration: none;
@@ -189,16 +189,16 @@
     color var(--duration-fast) var(--ease-out);
 }
 .link:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--color-ink-text);
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
 }
 .linkActive {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
   font-weight: 600;
 }
 .linkActive:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.20);
 }
 
 .linkIcon {
@@ -208,11 +208,11 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  color: var(--color-ink-muted);
+  color: rgba(255, 255, 255, 0.72);
   transition: color var(--duration-fast) var(--ease-out);
 }
 .linkIcon svg { stroke-width: 1.75; transition: stroke-width var(--duration-fast) var(--ease-out); }
-.link:hover .linkIcon { color: var(--color-ink-text); }
+.link:hover .linkIcon { color: #ffffff; }
 .linkActive .linkIcon { color: #ffffff; }
 .linkActive .linkIcon svg { stroke-width: 2.2; }
 
@@ -228,8 +228,8 @@
 /* ───── Badges ───── */
 .linkBadge {
   font-size: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--color-ink-text);
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
   padding: 0 7px;
   min-width: 18px;
   height: 18px;
@@ -265,7 +265,7 @@
   border: none;
   border-radius: 999px;
   cursor: pointer;
-  color: var(--color-ink-muted);
+  color: rgba(255, 255, 255, 0.78);
   font-size: 13.5px;
   font-weight: 500;
   text-align: left;
@@ -274,8 +274,8 @@
     color var(--duration-fast) var(--ease-out);
 }
 .footerCard:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--color-ink-text);
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
 }
 .footerIcon {
   display: inline-flex;

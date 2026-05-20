@@ -150,13 +150,20 @@ function buildHeatmap(
       const worst = relevant.reduce((a, b) =>
         SEVERITY_RANK[a.level] >= SEVERITY_RANK[b.level] ? a : b,
       );
+      const criticalCount = relevant.filter((r) => r.level === 'critical').length;
+      const warningCount = relevant.filter((r) => r.level === 'warning').length;
+      const conformingCount = relevant.filter((r) => r.level === 'conforming').length;
+      const breakdownParts: string[] = [];
+      if (criticalCount > 0) breakdownParts.push(`${criticalCount} critique${criticalCount > 1 ? 's' : ''}`);
+      if (warningCount > 0) breakdownParts.push(`${warningCount} a surveiller`);
+      if (conformingCount > 0) breakdownParts.push(`${conformingCount} conforme${conformingCount > 1 ? 's' : ''}`);
       cells[site.id]![domain] = {
         level: worst.level,
         display:
           domain === 'water' && relevant.find((r) => r.label === 'pH eaux usées')
             ? relevant.find((r) => r.label === 'pH eaux usées')!.value.toFixed(2)
             : worst.value.toFixed(1),
-        tooltip: `${worst.label} · ${worst.value.toFixed(2)} · Source ${worst.source}`,
+        tooltip: `${breakdownParts.join(' · ')} | pire : ${worst.label} ${worst.value.toFixed(2)} (${worst.source})`,
       };
     }
   }
