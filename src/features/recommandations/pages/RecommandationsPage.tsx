@@ -233,9 +233,9 @@ export function RecommandationsPage() {
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Recommandations</h1>
-          <span className={styles.heroSubtitle}>
-            Boîte de réception des actions correctives identifiées sur les sites
-          </span>
+          <p className={styles.heroDescription}>
+            Boîte de réception des actions correctives identifiées sur les sites.
+          </p>
         </div>
         <div className={styles.heroKpis}>
           <div className={styles.kpiTile} data-tone="neutral">
