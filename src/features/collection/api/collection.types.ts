@@ -389,11 +389,12 @@ export interface Collection {
 
 export const STATUS_LABEL: Record<CollectionStatus, string> = {
   submitted: 'Soumise',
-  awaiting_lab: 'Bordereau labo attendu',
-  lab_complete: 'Bordereaux reçus',
+  awaiting_lab: 'Analyses lab en cours',
+  lab_complete: 'Analyses reçues',
+  /** @deprecated retiré du workflow : la correction se fait inline par le sup. */
   needs_correction: 'À corriger',
   validated: 'Validée',
-  rejected: 'Rejetée',
+  rejected: 'Annulée',
 };
 
 export const STATUS_VARIANT: Record<

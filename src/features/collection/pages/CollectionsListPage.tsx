@@ -23,12 +23,14 @@ import { CollectionRow } from '../components/CollectionRow';
 import { STATUS_LABEL, type CollectionStatus } from '../api/collection.types';
 import styles from './CollectionsListPage.module.css';
 
+/* Workflow lineaire — chaque collecte traverse ces etapes dans l'ordre.
+ * needs_correction est deprecie depuis le retrait de 'Demander correction'
+ * (la correction se fait inline par le sup, pas en renvoi a l'agent). */
 const TABS: Array<{ value: 'all' | CollectionStatus; label: string }> = [
   { value: 'all', label: 'Toutes' },
   { value: 'submitted', label: STATUS_LABEL.submitted },
   { value: 'awaiting_lab', label: STATUS_LABEL.awaiting_lab },
   { value: 'lab_complete', label: STATUS_LABEL.lab_complete },
-  { value: 'needs_correction', label: STATUS_LABEL.needs_correction },
   { value: 'validated', label: STATUS_LABEL.validated },
   { value: 'rejected', label: STATUS_LABEL.rejected },
 ];

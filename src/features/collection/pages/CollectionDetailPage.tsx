@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   ArrowLeft,
   Beaker,
   Bell,
@@ -37,16 +38,14 @@ import type {
 } from '../api/collection.types';
 import { POINT_PRELEVEMENT_LABEL } from '../api/collection.types';
 import { STATUS_LABEL, STATUS_VARIANT } from '../api/collection.types';
-import { findRule } from '../lib/indicatorRules';
+import { computeLocalConformity, findRule } from '../lib/indicatorRules';
 /* Score qualité + détection d'anomalies retirés du detail page : info bruitee dans la maquette. */
 import { PhotoLightbox } from '../components/PhotoLightbox';
-import { CorrectionStepsPicker } from '../components/CorrectionStepsPicker';
 import { correctionStepLabel } from '../lib/correctionSteps';
 import { buildCollectionTimeline, type TimelineEvent } from '../lib/collectionTimeline';
 import { useCollection } from '../hooks/useCollections';
 import {
   useRejectCollection,
-  useRequestCorrection,
   useValidateCollection,
 } from '../hooks/useCollectionMutations';
 import styles from './CollectionDetailPage.module.css';
@@ -117,67 +116,65 @@ export function CollectionDetailPage() {
   const { data: sitesPage } = useSites();
   const validateMut = useValidateCollection();
   const rejectMut = useRejectCollection();
-  const correctionMut = useRequestCorrection();
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [validateModalOpen, setValidateModalOpen] = useState(false);
-  const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [correctionNotes, setCorrectionNotes] = useState('');
-  const [correctionTargetSteps, setCorrectionTargetSteps] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  /**
-   * État local des validations par mesure — overlay sur Measurement.validation
-   * pour ne pas avoir à muter la fixture. Phase B3 : le backend exposera ces
-   * actions via ValidationSuperviseur dédié.
-   */
-  const [localValidations, setLocalValidations] = useState<
-    Record<string, { statut: 'valide' | 'rejete'; commentaire?: string; validePar?: string; dateValidation: string }>
-  >({});
-  const [rejectMeasureTarget, setRejectMeasureTarget] = useState<string | null>(null);
-  const [rejectMeasureReason, setRejectMeasureReason] = useState('');
 
-  const applyMeasurementValidation = (
-    indicatorId: string,
-    statut: 'valide' | 'rejete',
-    commentaire?: string,
-  ) => {
-    if (!user) return;
-    setLocalValidations((prev) => ({
-      ...prev,
-      [indicatorId]: {
-        statut,
-        commentaire,
-        validePar: user.id,
-        dateValidation: new Date().toISOString(),
-      },
-    }));
-    if (statut === 'valide') {
-      toast.success(`Mesure ${indicatorId} validée.`);
-    } else {
-      toast.warning(`Mesure ${indicatorId} rejetée.`);
-    }
+  /**
+   * Edition d'une mesure par le superviseur — modale dediee. La donnee
+   * est gardee en memoire locale (overlay sur Measurement) en attendant
+   * que le backend expose un endpoint PATCH /resultat_analyses (Phase B4).
+   * Chaque edition est tracee dans la timeline + audit.
+   */
+  const [editTarget, setEditTarget] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const [editReason, setEditReason] = useState<string>('');
+  const [localEdits, setLocalEdits] = useState<
+    Record<
+      string,
+      { value: string | number; reason: string; editedBy: string; editedAt: string }
+    >
+  >({});
+
+  const openEditMeasure = (indicatorId: string, currentValue: unknown) => {
+    setEditTarget(indicatorId);
+    setEditValue(
+      currentValue == null
+        ? ''
+        : typeof currentValue === 'number'
+          ? String(currentValue)
+          : String(currentValue),
+    );
+    setEditReason('');
   };
 
-  const validateMeasurement = (indicatorId: string, statut: 'valide' | 'rejete') => {
-    if (!user) return;
-    if (statut === 'rejete') {
-      setRejectMeasureTarget(indicatorId);
-      setRejectMeasureReason('');
+  const confirmEditMeasure = () => {
+    if (!editTarget || !user) return;
+    if (!editValue.trim()) {
+      toast.error('La nouvelle valeur est obligatoire.');
       return;
     }
-    applyMeasurementValidation(indicatorId, 'valide');
-  };
-
-  const confirmRejectMeasure = () => {
-    if (!rejectMeasureTarget) return;
-    applyMeasurementValidation(
-      rejectMeasureTarget,
-      'rejete',
-      rejectMeasureReason.trim() || undefined,
-    );
-    setRejectMeasureTarget(null);
-    setRejectMeasureReason('');
+    if (!editReason.trim()) {
+      toast.error('Précisez le motif de la modification.');
+      return;
+    }
+    const num = Number(editValue);
+    const finalValue = Number.isFinite(num) ? num : editValue.trim();
+    setLocalEdits((prev) => ({
+      ...prev,
+      [editTarget]: {
+        value: finalValue,
+        reason: editReason.trim(),
+        editedBy: user.id,
+        editedAt: new Date().toISOString(),
+      },
+    }));
+    toast.success(`Mesure ${editTarget} modifiée. La modification est tracée dans l'audit.`);
+    setEditTarget(null);
+    setEditValue('');
+    setEditReason('');
   };
 
   const site = useMemo(
@@ -221,28 +218,6 @@ export function CollectionDetailPage() {
       setValidateModalOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Échec de la validation.');
-    }
-  };
-
-  const handleRequestCorrection = async () => {
-    if (!collection || !user) return;
-    if (!correctionNotes.trim()) {
-      toast.error('Précisez ce qui doit être corrigé.');
-      return;
-    }
-    try {
-      await correctionMut.mutateAsync({
-        id: collection.id,
-        requestedBy: user.id,
-        notes: correctionNotes.trim(),
-        targetSteps: correctionTargetSteps.length > 0 ? correctionTargetSteps : undefined,
-      });
-      toast.info('Correction demandée — l\'agent peut rouvrir la collecte.');
-      setCorrectionModalOpen(false);
-      setCorrectionNotes('');
-      setCorrectionTargetSteps([]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec de la demande.');
     }
   };
 
@@ -484,66 +459,90 @@ export function CollectionDetailPage() {
                 <div key={domain} className={styles.domainBlock}>
                   <h3 className={styles.domainTitle}>{DOMAIN_LABEL[domain]}</h3>
                   {grouped[domain].map(({ rule, m }) => {
-                    const hasValue = m.value != null && m.value !== '';
-                    const validation = localValidations[m.indicatorId] ?? m.validation;
-                    const canValidateRow =
-                      hasValue && (role === 'superviseur' || role === 'admin');
+                    /* Valeur affichee : si le sup a modifie la mesure, on
+                     * montre l'override local (en attendant Phase B4 backend). */
+                    const edit = localEdits[m.indicatorId];
+                    const displayedValue = edit ? edit.value : m.value;
+                    const hasValue = displayedValue != null && displayedValue !== '';
+                    const isLabPending = m.acquisition === 'lab_pending';
+                    const isLabReceived = m.acquisition === 'lab_received';
+
+                    /* Evaluation auto par le systeme depuis la regle normative
+                     * — c'est le systeme qui dit OK / hors seuil, plus le sup. */
+                    const numericValue = typeof displayedValue === 'number'
+                      ? displayedValue
+                      : Number(displayedValue);
+                    const evalLevel =
+                      hasValue && rule && Number.isFinite(numericValue)
+                        ? computeLocalConformity(rule, numericValue)
+                        : null;
+                    const canEdit = role === 'superviseur' || role === 'admin';
                     return (
-                      <div key={m.indicatorId} className={styles.measureRow}>
+                      <div
+                        key={m.indicatorId}
+                        className={styles.measureRow}
+                        data-eval={evalLevel ?? undefined}
+                        data-edited={edit ? 'true' : undefined}
+                      >
                         <div className={styles.measureMain}>
                           <span className={styles.measureLabel}>
                             {rule?.label ?? m.indicatorId}
+                            {edit ? (
+                              <span
+                                className={styles.measureEditedTag}
+                                title={`Modifiée par le superviseur — motif : ${edit.reason}`}
+                              >
+                                <Pencil size={10} /> éditée
+                              </span>
+                            ) : null}
                           </span>
                           <span className={styles.measureSource}>
                             {rule?.method ?? m.thresholdSource ?? rule?.source ?? '—'}
                           </span>
                         </div>
-                        {m.acquisition === 'lab_pending' ? (
+                        {isLabPending ? (
                           <span className={styles.measurePending}>
-                            <Clock size={12} /> Bordereau attendu
+                            <Clock size={12} /> Analyse en cours au labo
                           </span>
                         ) : (
                           <span className={styles.measureValue}>
-                            {formatMeasureValue(m.value)}
+                            {formatMeasureValue(displayedValue)}
                             {rule?.unit ? ` ${rule.unit}` : ''}
                           </span>
                         )}
-                        {validation?.statut === 'valide' ? (
-                          <Badge variant="success" size="sm" title={validation.commentaire}>
-                            <CheckCircle2 size={12} /> Validé
-                          </Badge>
-                        ) : validation?.statut === 'rejete' ? (
-                          <Badge variant="danger" size="sm" title={validation.commentaire}>
-                            <XCircle size={12} /> Rejeté
-                          </Badge>
-                        ) : m.acquisition === 'lab_received' ? (
+                        {/* Indicatif source/eval — un seul badge condense */}
+                        {isLabPending ? (
+                          <Badge variant="warning" size="sm">Lab en cours</Badge>
+                        ) : isLabReceived && !edit && evalLevel === 'conforming' ? (
                           <Badge variant="info" size="sm">Bordereau reçu</Badge>
-                        ) : m.acquisition === 'lab_pending' ? (
-                          <Badge variant="warning" size="sm">Labo en attente</Badge>
+                        ) : evalLevel === 'conforming' ? (
+                          <Badge variant="success" size="sm" title="Auto-évaluation système">
+                            <CheckCircle2 size={12} /> Conforme
+                          </Badge>
+                        ) : evalLevel === 'warning' ? (
+                          <Badge variant="warning" size="sm" title="Auto-évaluation système">
+                            <AlertTriangle size={12} /> À surveiller
+                          </Badge>
+                        ) : evalLevel === 'critical' ? (
+                          <Badge variant="danger" size="sm" title="Auto-évaluation système">
+                            <XCircle size={12} /> Hors seuil
+                          </Badge>
                         ) : (
                           <Badge variant="neutral" size="sm">In situ</Badge>
                         )}
-                        {canValidateRow ? (
-                          <span className={styles.rowValidationActions}>
-                            <button
-                              type="button"
-                              className={styles.rowValidateBtn}
-                              onClick={() => validateMeasurement(m.indicatorId, 'valide')}
-                              aria-label="Valider cette mesure"
-                              title="Valider"
-                            >
-                              <CheckCircle2 size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.rowRejectBtn}
-                              onClick={() => validateMeasurement(m.indicatorId, 'rejete')}
-                              aria-label="Rejeter cette mesure"
-                              title="Rejeter"
-                            >
-                              <XCircle size={14} />
-                            </button>
-                          </span>
+                        {/* Le sup peut modifier la valeur — utile si lecture
+                         * suspecte / valeur a corriger. La modification est
+                         * tracee dans audit + timeline. */}
+                        {canEdit && hasValue ? (
+                          <button
+                            type="button"
+                            className={styles.rowEditBtn}
+                            onClick={() => openEditMeasure(m.indicatorId, displayedValue)}
+                            aria-label={`Modifier la mesure ${rule?.label ?? m.indicatorId}`}
+                            title="Modifier"
+                          >
+                            <Pencil size={14} />
+                          </button>
                         ) : null}
                       </div>
                     );
@@ -605,13 +604,6 @@ export function CollectionDetailPage() {
             onClick={() => setRejectModalOpen(true)}
           >
             Rejeter
-          </Button>
-          <Button
-            variant="secondary"
-            iconLeft={<Pencil size={16} />}
-            onClick={() => setCorrectionModalOpen(true)}
-          >
-            Demander correction
           </Button>
           <Button
             variant="success"
@@ -697,65 +689,65 @@ export function CollectionDetailPage() {
       </Modal>
 
       <Modal
-        open={correctionModalOpen}
-        onClose={() => setCorrectionModalOpen(false)}
-        title="Demander une correction à l'agent"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-            La collecte repasse en statut <strong>« À corriger »</strong>. L'agent recevra une
-            notification et pourra rouvrir le wizard pour amender les points listés.
-          </p>
-          <Textarea
-            rows={5}
-            placeholder="Ex : pH = 12,4 implausible, joindre une photo de la lecture du pH-mètre. Vue d'ensemble de l'atelier manquante."
-            value={correctionNotes}
-            onChange={(e) => setCorrectionNotes(e.target.value)}
-          />
-          <CorrectionStepsPicker
-            value={correctionTargetSteps}
-            onChange={setCorrectionTargetSteps}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-            <Button variant="ghost" onClick={() => setCorrectionModalOpen(false)}>
-              Annuler
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleRequestCorrection}
-              loading={correctionMut.isPending}
-              iconLeft={<Pencil size={16} />}
-            >
-              Envoyer la demande
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={rejectMeasureTarget !== null}
-        onClose={() => setRejectMeasureTarget(null)}
-        title="Rejeter la mesure"
+        open={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        title={editTarget ? `Modifier ${findRule(editTarget)?.label ?? editTarget}` : 'Modifier la mesure'}
         width={520}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setRejectMeasureTarget(null)}>
+            <Button variant="ghost" onClick={() => setEditTarget(null)}>
               Annuler
             </Button>
-            <Button variant="danger" onClick={confirmRejectMeasure}>
-              Confirmer le rejet
+            <Button variant="success" onClick={confirmEditMeasure}>
+              Enregistrer la modification
             </Button>
           </>
         }
       >
-        <FormField label="Motif (optionnel)">
-          <Textarea
-            rows={3}
-            value={rejectMeasureReason}
-            onChange={(e) => setRejectMeasureReason(e.target.value)}
-            placeholder="Ex. valeur incohérente avec l'historique, suspicion d'erreur d'instrumentation…"
-          />
-        </FormField>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <FormField
+            label={`Nouvelle valeur${
+              editTarget && findRule(editTarget)?.unit
+                ? ` (${findRule(editTarget)?.unit})`
+                : ''
+            }`}
+            required
+          >
+            <input
+              type="text"
+              inputMode="decimal"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              placeholder="Ex : 7.2"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-surface)',
+                fontSize: 'var(--text-body)',
+              }}
+            />
+          </FormField>
+          <FormField label="Motif de la modification" required>
+            <Textarea
+              rows={3}
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+              placeholder="Ex : erreur de saisie, calibrage du pH-mètre corrigé, valeur recoupée avec le bordereau labo…"
+            />
+          </FormField>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 'var(--text-xs)',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.5,
+            }}
+          >
+            La modification est <strong>tracée dans le journal d'audit</strong> et apparaît dans la chronologie de la collecte (qui · quand · valeur avant/après · motif).
+          </p>
+        </div>
       </Modal>
 
       <PhotoLightbox

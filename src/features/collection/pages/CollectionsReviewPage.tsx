@@ -8,7 +8,6 @@ import {
   ExternalLink,
   Inbox,
   MapPin,
-  Pencil,
   User,
   X,
 } from 'lucide-react';
@@ -21,11 +20,9 @@ import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { useCollections } from '../hooks/useCollections';
 import {
   useRejectCollection,
-  useRequestCorrection,
   useValidateCollection,
 } from '../hooks/useCollectionMutations';
 import { findRule } from '../lib/indicatorRules';
-import { CorrectionStepsPicker } from '../components/CorrectionStepsPicker';
 import { PhotoLightbox } from '../components/PhotoLightbox';
 import type { Collection } from '../api/collection.types';
 import { STATUS_LABEL } from '../api/collection.types';
@@ -36,7 +33,6 @@ export function CollectionsReviewPage() {
   const toast = useToast();
   const validateMut = useValidateCollection();
   const rejectMut = useRejectCollection();
-  const correctMut = useRequestCorrection();
 
   const submittedQ = useCollections({ status: 'submitted' });
   const labCompleteQ = useCollections({ status: 'lab_complete' });
@@ -82,11 +78,8 @@ export function CollectionsReviewPage() {
   };
   const [rejectOpen, setRejectOpen] = useState(false);
   const [validateOpen, setValidateOpen] = useState(false);
-  const [correctOpen, setCorrectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [validationNotes, setValidationNotes] = useState('');
-  const [correctionNotes, setCorrectionNotes] = useState('');
-  const [correctionTargetSteps, setCorrectionTargetSteps] = useState<string[]>([]);
 
   const selected = useMemo(
     () => items.find((c) => c.id === selectedId) ?? items[0] ?? null,
@@ -126,24 +119,6 @@ export function CollectionsReviewPage() {
       setValidateOpen(false);
     } catch {
       toast.error('Échec de la validation. Réessayez.');
-    }
-  };
-
-  const handleCorrection = async () => {
-    if (!selected || !user || !correctionNotes.trim()) return;
-    try {
-      await correctMut.mutateAsync({
-        id: selected.id,
-        requestedBy: user.id,
-        notes: correctionNotes.trim(),
-        targetSteps: correctionTargetSteps.length > 0 ? correctionTargetSteps : undefined,
-      });
-      toast.info('Demande de correction envoyée — l\'agent peut rouvrir le wizard.');
-      setCorrectionNotes('');
-      setCorrectionTargetSteps([]);
-      setCorrectOpen(false);
-    } catch {
-      toast.error('Échec de la demande. Réessayez.');
     }
   };
 
@@ -277,7 +252,6 @@ export function CollectionsReviewPage() {
               validationNotes={validationNotes}
               onValidationNotesChange={setValidationNotes}
               onValidate={() => setValidateOpen(true)}
-              onRequestCorrection={() => setCorrectOpen(true)}
               onRejectClick={() => setRejectOpen(true)}
               isValidating={validateMut.isPending}
             />
@@ -312,43 +286,6 @@ export function CollectionsReviewPage() {
           placeholder="Ex. mesure de pH incohérente avec les conditions du site, photo illisible…"
           rows={4}
         />
-      </Modal>
-
-      <Modal
-        open={correctOpen}
-        onClose={() => setCorrectOpen(false)}
-        title="Demander une correction"
-        description="L'agent recevra la demande et pourra resoumettre."
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setCorrectOpen(false)}>
-              Annuler
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleCorrection}
-              disabled={!correctionNotes.trim() || correctMut.isPending}
-              loading={correctMut.isPending}
-              iconLeft={<Pencil size={14} />}
-            >
-              Envoyer la demande
-            </Button>
-          </>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <textarea
-            className={styles.notesField}
-            value={correctionNotes}
-            onChange={(e) => setCorrectionNotes(e.target.value)}
-            placeholder="Ex. la mesure de pH semble incohérente avec l'historique du site, merci de revérifier le calibrage du pH-mètre et resoumettre…"
-            rows={4}
-          />
-          <CorrectionStepsPicker
-            value={correctionTargetSteps}
-            onChange={setCorrectionTargetSteps}
-          />
-        </div>
       </Modal>
 
       <Modal
@@ -410,7 +347,6 @@ interface ReviewDetailProps {
   validationNotes: string;
   onValidationNotesChange: (v: string) => void;
   onValidate: () => void;
-  onRequestCorrection: () => void;
   onRejectClick: () => void;
   isValidating: boolean;
 }
@@ -423,7 +359,6 @@ function ReviewDetail({
   validationNotes,
   onValidationNotesChange,
   onValidate,
-  onRequestCorrection,
   onRejectClick,
   isValidating,
 }: ReviewDetailProps) {
@@ -577,13 +512,6 @@ function ReviewDetail({
             onClick={onRejectClick}
           >
             Rejeter
-          </Button>
-          <Button
-            variant="secondary"
-            iconLeft={<Pencil size={14} />}
-            onClick={onRequestCorrection}
-          >
-            Demander correction
           </Button>
           <Button
             variant="success"
