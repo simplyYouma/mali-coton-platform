@@ -386,10 +386,6 @@ export function MappingPage() {
                 <span className={styles.legendDot} style={{ background: CONFORMITY_COLOR.critical }} />
                 Hors seuil
               </li>
-              <li>
-                <span className={styles.legendStar} aria-hidden="true">★</span>
-                Site de référence
-              </li>
             </ul>
           </section>
         </aside>
@@ -539,7 +535,6 @@ export function MappingPage() {
                         <header className={styles.popupHead}>
                           <h3 className={styles.popupTitle}>
                             {site.shortName}
-                            {site.isReference ? ' ★' : ''}
                           </h3>
                           <Badge
                             size="sm"

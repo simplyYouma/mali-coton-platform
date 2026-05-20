@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   FormField,
   Input,
   Modal,
   Select,
-  Switch,
   Textarea,
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
+import {
+  mockCercles,
+  mockCommunes,
+  mockRegions,
+} from '@/mocks/fixtures/geography';
 import type { SiteInput } from '../api/sites';
 import type { Site, SiteLegalStatus, SiteType } from '../api/site.types';
 import { useCreateSite, useUpdateSite } from '../hooks/useSites';
@@ -40,13 +44,14 @@ interface FormState {
   legalStatus: SiteLegalStatus;
   workforce: string;
   createdYear: string;
-  commune: string;
-  city: string;
-  address: string;
+  /* Geo cascade — IDs des entites referentiel. */
+  regionId: string;
+  cercleId: string;
+  communeId: string;
+  quartier: string;
   lat: string;
   lng: string;
   description: string;
-  isReference: boolean;
 }
 
 const EMPTY: FormState = {
@@ -56,16 +61,46 @@ const EMPTY: FormState = {
   legalStatus: 'informel',
   workforce: '',
   createdYear: String(new Date().getFullYear()),
-  commune: '',
-  city: 'Bamako',
-  address: '',
+  regionId: '',
+  cercleId: '',
+  communeId: '',
+  quartier: '',
   lat: '',
   lng: '',
   description: '',
-  isReference: false,
 };
 
+/* Resout commune/cercle/region a partir du nom commune (best-effort)
+ * pour pre-remplir le form en mode edition. Fallback : region=Bamako. */
+function geoFromLocation(loc: Site['location']): {
+  regionId: string;
+  cercleId: string;
+  communeId: string;
+} {
+  const commune = mockCommunes.find(
+    (c) => c.nom.toLowerCase() === loc.commune.toLowerCase(),
+  );
+  if (commune) {
+    const cercle = mockCercles.find((c) => c.id === commune.cercleId);
+    return {
+      regionId: cercle?.regionId ?? mockRegions[0]!.id,
+      cercleId: commune.cercleId,
+      communeId: commune.id,
+    };
+  }
+  /* Fallback : essaie de matcher par nom de cercle (ville) */
+  const cercle = mockCercles.find((c) =>
+    c.nom.toLowerCase().includes(loc.city.toLowerCase()),
+  );
+  return {
+    regionId: cercle?.regionId ?? mockRegions[0]!.id,
+    cercleId: cercle?.id ?? '',
+    communeId: '',
+  };
+}
+
 function fromSite(site: Site): FormState {
+  const geo = geoFromLocation(site.location);
   return {
     name: site.name,
     shortName: site.shortName,
@@ -73,17 +108,19 @@ function fromSite(site: Site): FormState {
     legalStatus: site.legalStatus,
     workforce: String(site.workforce),
     createdYear: String(site.createdYear),
-    commune: site.location.commune,
-    city: site.location.city,
-    address: site.location.address ?? '',
+    regionId: geo.regionId,
+    cercleId: geo.cercleId,
+    communeId: geo.communeId,
+    quartier: site.location.quartier ?? site.location.address ?? '',
     lat: String(site.coordinates.lat),
     lng: String(site.coordinates.lng),
     description: site.description ?? '',
-    isReference: site.isReference,
   };
 }
 
 function toInput(f: FormState): SiteInput {
+  const commune = mockCommunes.find((c) => c.id === f.communeId);
+  const cercle = mockCercles.find((c) => c.id === f.cercleId);
   return {
     name: f.name.trim(),
     shortName: f.shortName.trim(),
@@ -91,12 +128,13 @@ function toInput(f: FormState): SiteInput {
     legalStatus: f.legalStatus,
     workforce: Number(f.workforce) || 0,
     createdYear: Number(f.createdYear) || new Date().getFullYear(),
-    isReference: f.isReference,
+    isReference: false,
     description: f.description.trim() || undefined,
     location: {
-      commune: f.commune.trim(),
-      city: f.city.trim(),
-      address: f.address.trim() || undefined,
+      commune: commune?.nom ?? '',
+      city: cercle?.nom.replace(/^Cercle de /i, '') ?? '',
+      quartier: f.quartier.trim() || undefined,
+      address: f.quartier.trim() || undefined,
     },
     coordinates: {
       lat: Number(f.lat),
@@ -118,13 +156,29 @@ export function SiteForm({ open, onClose, site }: SiteFormProps) {
   const isEdit = !!site;
   const isPending = createMut.isPending || updateMut.isPending;
 
+  /* Listes filtrees pour la cascade region/cercle/commune */
+  const cercleOptions = useMemo(
+    () =>
+      mockCercles
+        .filter((c) => !form.regionId || c.regionId === form.regionId)
+        .map((c) => ({ value: c.id, label: c.nom })),
+    [form.regionId],
+  );
+  const communeOptions = useMemo(
+    () =>
+      mockCommunes
+        .filter((c) => !form.cercleId || c.cercleId === form.cercleId)
+        .map((c) => ({ value: c.id, label: c.nom })),
+    [form.cercleId],
+  );
+
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.shortName.trim()) {
       toast.error('Nom complet et code court obligatoires.');
       return;
     }
-    if (!form.commune.trim() || !form.city.trim()) {
-      toast.error('Commune et ville obligatoires.');
+    if (!form.regionId || !form.cercleId || !form.communeId) {
+      toast.error('Région, cercle et commune obligatoires.');
       return;
     }
     const lat = Number(form.lat);
@@ -218,34 +272,66 @@ export function SiteForm({ open, onClose, site }: SiteFormProps) {
           />
         </FormField>
 
-        <FormField label="Site de référence" hint="Marquera le site avec une étoile dans l'app.">
-          <Switch
-            checked={form.isReference}
-            onChange={(e) => setForm((f) => ({ ...f, isReference: e.target.checked }))}
-            label={form.isReference ? 'Oui — référence' : 'Non'}
+        <FormField label="Région" required>
+          <Select<string>
+            options={mockRegions.map((r) => ({ value: r.id, label: r.nom }))}
+            value={form.regionId}
+            placeholder="Sélectionner une région…"
+            onChange={(regionId) =>
+              setForm((f) => ({
+                ...f,
+                regionId,
+                /* reset niveau enfant si la region change */
+                cercleId: '',
+                communeId: '',
+              }))
+            }
           />
         </FormField>
 
-        <FormField label="Commune" required>
-          <Input
-            value={form.commune}
-            onChange={(e) => setForm((f) => ({ ...f, commune: e.target.value }))}
-            placeholder="Ex : Commune V"
+        <FormField
+          label="Cercle / Ville"
+          required
+          hint={
+            !form.regionId ? 'Sélectionnez d\'abord une région.' : undefined
+          }
+        >
+          <Select<string>
+            options={cercleOptions}
+            value={form.cercleId}
+            placeholder="Sélectionner un cercle…"
+            disabled={!form.regionId}
+            onChange={(cercleId) =>
+              setForm((f) => ({ ...f, cercleId, communeId: '' }))
+            }
           />
         </FormField>
 
-        <FormField label="Ville" required>
-          <Input
-            value={form.city}
-            onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-            placeholder="Ex : Bamako"
+        <FormField
+          label="Commune"
+          required
+          hint={
+            !form.cercleId ? 'Sélectionnez d\'abord un cercle.' : undefined
+          }
+        >
+          <Select<string>
+            options={communeOptions}
+            value={form.communeId}
+            placeholder="Sélectionner une commune…"
+            disabled={!form.cercleId}
+            onChange={(communeId) =>
+              setForm((f) => ({ ...f, communeId }))
+            }
           />
         </FormField>
 
-        <FormField label="Adresse / quartier" className={styles.full}>
+        <FormField
+          label="Quartier"
+          hint="Repère précis (saisie libre)."
+        >
           <Input
-            value={form.address}
-            onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+            value={form.quartier}
+            onChange={(e) => setForm((f) => ({ ...f, quartier: e.target.value }))}
             placeholder="Ex : Kalaban-Coura, près du marché"
           />
         </FormField>

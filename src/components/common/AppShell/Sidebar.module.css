@@ -53,55 +53,27 @@
   to { opacity: 1; }
 }
 
-/* ───── Brand block ───── */
+/* ───── Brand block — juste le wordmark, sans avatar ni baseline ───── */
 .workspace {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-ink-line);
   min-height: 64px;
 }
-.workspaceButton {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.brandMark {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.85);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: 0;
-  font-size: 13px;
-}
-
-.workspaceMeta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
 .workspaceName {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 16px;
   color: var(--color-ink-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   letter-spacing: -0.01em;
+  flex: 1;
+  min-width: 0;
 }
 .workspacePlan {
   font-size: 9px;

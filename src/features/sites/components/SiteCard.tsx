@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Users, Star, Clock, Pencil, Trash2 } from 'lucide-react';
+import { MapPin, Users, Clock, Pencil, Trash2 } from 'lucide-react';
 import { IconButton } from '@/components/common';
 import type { Site } from '../api/site.types';
 import { SITE_TYPE_SHORT } from '../api/site.types';
@@ -61,12 +61,6 @@ export function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
     >
       <header className={styles.header}>
         <div className={styles.titleBlock}>
-          {site.isReference ? (
-            <span className={styles.refMark}>
-              <Star size={10} aria-hidden="true" />
-              Site de référence
-            </span>
-          ) : null}
           <h3 className={styles.title}>{site.shortName}</h3>
           <p className={styles.subtitle}>{subtitle}</p>
         </div>

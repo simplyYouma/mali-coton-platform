@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, LifeBuoy } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import styles from './Sidebar.module.css';
@@ -22,13 +22,11 @@ export interface NavSection {
 export interface SidebarProps {
   sections: NavSection[];
   workspaceName?: string;
-  workspacePlan?: string;
 }
 
 export function Sidebar({
   sections,
   workspaceName = 'PASET Mali',
-  workspacePlan = 'Suivi socio-environnemental',
 }: SidebarProps) {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebar();
 
@@ -52,17 +50,9 @@ export function Sidebar({
       data-collapsed={collapsed}
     >
       <header className={styles.workspace}>
-        <div className={styles.workspaceButton}>
-          <span className={styles.brandMark} aria-hidden="true">
-            P
-          </span>
-          {!collapsed ? (
-            <span className={styles.workspaceMeta}>
-              <span className={styles.workspaceName}>{workspaceName}</span>
-              <span className={styles.workspacePlan}>{workspacePlan}</span>
-            </span>
-          ) : null}
-        </div>
+        {!collapsed ? (
+          <span className={styles.workspaceName}>{workspaceName}</span>
+        ) : null}
         <button
           type="button"
           onClick={toggle}
@@ -118,16 +108,6 @@ export function Sidebar({
         ))}
       </nav>
 
-      <button type="button" className={styles.footerCard}>
-        <span className={styles.footerIcon} aria-hidden="true">
-          <LifeBuoy size={16} />
-        </span>
-        {!collapsed ? (
-          <span className={styles.footerText}>
-            <span className={styles.footerTitle}>Aide & manuel</span>
-          </span>
-        ) : null}
-      </button>
     </aside>
     </>
   );

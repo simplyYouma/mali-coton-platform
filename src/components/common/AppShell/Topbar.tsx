@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Menu, RefreshCw, UserRound } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useSidebar } from '@/app/providers/SidebarProvider';
@@ -19,32 +19,14 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 export function Topbar() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, logout } = useAuth();
   const { toggleMobile } = useSidebar();
   const { data: collectionsPage } = useCollections();
 
-  /* Bouton retour visible sauf sur les pages racine. window.history.length
-   * permet de distinguer un acces direct (depuis un bookmark) d'une
-   * navigation interne. */
-  const ROOT_PATHS = new Set([
-    '/dashboard',
-    '/sites',
-    '/collecte',
-    '/labo/echantillons',
-    '/alertes',
-    '/recommandations',
-    '/agents',
-    '/cartographie',
-    '/analytics',
-    '/reporting',
-    '/admin/utilisateurs',
-    '/admin/roles',
-    '/admin/indicateurs',
-    '/admin/referentiels',
-    '/admin/audit',
-  ]);
-  const canGoBack = !ROOT_PATHS.has(location.pathname) && window.history.length > 1;
+  /* Bouton retour : toujours visible (sauf si on n'a pas d'historique
+   * a remonter). Permet de remonter d'une page quel que soit le
+   * contexte. */
+  const canGoBack = window.history.length > 1;
 
   const lastSyncAt = useMemo(() => {
     const items = collectionsPage?.items ?? [];

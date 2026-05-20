@@ -1,6 +1,6 @@
 import { useMemo, useState, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, MapPin, Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import { Search, Filter, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   PageHeader,
   Button,
@@ -253,12 +253,7 @@ function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
     >
       <td>
         <span className={styles.siteText}>
-          <span className={styles.siteName}>
-            {site.shortName}
-            {site.isReference ? (
-              <Star size={11} className={styles.refStar} aria-label="Site de référence" />
-            ) : null}
-          </span>
+          <span className={styles.siteName}>{site.shortName}</span>
         </span>
       </td>
       <td>

@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   MapPin,
   Users,
-  Star,
   Droplet,
   Mountain,
   Wind,
@@ -229,11 +228,6 @@ export function SiteDetailPage() {
       <header className={styles.hero}>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
-            {site.isReference ? (
-              <span className={styles.refMark}>
-                <Star size={11} aria-hidden="true" /> Site de référence
-              </span>
-            ) : null}
             {SITE_TYPE_LABEL[site.type]}
           </span>
           <h1 className={styles.heroTitle}>{site.shortName}</h1>
