@@ -355,7 +355,7 @@ export function LabSamplesPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Échantillons</h1>
           <p className={styles.heroDescription}>

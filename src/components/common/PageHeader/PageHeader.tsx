@@ -10,9 +10,9 @@ export interface PageHeaderProps {
 
 export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-page-header>
       <div className={styles.text}>
-        {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
+        {eyebrow ? <span className={styles.eyebrow}>{eyebrow}</span> : null}
         <h1 className={styles.title}>{title}</h1>
         {description ? <p className={styles.description}>{description}</p> : null}
       </div>

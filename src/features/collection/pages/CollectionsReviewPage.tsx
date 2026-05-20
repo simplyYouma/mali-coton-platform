@@ -140,7 +140,7 @@ export function CollectionsReviewPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>File de validation</span>
           <h1 className={styles.heroTitle}>Revue des collectes</h1>

@@ -95,7 +95,7 @@ export function RolesPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.hero}>
+      <div className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Rôles &amp; permissions</h1>
           <span className={styles.heroCount}>

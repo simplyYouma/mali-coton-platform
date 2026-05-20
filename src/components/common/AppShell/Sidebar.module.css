@@ -7,7 +7,10 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  background: var(--color-ink-night);
+  /* Mesh diagonal subtil (sans lueurs) sur fond navy — meme grammaire que le pane login. */
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 28px),
+    var(--color-ink-night);
   color: var(--color-ink-text);
   position: sticky;
   top: 0;

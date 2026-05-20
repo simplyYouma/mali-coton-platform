@@ -124,7 +124,7 @@ export function CollectionImportPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Source terrain · KoboToolbox / ODK</span>
           <h1 className={styles.heroTitle}>Importer depuis Kobo</h1>

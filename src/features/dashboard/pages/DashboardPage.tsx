@@ -210,7 +210,7 @@ export function DashboardPage() {
   return (
     <div className={styles.page}>
       {/* ─── Hero + barre de contrôle (période, site, export) ─── */}
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>{sites.length} sites · {today}</span>
           <h1 className={styles.heroTitle}>Tableau de bord</h1>

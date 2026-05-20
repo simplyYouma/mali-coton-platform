@@ -127,7 +127,7 @@ export function TeamListPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Agents</h1>
           <span className={styles.heroCount}>

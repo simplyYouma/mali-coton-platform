@@ -7,7 +7,6 @@ import styles from './LoginPage.module.css';
 const DEMO_ACCOUNTS = [
   { role: 'Administrateur', email: 'admin@pnud.org' },
   { role: 'Superviseur', email: 'superviseur@sahel.com' },
-  { role: 'Laboratoire', email: 'labo@lne.gouv.ml' },
   { role: 'Observateur', email: 'observateur@pnud.org' },
 ];
 
@@ -26,14 +25,14 @@ export function LoginPage() {
     <main className={styles.page}>
       <section className={styles.visual} aria-hidden="true">
         <div className={styles.visualOverlay}>
-          <p className={styles.eyebrow}>Plateforme officielle · UNDP-MLI-00492</p>
+          <p className={styles.eyebrow}>PNUD Mali · UNDP-MLI-00492</p>
           <h2 className={styles.visualTitle}>
-            Plateforme de monitoring socio-environnemental des sites de teinture artisanale au Mali.
+            Suivi socio-environnemental des sites de teinture artisanale.
           </h2>
           <ul className={styles.metaList}>
-            <li><span>6</span> sites pilotes</li>
+            <li><span>5</span> sites pilotes</li>
             <li><span>~600</span> teinturiers·ères</li>
-            <li><span>49</span> indicateurs suivis</li>
+            <li><span>49</span> indicateurs</li>
             <li><span>3 ans</span> de suivi</li>
           </ul>
         </div>
@@ -41,12 +40,7 @@ export function LoginPage() {
 
       <section className={styles.formPane}>
         <div className={styles.formCard}>
-          <header className={styles.brand}>
-            <p className={styles.brandLabel}>Plateforme</p>
-            <h1 className={styles.brandName}>PASET Mali</h1>
-          </header>
-
-          <h2 className={styles.title}>Connexion</h2>
+          <h1 className={styles.title}>Connexion</h1>
           <p className={styles.subtitle}>Accédez à votre espace de suivi.</p>
 
           <form onSubmit={onSubmit} className={styles.form} noValidate>
@@ -131,7 +125,7 @@ export function LoginPage() {
         </div>
 
         <footer className={styles.footer}>
-          <p>© 2026 — PASET Mali · PNUD Mali</p>
+          <p>© 2026 · PNUD Mali · Consortium Sahel Analytics</p>
         </footer>
       </section>
     </main>

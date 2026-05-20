@@ -391,7 +391,7 @@ export function AnalyticsPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Tendances inter-sites</span>
           <h1 className={styles.heroTitle}>Analytics</h1>

@@ -1,0 +1,109 @@
+/* ───────────────────────────────────────────────
+ * Page header — single source of truth.
+ *
+ * Activé par `data-page-header` sur le <header> de chaque page.
+ * Convention de markup attendue (cf. pages/feature/.../*.tsx) :
+ *
+ *   <header data-page-header className={styles.hero}>
+ *     <div className={styles.heroLeft}>
+ *       <span className={styles.heroEyebrow}>…</span>   (optionnel)
+ *       <h1   className={styles.heroTitle}>…</h1>       (requis)
+ *       <p    className={styles.heroDescription}>…</p>  (optionnel)
+ *     </div>
+ *     <div className={styles.heroRight | heroControls | heroActions}>…</div>
+ *   </header>
+ *
+ * Les règles globales gagnent en spécificité sur les modules CSS locaux
+ * (attribute + élément ≥ class), donc les pages héritent automatiquement
+ * de l'identité visuelle. Toute modification du style se fait ici.
+ * ─────────────────────────────────────────────── */
+
+[data-page-header] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: var(--space-5);
+}
+
+/* Colonne titre/description : pleine largeur */
+[data-page-header] > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* Eyebrow — texte uppercase muted sur le fond de page (pas de bg) */
+[data-page-header] > div:first-child > span:first-child {
+  display: block;
+  background: transparent;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-2) 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-weight: var(--weight-bold);
+  border: none;
+  border-radius: 0;
+}
+
+/* Titre — banner navy pleine largeur, mesh diagonal (meme grammaire que la sidebar) */
+[data-page-header] > div:first-child > h1 {
+  display: block;
+  width: 100%;
+  margin: 0;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 28px),
+    var(--color-ink-night);
+  color: var(--color-ink-text);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-display);
+  font-size: var(--text-card);
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  border: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Si le titre est dernier enfant (pas de description) → coins arrondis complets */
+[data-page-header] > div:first-child > h1:last-child {
+  border-radius: var(--radius-lg);
+}
+
+/* Description — carte blanche en section dessous, hairline */
+[data-page-header] > div:first-child > p {
+  margin: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: var(--space-3) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  max-width: none;
+  font-family: var(--font-sans);
+}
+
+/* Actions / contrôles — basculent en row sous le bloc, alignés à droite */
+[data-page-header] > div:not(:first-child) {
+  align-self: flex-end;
+  margin-top: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Responsive — titre légèrement réduit en mobile */
+@media (max-width: 768px) {
+  [data-page-header] > div:first-child > h1 {
+    font-size: var(--text-h2);
+  }
+}

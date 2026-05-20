@@ -132,7 +132,7 @@ export function CollectionsListPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
             {isAgent ? 'Mes collectes' : 'Suivi des collectes'}

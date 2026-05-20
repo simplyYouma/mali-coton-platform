@@ -255,7 +255,7 @@ export function CollectionDetailPage() {
         <span>Toutes les collectes</span>
       </Link>
 
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
             <Badge variant={STATUS_BADGE_VARIANT[collection.status]} size="sm">

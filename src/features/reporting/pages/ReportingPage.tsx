@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Calendar,
   ChevronLeft,
   ChevronRight,
-  Download,
   FileSpreadsheet,
   FileText,
-  Globe2,
   Printer,
   Trash2,
 } from 'lucide-react';
@@ -29,12 +26,6 @@ import { exportReportToXlsx } from '../lib/xlsxExport';
 import { ReportPreview } from '../components/ReportPreview';
 import { useReportHistory } from '../hooks/useReportHistory';
 import styles from './ReportingPage.module.css';
-
-const TEMPLATE_TONES: Record<ReportTemplateId, string> = {
-  monthly: 'primary',
-  quarterly: 'navy',
-  final: 'accent',
-};
 
 const SECTION_LABEL: Record<string, string> = {
   cover: 'Couverture',
@@ -66,7 +57,6 @@ export function ReportingPage() {
   const [to, setTo] = useState<string>(initial.to.slice(0, 10));
   const [siteId, setSiteId] = useState<string>('all');
   const [pageIndex, setPageIndex] = useState(0);
-  const [flipDir, setFlipDir] = useState<'next' | 'prev' | null>(null);
   const [isCustomPeriod, setIsCustomPeriod] = useState(false);
 
   const pickTemplate = (id: ReportTemplateId) => {
@@ -88,7 +78,6 @@ export function ReportingPage() {
   // Reset à la page 0 quand le périmètre du rapport change
   useEffect(() => {
     setPageIndex(0);
-    setFlipDir(null);
   }, [templateId, from, to, siteId]);
 
   const { data: collectionsPage, isLoading: cLoad } = useCollections();
@@ -106,12 +95,10 @@ export function ReportingPage() {
 
   const goPrev = () => {
     if (currentPage <= 0) return;
-    setFlipDir('prev');
     setPageIndex(currentPage - 1);
   };
   const goNext = () => {
     if (currentPage >= totalPages - 1) return;
-    setFlipDir('next');
     setPageIndex(currentPage + 1);
   };
 
@@ -201,17 +188,51 @@ export function ReportingPage() {
     }
   };
 
+  const scopeLabel = selectedSite ? `Mono-site · ${selectedSite.shortName}` : 'Multi-sites';
+
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
-          <span className={styles.heroEyebrow}>Reporting automatisé</span>
+          <span className={styles.heroEyebrow}>Reporting</span>
           <h1 className={styles.heroTitle}>Rapports</h1>
           <p className={styles.heroDescription}>
-            Génération de bilans mensuels, trimestriels et finaux pour le PNUD.
+            Bilans générés à partir des collectes validées, alertes et bordereaux
+            laboratoire de la plateforme. Prévisualisation à l'écran, export PDF
+            ou XLSX prêt pour transmission.
           </p>
         </div>
       </header>
+
+      {/* Données réellement disponibles pour le périmètre courant. */}
+      <section className={styles.scope} aria-label="Données incluses">
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Période</span>
+          <span className={styles.scopeValue}>{aggregate?.period.label ?? '—'}</span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Périmètre</span>
+          <span className={styles.scopeValue}>{scopeLabel}</span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Collectes incluses</span>
+          <span className={styles.scopeValue}>{aggregate?.collections.length ?? 0}</span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Alertes</span>
+          <span className={styles.scopeValue}>{aggregate?.alerts.total ?? 0}</span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Bordereaux labo</span>
+          <span className={styles.scopeValue}>
+            {aggregate ? `${aggregate.lab.received} / ${aggregate.lab.total}` : '—'}
+          </span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Sites couverts</span>
+          <span className={styles.scopeValue}>{aggregate?.siteCount ?? 0}</span>
+        </div>
+      </section>
 
       <section className={styles.templateGrid} aria-label="Templates disponibles">
         {(Object.keys(REPORT_TEMPLATES) as ReportTemplateId[]).map((id) => {
@@ -223,21 +244,19 @@ export function ReportingPage() {
               type="button"
               onClick={() => pickTemplate(id)}
               className={`${styles.templateCard} ${active ? styles.templateCardActive : ''}`}
-              data-tone={TEMPLATE_TONES[id]}
               aria-pressed={active}
             >
-              <header className={styles.templateHead}>
-                <span className={styles.templateIcon} aria-hidden="true">
-                  <FileText size={18} />
-                </span>
-                <span className={styles.templateCadence}>{t.cadenceLabel}</span>
-              </header>
+              <span className={styles.templateCadence}>{t.cadenceLabel}</span>
               <h3 className={styles.templateTitle}>{t.title}</h3>
               <p className={styles.templateDesc}>{t.description}</p>
               <footer className={styles.templateFoot}>
                 <span>{t.audience}</span>
-                <span>· ~{t.approxPages} pages</span>
+                <span aria-hidden="true">·</span>
+                <span>~{t.approxPages} pages</span>
               </footer>
+              <span className={styles.templateSchedule}>
+                Cadence · {t.schedule.humanCron}
+              </span>
             </button>
           );
         })}
@@ -245,10 +264,9 @@ export function ReportingPage() {
 
       <section className={styles.controls} aria-label="Paramètres du rapport">
         <div className={styles.controlGroup}>
-          <label className={styles.controlLabel}>
-            <Calendar size={12} aria-hidden="true" /> Du
-          </label>
+          <label className={styles.controlLabel} htmlFor="report-from">Du</label>
           <input
+            id="report-from"
             type="date"
             className={styles.controlInput}
             value={from}
@@ -256,8 +274,9 @@ export function ReportingPage() {
           />
         </div>
         <div className={styles.controlGroup}>
-          <label className={styles.controlLabel}>au</label>
+          <label className={styles.controlLabel} htmlFor="report-to">au</label>
           <input
+            id="report-to"
             type="date"
             className={styles.controlInput}
             value={to}
@@ -265,9 +284,7 @@ export function ReportingPage() {
           />
         </div>
         <div className={styles.controlGroup}>
-          <label className={styles.controlLabel}>
-            <Globe2 size={12} aria-hidden="true" /> Périmètre
-          </label>
+          <label className={styles.controlLabel}>Périmètre</label>
           <Select
             value={siteId}
             onChange={setSiteId}
@@ -299,18 +316,16 @@ export function ReportingPage() {
 
       <section className={styles.previewWrap} aria-label="Aperçu du rapport">
         <header className={styles.previewHead}>
-          <div>
-            <span className={styles.previewEyebrow}>Aperçu live</span>
+          <div className={styles.previewHeadText}>
             <h2 className={styles.previewTitle}>{template.title}</h2>
             <p className={styles.previewMeta}>
-              {aggregate?.period.label ?? '—'} ·{' '}
-              {selectedSite ? `Mono-site · ${selectedSite.shortName}` : 'Multi-sites'}
+              {aggregate?.period.label ?? '—'} · {scopeLabel}
             </p>
           </div>
           {aggregate ? (
-            <Badge variant="info" size="sm">
-              {aggregate.collections.length} collectes incluses
-            </Badge>
+            <span className={styles.previewCount}>
+              {aggregate.collections.length} collectes · {totalPages} pages
+            </span>
           ) : null}
         </header>
 
@@ -328,13 +343,10 @@ export function ReportingPage() {
                 disabled={currentPage <= 0}
                 aria-label="Page précédente"
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={18} />
               </button>
 
-              <div
-                key={`${templateId}-${currentPage}-${flipDir ?? 'none'}`}
-                className={`${styles.previewScale} ${flipDir === 'next' ? styles.flipNext : flipDir === 'prev' ? styles.flipPrevAnim : ''}`}
-              >
+              <div className={styles.previewScale}>
                 <ReportPreview
                   template={template}
                   aggregate={aggregate}
@@ -351,7 +363,7 @@ export function ReportingPage() {
                 disabled={currentPage >= totalPages - 1}
                 aria-label="Page suivante"
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={18} />
               </button>
             </div>
           )}
@@ -371,10 +383,7 @@ export function ReportingPage() {
                   key={id}
                   type="button"
                   className={`${styles.pageDot} ${i === currentPage ? styles.pageDotActive : ''}`}
-                  onClick={() => {
-                    setFlipDir(i > currentPage ? 'next' : 'prev');
-                    setPageIndex(i);
-                  }}
+                  onClick={() => setPageIndex(i)}
                   aria-label={`Aller à la page ${i + 1}`}
                   title={sectionLabelOf(id)}
                 />
@@ -384,16 +393,14 @@ export function ReportingPage() {
         ) : null}
       </section>
 
-      <section className={styles.history} aria-label="Historique des rapports générés">
+      <section className={styles.history} aria-label="Historique">
         <header className={styles.historyHead}>
-          <div>
-            <h2 className={styles.historyTitle}>Historique</h2>
-            <p className={styles.historyMeta}>
-              {history.length === 0
-                ? 'Aucun rapport généré sur cet appareil pour le moment.'
-                : `${history.length} dernier${history.length > 1 ? 's' : ''} rapport${history.length > 1 ? 's' : ''} généré${history.length > 1 ? 's' : ''} — stocké${history.length > 1 ? 's' : ''} localement.`}
-            </p>
-          </div>
+          <h2 className={styles.historyTitle}>Historique</h2>
+          <p className={styles.historyMeta}>
+            {history.length === 0
+              ? 'Aucun rapport généré sur cet appareil pour le moment.'
+              : `${history.length} rapport${history.length > 1 ? 's' : ''} généré${history.length > 1 ? 's' : ''} récemment — stocké${history.length > 1 ? 's' : ''} localement.`}
+          </p>
         </header>
         {history.length > 0 ? (
           <ul className={styles.historyList}>
@@ -441,12 +448,7 @@ export function ReportingPage() {
               </li>
             ))}
           </ul>
-        ) : (
-          <div className={styles.historyEmpty}>
-            <Download size={20} aria-hidden="true" />
-            <span>L'historique se remplit dès que vous générez un rapport.</span>
-          </div>
-        )}
+        ) : null}
       </section>
     </div>
   );

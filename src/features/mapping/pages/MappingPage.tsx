@@ -213,7 +213,7 @@ export function MappingPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Vue géospatiale</span>
           <h1 className={styles.heroTitle}>Cartographie</h1>

@@ -1,12 +1,11 @@
 /* ───────────────────────────────────────────────
- * LoginPage — mesh subtil, soft & élégant.
- * Single source of truth : tokens uniquement.
+ * LoginPage — mesh navy/blue institutionnel · form droite soft & élégant.
  * ─────────────────────────────────────────────── */
 
 .page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   background: var(--color-bg);
   position: relative;
   isolation: isolate;
@@ -16,7 +15,7 @@
   .visual { display: none; }
 }
 
-/* ───── Left visual — mesh pastel subtil ───── */
+/* ───── Left visual — mesh aligné palette plateforme (navy + UN-blue) ───── */
 .visual {
   position: relative;
   padding: var(--space-8) var(--space-7);
@@ -24,18 +23,18 @@
   align-items: center;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 60% 50% at 15% 25%, color-mix(in srgb, var(--color-primary) 22%, transparent) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 40% at 90% 30%, color-mix(in srgb, var(--color-accent) 16%, transparent) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 50% at 70% 90%, color-mix(in srgb, var(--color-lavender) 14%, transparent) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 40% at 10% 90%, color-mix(in srgb, var(--color-amber) 10%, transparent) 0%, transparent 70%),
-    var(--color-surface);
+    radial-gradient(ellipse 65% 55% at 18% 22%, color-mix(in srgb, var(--color-primary) 26%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 88% 28%, color-mix(in srgb, var(--color-info) 22%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 55% 55% at 72% 88%, color-mix(in srgb, var(--color-secondary) 20%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 38% at 12% 92%, color-mix(in srgb, var(--color-info) 14%, transparent) 0%, transparent 72%),
+    linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-sunken) 100%);
 }
 .visual::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    repeating-linear-gradient(45deg, rgba(15, 23, 42, 0.012) 0 1px, transparent 1px 28px);
+    repeating-linear-gradient(45deg, rgba(14, 23, 48, 0.014) 0 1px, transparent 1px 28px);
   pointer-events: none;
 }
 .visualOverlay {
@@ -47,7 +46,7 @@
   font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.22em;
-  color: var(--color-primary-active);
+  color: var(--color-primary);
   font-weight: 700;
   margin-bottom: var(--space-4);
   display: inline-block;
@@ -60,7 +59,7 @@
   letter-spacing: -0.025em;
   color: var(--color-text);
   margin-bottom: var(--space-6);
-  max-width: 18ch;
+  max-width: 20ch;
 }
 .metaList {
   display: flex;
@@ -68,6 +67,7 @@
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-5);
   margin: 0;
+  flex-wrap: wrap;
 }
 .metaList li {
   font-size: var(--text-xs);
@@ -75,6 +75,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 600;
+  list-style: none;
 }
 .metaList li span {
   display: block;
@@ -103,27 +104,18 @@
   max-width: 380px;
   margin: auto 0;
 }
-.brand {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: var(--space-7);
-}
-.brandLabel {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--color-text-muted);
-  font-weight: 700;
-  margin: 0 0 4px 0;
-}
-.brandName {
+.title {
   font-family: var(--font-display);
   font-size: var(--text-h1);
   font-weight: var(--weight-bold);
   color: var(--color-text);
-  letter-spacing: -0.025em;
-  margin: 0;
-  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-1) 0;
+}
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-6) 0;
 }
 .eyeBtn {
   display: inline-flex;
@@ -140,19 +132,6 @@
 }
 .eyeBtn:hover {
   color: var(--color-text);
-}
-.title {
-  font-family: var(--font-display);
-  font-size: var(--text-h1);
-  font-weight: var(--weight-bold);
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-  margin: 0 0 var(--space-1) 0;
-}
-.subtitle {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-5) 0;
 }
 .form {
   display: flex;
@@ -224,18 +203,6 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: var(--color-primary-soft);
-}
-.demoHint {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  margin: 0;
-}
-.demoHint code {
-  background: var(--color-surface-sunken);
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  color: var(--color-text);
 }
 
 /* ───── Footer ───── */

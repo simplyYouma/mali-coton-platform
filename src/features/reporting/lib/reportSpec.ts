@@ -28,6 +28,17 @@ export interface ReportTemplate {
   sections: ReportSectionId[];
   /** Nombre approximatif de pages — pour affichage uniquement. */
   approxPages: number;
+  /** Règle d'exécution automatique côté serveur. */
+  schedule: {
+    /** Expression cron (timezone Africa/Bamako). */
+    cron: string;
+    /** Libellé lisible de la cadence ("Chaque 1er du mois à 06h00"). */
+    humanCron: string;
+    /** Destinataires automatiques. */
+    recipients: string[];
+    /** Formats émis. */
+    formats: Array<'PDF' | 'XLSX'>;
+  };
 }
 
 export const REPORT_TEMPLATES: Record<ReportTemplateId, ReportTemplate> = {
@@ -40,6 +51,12 @@ export const REPORT_TEMPLATES: Record<ReportTemplateId, ReportTemplate> = {
       "Synthèse des collectes et alertes du mois écoulé : conformité par domaine, top dépassements, suivi laboratoire. Document opérationnel destiné au pilotage interne.",
     sections: ['cover', 'executive', 'kpis', 'domains', 'exceedances', 'alerts', 'lab', 'silences', 'appendix'],
     approxPages: 8,
+    schedule: {
+      cron: '0 6 1 * *',
+      humanCron: 'Chaque 1er du mois à 06h00 (Bamako)',
+      recipients: ['superviseurs@pnud-mali.org'],
+      formats: ['PDF', 'XLSX'],
+    },
   },
   quarterly: {
     id: 'quarterly',
@@ -50,6 +67,12 @@ export const REPORT_TEMPLATES: Record<ReportTemplateId, ReportTemplate> = {
       "Livrable contractuel destiné au comité de pilotage. Tendances inter-sites, indice composite, comparatif aux périodes précédentes, recommandations.",
     sections: ['cover', 'executive', 'kpis', 'domains', 'exceedances', 'alerts', 'lab', 'silences', 'recommendations', 'legal', 'appendix'],
     approxPages: 18,
+    schedule: {
+      cron: '0 6 1 1,4,7,10 *',
+      humanCron: 'Chaque 1er du trimestre à 06h00 (Bamako)',
+      recipients: ['pilotage@pnud-mali.org', 'consortium@sahel-analytics.com'],
+      formats: ['PDF'],
+    },
   },
   final: {
     id: 'final',
@@ -73,6 +96,12 @@ export const REPORT_TEMPLATES: Record<ReportTemplateId, ReportTemplate> = {
       'appendix',
     ],
     approxPages: 38,
+    schedule: {
+      cron: '0 6 15 10 *',
+      humanCron: 'Déclenchement clôture mission · 15 octobre 2026',
+      recipients: ['pnud-mali@undp.org', 'environnement.gouv.ml@environnement.gouv.ml'],
+      formats: ['PDF', 'XLSX'],
+    },
   },
 };
 
@@ -101,6 +130,34 @@ export function defaultPeriod(template: ReportTemplateId): { from: string; to: s
     from = new Date(2026, 0, 1);
   }
   return { from: from.toISOString(), to: endOfToday.toISOString() };
+}
+
+/**
+ * Date prévue de la prochaine exécution automatique, basée sur le cron simple
+ * du template (interprétation minimale : champ 'jour du mois' + 'mois autorisés').
+ * Suffisant pour les 3 cadences fixes du projet — pas un parseur cron général.
+ */
+export function nextScheduledRun(template: ReportTemplate, from: Date = new Date()): Date {
+  const parts = template.schedule.cron.split(/\s+/);
+  const hour = Number(parts[1]) || 6;
+  const dom = Number(parts[2]) || 1;
+  const monthField = parts[3] ?? '*';
+  const allowedMonths = monthField === '*'
+    ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    : monthField.split(',').map((m) => Number(m) - 1);
+
+  const candidate = new Date(from.getFullYear(), from.getMonth(), dom, hour, 0, 0);
+  let yr = candidate.getFullYear();
+  let mo = candidate.getMonth();
+  while (true) {
+    if (allowedMonths.includes(mo)) {
+      const d = new Date(yr, mo, dom, hour, 0, 0);
+      if (d.getTime() > from.getTime()) return d;
+    }
+    mo += 1;
+    if (mo > 11) { mo = 0; yr += 1; }
+    if (yr > from.getFullYear() + 2) return new Date(yr, mo, dom, hour, 0, 0);
+  }
 }
 
 export function periodLabel(from: string, to: string): string {

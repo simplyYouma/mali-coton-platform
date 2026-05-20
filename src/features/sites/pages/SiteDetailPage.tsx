@@ -225,7 +225,7 @@ export function SiteDetailPage() {
         <span>Tous les sites</span>
       </Link>
 
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
             {SITE_TYPE_LABEL[site.type]}

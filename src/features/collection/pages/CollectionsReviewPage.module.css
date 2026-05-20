@@ -41,15 +41,7 @@
   margin: 0;
 }
 
-/* heroTitle bg pill — sidebar color */
-.heroTitle {
-  display: inline-block;
-  background: var(--color-ink-night);
-  color: var(--color-ink-text);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  align-self: flex-start;
-}
+/* Styles du header de page : voir src/styles/pageHero.css (single source of truth). */
 .heroDescription {
   font-size: var(--text-sm);
   color: var(--color-text-muted);

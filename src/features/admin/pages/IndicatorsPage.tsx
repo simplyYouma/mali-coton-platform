@@ -236,7 +236,7 @@ export function IndicatorsPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Indicateurs</h1>
           <span className={styles.heroCount}>
