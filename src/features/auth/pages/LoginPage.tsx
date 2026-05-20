@@ -40,29 +40,31 @@ export function LoginPage() {
 
       <section className={styles.formPane}>
         <div className={styles.formCard}>
-          <h1 className={styles.title}>Connexion</h1>
-          <p className={styles.subtitle}>Accédez à votre espace de suivi.</p>
+          <header className={styles.cardHead}>
+            <h1 className={styles.title}>Connexion</h1>
+            <p className={styles.subtitle}>Accédez à votre espace de suivi.</p>
+          </header>
 
           <form onSubmit={onSubmit} className={styles.form} noValidate>
-            <FormField label="Adresse e-mail" required>
+            <FormField label="Adresse e-mail">
               <Input
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                prefix={<Mail size={16} />}
-                inputSize="lg"
+                prefix={<Mail size={14} />}
+                inputSize="md"
                 required
               />
             </FormField>
 
-            <FormField label="Mot de passe" required>
+            <FormField label="Mot de passe">
               <Input
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                prefix={<Lock size={16} />}
+                prefix={<Lock size={14} />}
                 suffix={
                   <button
                     type="button"
@@ -71,10 +73,10 @@ export function LoginPage() {
                     aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     tabIndex={-1}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 }
-                inputSize="lg"
+                inputSize="md"
                 required
               />
             </FormField>
@@ -93,10 +95,10 @@ export function LoginPage() {
 
             <Button
               type="submit"
-              size="lg"
+              size="md"
               fullWidth
               loading={login.isPending}
-              iconRight={<ArrowRight size={18} />}
+              iconRight={<ArrowRight size={14} />}
             >
               Se connecter
             </Button>
