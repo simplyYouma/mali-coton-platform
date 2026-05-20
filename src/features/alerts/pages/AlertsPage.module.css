@@ -338,15 +338,63 @@
 }
 .detailMeta {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-3);
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
 }
 .detailMeta strong {
   color: var(--color-text);
   font-weight: var(--weight-medium);
+}
+.detailSite {
+  font-family: var(--font-mono);
+}
+
+/* Timeline verticale des actions sur l'alerte (au lieu d'une ligne) */
+.detailTimeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.detailTimelineRow {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px 12px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+}
+.detailTimelineDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-disabled);
+}
+.detailTimelineRow[data-step='raised'] .detailTimelineDot {
+  background: var(--color-amber);
+}
+.detailTimelineRow[data-step='acknowledged'] .detailTimelineDot {
+  background: var(--color-primary);
+}
+.detailTimelineRow[data-step='resolved'] .detailTimelineDot {
+  background: var(--color-success);
+}
+.detailTimelineLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+.detailTimelineTime {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .detailDescription {
   margin: 0;

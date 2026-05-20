@@ -20,10 +20,13 @@
   min-width: 0;
 }
 .content {
+  /* Pas de max-width global : chaque page contraint sa propre largeur
+   * (admin/recommandations/lab posent max-width:1280px self-centre, les
+   * pages plus visuelles comme Dashboard / Analytics / Mapping stretch). */
   flex: 1;
   padding: var(--space-6);
-  max-width: var(--content-max-width);
   width: 100%;
+  min-width: 0;
 }
 @media (max-width: 768px) {
   .content {

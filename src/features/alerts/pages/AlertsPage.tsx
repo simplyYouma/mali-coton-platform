@@ -331,17 +331,37 @@ function AlertDetail({
         <h2 className={styles.detailTitle}>{alert.title}</h2>
         <div className={styles.detailMeta}>
           {siteName ? (
-            <span>
+            <span className={styles.detailSite}>
               site <strong>{siteName}</strong>
             </span>
           ) : null}
-          <span>levée {formatRelativeTime(alert.raisedAt)}</span>
-          {alert.acknowledgedAt ? (
-            <span>vue {formatRelativeTime(alert.acknowledgedAt)}</span>
-          ) : null}
-          {alert.resolvedAt ? (
-            <span>résolue {formatRelativeTime(alert.resolvedAt)}</span>
-          ) : null}
+          <ul className={styles.detailTimeline} aria-label="Actions effectuées">
+            <li className={styles.detailTimelineRow} data-step="raised">
+              <span className={styles.detailTimelineDot} aria-hidden="true" />
+              <span className={styles.detailTimelineLabel}>Levée</span>
+              <span className={styles.detailTimelineTime}>
+                {formatRelativeTime(alert.raisedAt)}
+              </span>
+            </li>
+            {alert.acknowledgedAt ? (
+              <li className={styles.detailTimelineRow} data-step="acknowledged">
+                <span className={styles.detailTimelineDot} aria-hidden="true" />
+                <span className={styles.detailTimelineLabel}>Vue</span>
+                <span className={styles.detailTimelineTime}>
+                  {formatRelativeTime(alert.acknowledgedAt)}
+                </span>
+              </li>
+            ) : null}
+            {alert.resolvedAt ? (
+              <li className={styles.detailTimelineRow} data-step="resolved">
+                <span className={styles.detailTimelineDot} aria-hidden="true" />
+                <span className={styles.detailTimelineLabel}>Résolue</span>
+                <span className={styles.detailTimelineTime}>
+                  {formatRelativeTime(alert.resolvedAt)}
+                </span>
+              </li>
+            ) : null}
+          </ul>
         </div>
         <p className={styles.detailDescription}>{formatAlertSummary(alert)}</p>
       </header>
