@@ -36,72 +36,62 @@
   color: var(--color-text-muted);
 }
 
+/* Strip de stats unifie — meme grammaire que MappingPage.heroStats : carte
+ * unique avec hairlines verticaux entre les segments, sobre et pro.
+ * Pas de fond colore, ton du chiffre uniquement pour la severite. */
 .heroKpis {
-  display: inline-flex;
-  gap: var(--space-2);
+  display: flex;
+  gap: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   flex-shrink: 0;
 }
 .kpiTile {
-  display: inline-grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    'icon value'
-    'label label';
-  align-items: center;
-  column-gap: 8px;
-  row-gap: 2px;
-  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  border-right: 1px solid var(--color-border);
+  min-width: 96px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  min-width: 92px;
+}
+.kpiTile:last-child {
+  border-right: none;
 }
 .kpiTile > svg {
-  grid-area: icon;
   color: var(--color-text-muted);
+  width: 14px;
+  height: 14px;
 }
 .kpiValue {
-  grid-area: value;
   font-family: var(--font-display);
-  font-size: var(--text-h2);
+  font-size: var(--text-h1);
   font-weight: var(--weight-bold);
   color: var(--color-text);
+  letter-spacing: -0.03em;
   line-height: 1;
-  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 .kpiLabel {
-  grid-area: label;
   font-size: var(--text-2xs);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--color-text-muted);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
 }
 .kpiTile[data-tone='danger'] > svg,
 .kpiTile[data-tone='danger'] .kpiValue {
   color: var(--color-danger);
 }
-.kpiTile[data-tone='danger'] {
-  border-color: color-mix(in srgb, var(--color-danger) 22%, transparent);
-  background: var(--color-danger-bg);
-}
 .kpiTile[data-tone='warning'] > svg,
 .kpiTile[data-tone='warning'] .kpiValue {
   color: var(--color-amber-hover);
 }
-.kpiTile[data-tone='warning'] {
-  border-color: color-mix(in srgb, var(--color-amber) 30%, transparent);
-  background: var(--color-amber-soft);
-}
 .kpiTile[data-tone='success'] > svg,
 .kpiTile[data-tone='success'] .kpiValue {
   color: var(--color-success);
-}
-.kpiTile[data-tone='success'] {
-  border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
-  background: var(--color-success-bg);
 }
 
 /* ═══ TOOLBAR ═══ */
