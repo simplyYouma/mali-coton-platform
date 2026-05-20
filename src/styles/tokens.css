@@ -33,15 +33,16 @@
    *    Accent   = sable Sahel — highlights chaleureux dosés
    *    Ink      = noir — réservé typographie corps
    * ───────────────────────────────────────────── */
-  /* Primary alignée sur la sidebar (--color-ink-night) — palette plus sobre,
-   * institutionnelle. L'ancien bleu ONU #418fde est conservé via --color-info
-   * si besoin d'un accent ponctuel. */
-  --color-primary: #0e1730;
-  --color-primary-hover: #1a2545;
-  --color-primary-active: #050b1c;
-  --color-primary-soft: #eceef4;
-  --color-primary-soft-hover: #dde1eb;
-  --color-info: #418fde; /* ancien primary UN-blue — disponible si accent */
+  /* Primary = bleu officiel UNDP brand (Hex #0468B1, RGB 4,104,177, Pantone 2144 C).
+   * Source : UNDP brand guidelines. Utilise pour CTA, liens, focus ring, accents.
+   * Le navy institutionnel reste accessible via --color-ink-night (sidebar, banners)
+   * et --color-secondary (accents structurels). */
+  --color-primary: #0468b1;
+  --color-primary-hover: #035a9c;
+  --color-primary-active: #034d85;
+  --color-primary-soft: #e6f0f8;
+  --color-primary-soft-hover: #d2e3f1;
+  --color-info: #418fde; /* sky-blue UN clair — info / hint, distinct du primary */
 
   --color-secondary: #14253a;
   --color-secondary-hover: #0c1828;
@@ -189,7 +190,7 @@
   /* ─────────────────────────────────────────────
    * 10. Focus ring (custom — never native)
    * ───────────────────────────────────────────── */
-  --ring-focus: 0 0 0 3px rgba(65, 143, 222, 0.28);
+  --ring-focus: 0 0 0 3px rgba(4, 104, 177, 0.28);
   --ring-focus-danger: 0 0 0 3px rgba(178, 31, 31, 0.18);
 
   /* ─────────────────────────────────────────────
