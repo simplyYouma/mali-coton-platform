@@ -417,6 +417,8 @@ export const mockCollections: Collection[] = (() => {
     status:
       | 'prepared'
       | 'sent'
+      | 'received_at_lab'
+      | 'in_analysis'
       | 'bordereau_returned'
       | 'refused_by_lab'
       | 'rejected_by_supervisor'
@@ -448,6 +450,14 @@ export const mockCollections: Collection[] = (() => {
     { siteId: 'site-djiguiyaso', daysSinceSent: 4.0, labId: 'lab.lne', status: 'sent' },
     { siteId: 'site-dianeguela', daysSinceSent: 5.4, labId: 'lab.lne', status: 'sent' },
     { siteId: 'site-ndomo', daysSinceSent: 6.8, labId: 'lab.sotuba', status: 'sent' },
+    /* SLA en retard — flacons envoyes au labo avec depassement du SLA
+     * contractuel (LNE: 10j, LNS: 7j, Sotuba: 10j, CNRST: 14j). Le
+     * superviseur les voit en rouge dans /labo/echantillons et peut
+     * relancer le labo. */
+    { siteId: 'site-galanimassiriw', daysSinceSent: 12.4, labId: 'lab.lne', status: 'sent', pointPrelevement: 'canal_drainage' },
+    { siteId: 'site-atpek', daysSinceSent: 9.8, labId: 'lab.lns-bamako', status: 'in_analysis', pointPrelevement: 'effluent_sortie' },
+    { siteId: 'site-djiguiyaso', daysSinceSent: 11.5, labId: 'lab.lne', status: 'received_at_lab', pointPrelevement: 'effluent_sortie' },
+    { siteId: 'site-ndomo', daysSinceSent: 16.2, labId: 'lab.cnrst', status: 'sent', pointPrelevement: 'sol_direct' },
     {
       siteId: 'site-atpek',
       daysSinceSent: 8.2,

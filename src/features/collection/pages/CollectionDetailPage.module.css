@@ -417,6 +417,22 @@
   padding-left: calc(var(--space-3) - 2px);
 }
 
+/* Pastille count a cote des titres de section (ex: 'Mesures collectees · 36') */
+.sectionTitleCount {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 /* ── Vue du seuil normatif (au milieu de chaque ligne) ── */
 .thresholdView {
   display: flex;
@@ -424,6 +440,13 @@
   gap: 4px;
   cursor: help;
   min-width: 0;
+  /* Centre la vue dans sa colonne — la barre + le label tombent au
+   * centre exact de la ligne, plus alignes au coin haut-gauche. */
+  justify-self: center;
+  align-self: center;
+  align-items: center;
+  width: 100%;
+  max-width: 200px;
 }
 .thresholdEmpty {
   /* Cellule vide pour preserver la grille des autres lignes */
@@ -432,6 +455,7 @@
 .thresholdBar {
   position: relative;
   height: 6px;
+  width: 100%;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
@@ -575,8 +599,8 @@
 
 .measureRow {
   display: grid;
-  grid-template-columns: 1fr 160px auto auto;
-  gap: var(--space-3);
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 1fr) auto auto;
+  gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   align-items: center;
   background: var(--color-surface-2);

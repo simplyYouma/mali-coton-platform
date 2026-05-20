@@ -431,7 +431,13 @@ export function CollectionDetailPage() {
         <section className={styles.section} aria-label="Mesures par domaine">
           <div className={styles.sectionHead}>
             <div>
-              <h2 className={styles.sectionTitle}>Mesures collectées</h2>
+              <h2 className={styles.sectionTitle}>
+                Mesures collectées
+                <span className={styles.sectionTitleCount}>
+                  {collection.measurements.length} ligne
+                  {collection.measurements.length > 1 ? 's' : ''}
+                </span>
+              </h2>
               <p className={styles.sectionSubtitle}>
                 Sources normatives affichées par mesure (OMS, normes maliennes).
               </p>

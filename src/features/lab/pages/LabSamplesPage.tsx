@@ -726,6 +726,7 @@ function FlaconDetail({
   const { sample, measurements, daysSinceSent, isOverdue } = flacon;
   const sla = labInfo?.sla ?? 10;
   const remaining = sla - daysSinceSent;
+  const [bordereauOpen, setBordereauOpen] = useState(false);
   return (
     <>
       <header className={styles.detailHead}>
@@ -845,22 +846,21 @@ function FlaconDetail({
         </div>
       ) : null}
 
-      {sample.bordereauUrl ? (
-        <a
+      {sample.bordereauRef ? (
+        <button
+          type="button"
           className={styles.bordereauLink}
-          href={sample.bordereauUrl}
-          target="_blank"
-          rel="noopener"
+          onClick={() => setBordereauOpen(true)}
         >
           <FileText size={14} aria-hidden="true" />
-          Bordereau du labo ({sample.bordereauRef ?? 'PDF'})
-        </a>
+          Voir le bordereau ({sample.bordereauRef})
+        </button>
       ) : null}
 
       <div className={styles.actions}>
         {sample.status === 'prepared' ? (
           <Button
-            variant="primary"
+            variant="kobo"
             iconLeft={<Send size={14} />}
             onClick={onMarkSent}
             loading={isSending}
@@ -873,7 +873,7 @@ function FlaconDetail({
         sample.status === 'in_analysis' ? (
           <>
             <Button
-              variant="primary"
+              variant="success"
               iconLeft={<PackageCheck size={14} />}
               onClick={onTransmit}
             >
@@ -895,6 +895,92 @@ function FlaconDetail({
           </Button>
         ) : null}
       </div>
+
+      <Modal
+        open={bordereauOpen}
+        onClose={() => setBordereauOpen(false)}
+        title={`Bordereau ${sample.bordereauRef ?? ''}`}
+        width={680}
+        footer={
+          <Button variant="ghost" onClick={() => setBordereauOpen(false)}>
+            Fermer
+          </Button>
+        }
+      >
+        <div className={styles.bordereauPreview}>
+          <header className={styles.bordereauHead}>
+            <div className={styles.bordereauHeadLeft}>
+              <span className={styles.bordereauLab}>
+                {labInfo?.name ?? sample.labId}
+              </span>
+              <span className={styles.bordereauRefBig}>{sample.bordereauRef}</span>
+            </div>
+            <div className={styles.bordereauHeadRight}>
+              <span className={styles.bordereauHeadLabel}>Date d'analyse</span>
+              <span className={styles.bordereauHeadValue}>
+                {sample.analyzedAt ? formatDateTime(sample.analyzedAt, 'dd MMM yyyy') : '—'}
+              </span>
+            </div>
+          </header>
+
+          <section className={styles.bordereauSection}>
+            <h4>Échantillon</h4>
+            <dl className={styles.bordereauKv}>
+              <div>
+                <dt>ID flacon</dt>
+                <dd>{sample.sampleId}</dd>
+              </div>
+              <div>
+                <dt>Site</dt>
+                <dd>{siteName}</dd>
+              </div>
+              <div>
+                <dt>Date prélèvement</dt>
+                <dd>{formatDateTime(flacon.collection.collectedAt, 'dd MMM yyyy')}</dd>
+              </div>
+              <div>
+                <dt>Date d'envoi</dt>
+                <dd>
+                  {sample.sentAt ? formatDateTime(sample.sentAt, 'dd MMM yyyy') : '—'}
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className={styles.bordereauSection}>
+            <h4>Résultats d'analyse</h4>
+            <table className={styles.bordereauTable}>
+              <thead>
+                <tr>
+                  <th>Paramètre</th>
+                  <th>Méthode</th>
+                  <th className={styles.bordereauTd}>Valeur</th>
+                </tr>
+              </thead>
+              <tbody>
+                {measurements.map((m) => {
+                  const rule = findRule(m.indicatorId);
+                  return (
+                    <tr key={m.indicatorId}>
+                      <td>{rule?.label ?? m.indicatorId}</td>
+                      <td className={styles.bordereauMethod}>{rule?.method ?? '—'}</td>
+                      <td className={styles.bordereauTd}>
+                        {m.value == null ? '—' : String(m.value)}
+                        {m.unit ? ` ${m.unit}` : ''}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+
+          <footer className={styles.bordereauFoot}>
+            Document généré par le {labInfo?.name ?? sample.labId} · Référence{' '}
+            <code>{sample.bordereauRef}</code>
+          </footer>
+        </div>
+      </Modal>
     </>
   );
 }
