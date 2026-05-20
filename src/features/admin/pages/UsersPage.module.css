@@ -7,14 +7,12 @@
   margin: 0 auto;
 }
 
-/* ── Hero ── */
+/* ── Hero — carte titre subtilement teintee ── */
 .hero {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
 }
 .heroLeft {
   display: inline-flex;
@@ -30,19 +28,16 @@
   letter-spacing: -0.02em;
   line-height: 1;
   margin: 0;
-  position: relative;
-  padding-left: var(--space-3);
 }
-.heroTitle::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 70%;
-  background: var(--color-primary);
-  border-radius: 2px;
+
+/* heroTitle bg pill — sidebar color */
+.heroTitle {
+  display: inline-block;
+  background: var(--color-ink-night);
+  color: var(--color-ink-text);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  align-self: flex-start;
 }
 .heroCount {
   font-size: var(--text-sm);

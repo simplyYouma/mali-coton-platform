@@ -111,4 +111,52 @@ export const mockRecommandations: Recommandation[] = [
     updatedAt: daysAgo(5),
     createdBy: 'u-admin-1',
   },
+  /* Cas avec echeance depassee — pour illustrer le badge 'En retard' */
+  {
+    id: 'reco-006',
+    titre: 'Installer un bac de décantation des boues teinture',
+    description:
+      'Les boues de teinture sont actuellement déversées directement dans le caniveau. Installer un bac de décantation 200 L avant rejet permettrait de capter les particules les plus grossières et de réduire la charge MES de l\'effluent. Coût estimé : 320 000 FCFA.',
+    niveauPriorite: 'haute',
+    statut: 'en_cours',
+    siteId: 'site-galanimassiriw',
+    resultatIndicatorId: 'water.mes',
+    responsableSuivi: 'Kadiatou Diarra',
+    dateEcheance: daysAgo(8), // 8j de retard
+    createdAt: daysAgo(35),
+    updatedAt: daysAgo(8),
+    createdBy: 'u-sup-1',
+  },
+  /* Cas 'non appliquee' — le responsable a fait remonter que la
+   * recommandation ne pourra pas etre mise en oeuvre (raisons budgetaires
+   * ou techniques). Le sup l'a tracee dans ce statut pour audit. */
+  {
+    id: 'reco-007',
+    titre: 'Reconstruire le canal de drainage en béton coulé',
+    description:
+      'Le canal actuel est en terre battue, perméable. Reconstruction en béton coulé proposée. Refusée par le responsable de site : coût prohibitif (1,8 M FCFA) et acceptabilité sociale faible — alternative recherchée.',
+    niveauPriorite: 'moyenne',
+    statut: 'non_appliquee',
+    siteId: 'site-djiguiyaso',
+    responsableSuivi: 'Mariam Doumbia',
+    dateEcheance: daysAgo(22),
+    createdAt: daysAgo(60),
+    updatedAt: daysAgo(20),
+    createdBy: 'u-sup-1',
+  },
+  /* Cas reco transversale (pas attachee a un site) — bonne pratique
+   * generale qui s'applique a tous les sites pilotes. */
+  {
+    id: 'reco-008',
+    titre: 'Standardiser le format d\'étiquetage des flacons labo',
+    description:
+      "Variations observees dans le format des etiquettes flacons (ECH-XX vs ECH-SITE-XX). Standardiser sur ECH-SITE-YYYYMMDD-NNN pour faciliter le tri labo et la tracabilite.",
+    niveauPriorite: 'basse',
+    statut: 'proposee',
+    /* siteId absent → transversale */
+    responsableSuivi: 'Awa Diarra',
+    dateEcheance: daysFromNow(30),
+    createdAt: daysAgo(2),
+    createdBy: 'u-admin-1',
+  },
 ];

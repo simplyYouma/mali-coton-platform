@@ -11,6 +11,7 @@ import { useToast } from '@/app/providers/ToastProvider';
 import {
   mockCercles,
   mockCommunes,
+  mockQuartiers,
   mockRegions,
 } from '@/mocks/fixtures/geography';
 import type { SiteInput } from '../api/sites';
@@ -171,6 +172,13 @@ export function SiteForm({ open, onClose, site }: SiteFormProps) {
         .map((c) => ({ value: c.id, label: c.nom })),
     [form.cercleId],
   );
+  const quartierOptions = useMemo(
+    () =>
+      mockQuartiers
+        .filter((q) => !form.communeId || q.communeId === form.communeId)
+        .map((q) => ({ value: q.nom, label: q.nom })),
+    [form.communeId],
+  );
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.shortName.trim()) {
@@ -327,36 +335,58 @@ export function SiteForm({ open, onClose, site }: SiteFormProps) {
 
         <FormField
           label="Quartier"
-          hint="Repère précis (saisie libre)."
+          hint={
+            !form.communeId
+              ? 'Sélectionnez d\'abord une commune.'
+              : quartierOptions.length === 0
+              ? 'Aucun quartier référencé — saisie libre.'
+              : 'Sélectionnez ou saisissez librement.'
+          }
         >
-          <Input
-            value={form.quartier}
-            onChange={(e) => setForm((f) => ({ ...f, quartier: e.target.value }))}
-            placeholder="Ex : Kalaban-Coura, près du marché"
-          />
+          {quartierOptions.length > 0 ? (
+            <Select<string>
+              options={[
+                { value: '', label: '— Aucun —' },
+                ...quartierOptions,
+              ]}
+              value={form.quartier}
+              placeholder="Sélectionner un quartier…"
+              disabled={!form.communeId}
+              onChange={(quartier) => setForm((f) => ({ ...f, quartier }))}
+            />
+          ) : (
+            <Input
+              value={form.quartier}
+              disabled={!form.communeId}
+              onChange={(e) => setForm((f) => ({ ...f, quartier: e.target.value }))}
+              placeholder="Ex : Kalaban-Coura, près du marché"
+            />
+          )}
         </FormField>
 
-        <FormField label="Latitude" hint="Format décimal (ex. 12.5797)" required>
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="0.0001"
-            value={form.lat}
-            onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
-            placeholder="12.5797"
-          />
-        </FormField>
+        <div className={styles.coord}>
+          <FormField label="Latitude" hint="Format décimal (ex. 12.5797)" required>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.0001"
+              value={form.lat}
+              onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
+              placeholder="12.5797"
+            />
+          </FormField>
 
-        <FormField label="Longitude" hint="Format décimal (ex. -7.9879)" required>
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="0.0001"
-            value={form.lng}
-            onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
-            placeholder="-7.9879"
-          />
-        </FormField>
+          <FormField label="Longitude" hint="Format décimal (ex. -7.9879)" required>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.0001"
+              value={form.lng}
+              onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}
+              placeholder="-7.9879"
+            />
+          </FormField>
+        </div>
 
         <FormField
           label="Description"

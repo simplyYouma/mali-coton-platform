@@ -17,7 +17,12 @@
  */
 
 import { http, HttpResponse, delay } from 'msw';
-import { mockRegions, mockCercles, mockCommunes } from '../fixtures/geography';
+import {
+  mockRegions,
+  mockCercles,
+  mockCommunes,
+  mockQuartiers,
+} from '../fixtures/geography';
 import { mockParametreUnites } from '../fixtures/parametreUnites';
 import { mockPermissions } from '../fixtures/permissions';
 
@@ -73,6 +78,21 @@ export const structuralsHandlers = [
   http.get('/api/v1/communes/:id', async ({ params }) => {
     await delay(80);
     const item = mockCommunes.find((c) => c.id === params.id);
+    return item ? HttpResponse.json(item) : new HttpResponse(null, { status: 404 });
+  }),
+
+  http.get('/api/v1/quartiers', async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const communeId = url.searchParams.get('communeId');
+    const items = communeId
+      ? mockQuartiers.filter((q) => q.communeId === communeId)
+      : mockQuartiers;
+    return HttpResponse.json(paginate(items));
+  }),
+  http.get('/api/v1/quartiers/:id', async ({ params }) => {
+    await delay(80);
+    const item = mockQuartiers.find((q) => q.id === params.id);
     return item ? HttpResponse.json(item) : new HttpResponse(null, { status: 404 });
   }),
 

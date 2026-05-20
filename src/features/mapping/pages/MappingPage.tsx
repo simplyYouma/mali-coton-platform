@@ -13,6 +13,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   Droplets,
   Flame,
   Layers,
@@ -105,6 +107,9 @@ export function MappingPage() {
   const [showAlerts, setShowAlerts] = useState(true);
   const [showWatercourses, setShowWatercourses] = useState(false);
   const [showRiskZones, setShowRiskZones] = useState(true);
+  /* Panel filtres : peut etre replie pour donner toute la place a la
+   * carte. Etat persiste en memoire de session uniquement. */
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   /* Cible courante du fly-to — declenche par le clic sur un site dans
    * le panel lateral. Le composant MapFocus se charge de centrer. */
   const [focusTarget, setFocusTarget] = useState<[number, number, number] | null>(null);
@@ -234,13 +239,31 @@ export function MappingPage() {
             <span className={styles.heroStatLabel}>Hors seuil</span>
           </div>
           <div className={styles.heroStat} data-tone="alert">
-            <span className={styles.heroStatValue}>{stats.activeCritical}</span>
+            <span className={styles.heroStatValue}>
+              <AlertTriangle size={18} aria-hidden="true" />
+              {stats.activeCritical}
+            </span>
             <span className={styles.heroStatLabel}>Alertes critiques</span>
           </div>
         </div>
       </header>
 
-      <div className={styles.layout}>
+      <div
+        className={styles.layout}
+        data-panel-collapsed={panelCollapsed ? 'true' : undefined}
+      >
+        <button
+          type="button"
+          className={styles.panelToggle}
+          onClick={() => setPanelCollapsed((v) => !v)}
+          aria-label={
+            panelCollapsed ? 'Afficher les filtres' : 'Masquer les filtres'
+          }
+          title={panelCollapsed ? 'Afficher les filtres' : 'Masquer les filtres'}
+        >
+          {panelCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+        {!panelCollapsed ? (
         <aside className={styles.sidePanel} aria-label="Filtres et couches">
           <section className={styles.panelSection}>
             <header className={styles.panelHead}>
@@ -389,37 +412,19 @@ export function MappingPage() {
             </ul>
           </section>
         </aside>
+        ) : null}
 
         <div className={styles.mapShell}>
-          {/* Overlay strip flottant en haut de la carte — donne un look
-           * 'command center' avec les chiffres saillants toujours visibles */}
-          <div className={styles.mapOverlay} aria-label="Synthèse géospatiale">
-            <span className={styles.mapOverlayItem}>
-              <strong>{stats.total}</strong> sites
-            </span>
-            <span className={styles.mapOverlayItem} data-tone="critical">
-              <strong>{stats.critical}</strong> hors seuil
-            </span>
-            <span className={styles.mapOverlayItem} data-tone="warning">
-              <strong>{stats.warning}</strong> à surveiller
-            </span>
-            <span className={styles.mapOverlayItem} data-tone="success">
-              <strong>{stats.conforming}</strong> conformes
-            </span>
-            <span className={styles.mapOverlaySep} aria-hidden="true" />
-            <span className={styles.mapOverlayItem} data-tone="alert">
-              <AlertTriangle size={12} /> <strong>{stats.activeCritical}</strong> alerte
-              {stats.activeCritical > 1 ? 's' : ''}
-            </span>
-            <button
-              type="button"
-              className={styles.mapOverlayBtn}
-              onClick={() => setFocusTarget([center[0], center[1], 6])}
-              title="Recentrer sur tous les sites"
-            >
-              <Maximize2 size={12} /> Recentrer
-            </button>
-          </div>
+          {/* Bouton 'Recentrer' compact en haut-droite de la carte —
+           * les stats sont deja affichees au-dessus dans le hero. */}
+          <button
+            type="button"
+            className={styles.mapRecenterBtn}
+            onClick={() => setFocusTarget([center[0], center[1], 6])}
+            title="Recentrer la carte sur tous les sites"
+          >
+            <Maximize2 size={12} /> Recentrer
+          </button>
           {isLoading ? (
             <Skeleton width="100%" height="100%" />
           ) : (

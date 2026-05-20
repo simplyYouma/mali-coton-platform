@@ -16,8 +16,6 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-4);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 .heroLeft {
@@ -41,19 +39,16 @@
   color: var(--color-text);
   letter-spacing: -0.02em;
   line-height: 1.05;
-  position: relative;
-  padding-left: var(--space-3);
 }
-.heroTitle::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 70%;
-  background: var(--color-primary);
-  border-radius: 2px;
+
+/* heroTitle bg pill — sidebar color */
+.heroTitle {
+  display: inline-block;
+  background: var(--color-ink-night);
+  color: var(--color-ink-text);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  align-self: flex-start;
 }
 .heroDescription {
   margin: 0;
@@ -90,6 +85,9 @@
   color: var(--color-text);
   letter-spacing: -0.03em;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .heroStat[data-tone='success'] .heroStatValue { color: var(--color-success); }
 .heroStat[data-tone='warning'] .heroStatValue { color: var(--color-amber-hover); }
@@ -120,11 +118,45 @@
   gap: var(--space-4);
   flex: 1;
   min-height: 0;
+  position: relative;
+}
+.layout[data-panel-collapsed='true'] {
+  grid-template-columns: 1fr;
 }
 @media (max-width: 1024px) {
   .layout {
     grid-template-columns: 1fr;
   }
+}
+
+/* Bouton toggle du panel — visible en permanence en haut a gauche */
+.panelToggle {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 600;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  box-shadow: 0 2px 6px -2px rgba(15, 23, 42, 0.12);
+  transition: background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.panelToggle:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+/* Quand le panel est ouvert, on positionne le toggle juste a droite
+ * du panel (a 280px + margin) */
+.layout:not([data-panel-collapsed='true']) .panelToggle {
+  left: calc(280px + var(--space-3));
 }
 
 /* ───── Side panel ───── */
@@ -351,59 +383,16 @@
   font-weight: var(--weight-semibold);
 }
 
-/* ───── Carte : mini-dashboard flottant en haut ───── */
-.mapOverlay {
+/* ───── Bouton Recentrer en haut-droite de la carte ───── */
+.mapRecenterBtn {
   position: absolute;
   top: var(--space-3);
-  left: var(--space-3);
   right: var(--space-3);
   z-index: 500;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  box-shadow: 0 4px 14px -4px rgba(15, 23, 42, 0.18);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  flex-wrap: wrap;
-  width: fit-content;
-  max-width: calc(100% - var(--space-3) * 2);
-}
-.mapOverlayItem {
-  display: inline-flex;
-  align-items: center;
   gap: 4px;
-  font-weight: var(--weight-medium);
-}
-.mapOverlayItem strong {
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-}
-.mapOverlayItem[data-tone='critical'] strong { color: var(--color-danger); }
-.mapOverlayItem[data-tone='warning'] strong { color: var(--color-amber-hover); }
-.mapOverlayItem[data-tone='success'] strong { color: var(--color-success); }
-.mapOverlayItem[data-tone='alert'] {
-  color: var(--color-danger);
-}
-.mapOverlayItem[data-tone='alert'] strong { color: var(--color-danger); }
-.mapOverlaySep {
-  width: 1px;
-  height: 18px;
-  background: var(--color-border);
-}
-.mapOverlayBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  padding: 4px 10px;
+  padding: 6px 12px;
   background: var(--color-text);
   border: none;
   border-radius: var(--radius-pill);
@@ -413,8 +402,9 @@
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  box-shadow: 0 4px 12px -4px rgba(15, 23, 42, 0.2);
 }
-.mapOverlayBtn:hover {
+.mapRecenterBtn:hover {
   background: var(--color-primary);
 }
 

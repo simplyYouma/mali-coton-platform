@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   Map,
   BarChart3,
-  FileText,
   Lightbulb,
   Users,
   UsersRound,
@@ -16,6 +15,7 @@ import {
   Beaker,
   ShieldCheck,
   Database,
+  FileText,
 } from 'lucide-react';
 import { AppShell } from '@/components/common/AppShell';
 import type { NavItem, NavSection } from '@/components/common/AppShell';

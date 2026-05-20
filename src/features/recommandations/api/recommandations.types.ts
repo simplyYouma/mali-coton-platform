@@ -14,6 +14,7 @@ export type RecommandationStatut =
   | 'en_cours'
   | 'suivie'
   | 'resolue'
+  | 'non_appliquee'
   | 'annulee';
 
 /**
@@ -87,6 +88,7 @@ export const STATUT_LABEL: Record<RecommandationStatut, string> = {
   en_cours: 'En cours',
   suivie: 'Suivie',
   resolue: 'Résolue',
+  non_appliquee: 'Non appliquée',
   annulee: 'Annulée',
 };
 
@@ -108,5 +110,18 @@ export const STATUT_VARIANT: Record<
   en_cours: 'warning',
   suivie: 'warning',
   resolue: 'success',
+  non_appliquee: 'danger',
   annulee: 'neutral',
 };
+
+/**
+ * Vrai si la recommandation a une echeance passee ET n'est pas dans
+ * un statut terminal. Utilise pour afficher un indicatif 'En retard'.
+ */
+export function isOverdue(reco: Recommandation): boolean {
+  if (!reco.dateEcheance) return false;
+  if (reco.statut === 'resolue' || reco.statut === 'annulee') return false;
+  const due = new Date(reco.dateEcheance).getTime();
+  if (!Number.isFinite(due)) return false;
+  return due < Date.now();
+}

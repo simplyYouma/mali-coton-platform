@@ -29,6 +29,8 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
+import { useCollections } from '@/features/collection/hooks/useCollections';
+import { INDICATOR_RULES } from '@/features/collection/lib/indicatorRules';
 import { mockUsers } from '@/mocks/fixtures/users';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import {
@@ -47,6 +49,7 @@ import {
   PRIORITE_VARIANT,
   STATUT_LABEL,
   STATUT_VARIANT,
+  isOverdue,
 } from '../api/recommandations.types';
 import styles from './RecommandationsPage.module.css';
 
@@ -58,6 +61,8 @@ interface FormState {
   description: string;
   niveauPriorite: RecommandationPriorite;
   siteId: string;
+  collectionId: string;
+  resultatIndicatorId: string;
   responsableSuivi: string;
   dateEcheance: string;
 }
@@ -67,6 +72,8 @@ const EMPTY_FORM: FormState = {
   description: '',
   niveauPriorite: 'moyenne',
   siteId: '',
+  collectionId: '',
+  resultatIndicatorId: '',
   responsableSuivi: '',
   dateEcheance: '',
 };
@@ -77,6 +84,7 @@ export function RecommandationsPage() {
   const confirm = useConfirm();
   const { data: page, isLoading } = useRecommandations();
   const { data: sitesPage } = useSites();
+  const { data: collectionsPage } = useCollections({});
   const createMut = useCreateRecommandation();
   const updateMut = useUpdateRecommandation();
   const deleteMut = useDeleteRecommandation();
@@ -101,6 +109,7 @@ export function RecommandationsPage() {
       en_cours: 0,
       suivie: 0,
       resolue: 1,
+      non_appliquee: 1,
       annulee: 2,
     };
     return all
@@ -181,6 +190,8 @@ export function RecommandationsPage() {
         description: form.description.trim(),
         niveauPriorite: form.niveauPriorite,
         siteId: form.siteId || undefined,
+        collectionId: form.collectionId || undefined,
+        resultatIndicatorId: form.resultatIndicatorId || undefined,
         responsableSuivi: form.responsableSuivi.trim() || undefined,
         dateEcheance: form.dateEcheance || undefined,
         createdBy: user.id,
@@ -337,9 +348,15 @@ export function RecommandationsPage() {
                       </span>
                     </span>
                     <span className={styles.rowRight}>
-                      <Badge size="sm" variant={STATUT_VARIANT[r.statut]}>
-                        {STATUT_LABEL[r.statut]}
-                      </Badge>
+                      {isOverdue(r) ? (
+                        <Badge size="sm" variant="danger">
+                          <AlertOctagon size={11} /> En retard
+                        </Badge>
+                      ) : (
+                        <Badge size="sm" variant={STATUT_VARIANT[r.statut]}>
+                          {STATUT_LABEL[r.statut]}
+                        </Badge>
+                      )}
                       <span className={styles.rowDate}>{formatRelativeTime(r.createdAt)}</span>
                     </span>
                   </button>
@@ -413,10 +430,50 @@ export function RecommandationsPage() {
           <FormField label="Site concerné">
             <Select<string>
               value={form.siteId}
-              onChange={(siteId) => setForm((s) => ({ ...s, siteId }))}
+              onChange={(siteId) =>
+                setForm((s) => ({
+                  ...s,
+                  siteId,
+                  /* Reset la collecte associee si on change de site */
+                  collectionId: '',
+                }))
+              }
               options={[
                 { value: '', label: '— Transversal —' },
                 ...(sitesPage?.items ?? []).map((s) => ({ value: s.id, label: s.shortName })),
+              ]}
+            />
+          </FormField>
+          <FormField label="Collecte associée" hint="Filtree par le site selectionne, ou toutes si transversal.">
+            <Select<string>
+              value={form.collectionId}
+              onChange={(collectionId) =>
+                setForm((s) => ({ ...s, collectionId }))
+              }
+              options={[
+                { value: '', label: '— Aucune —' },
+                ...((collectionsPage?.items ?? [])
+                  .filter((c) => !form.siteId || c.siteId === form.siteId)
+                  .slice(0, 20)
+                  .map((c) => ({
+                    value: c.id,
+                    label: `${c.id.slice(-6).toUpperCase()} · ${formatDateTime(c.collectedAt, 'dd MMM yyyy')}`,
+                  }))),
+              ]}
+            />
+          </FormField>
+          <FormField label="Indicateur ciblé" hint="L'indicateur qui motive la recommandation (optionnel).">
+            <Select<string>
+              value={form.resultatIndicatorId}
+              onChange={(resultatIndicatorId) =>
+                setForm((s) => ({ ...s, resultatIndicatorId }))
+              }
+              options={[
+                { value: '', label: '— Aucun —' },
+                ...INDICATOR_RULES.map((r) => ({
+                  value: r.id,
+                  label: r.unit ? `${r.label} (${r.unit})` : r.label,
+                })),
               ]}
             />
           </FormField>
@@ -482,6 +539,11 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
             <Badge size="sm" variant={STATUT_VARIANT[reco.statut]}>
               {STATUT_LABEL[reco.statut]}
             </Badge>
+            {isOverdue(reco) ? (
+              <Badge size="sm" variant="danger">
+                <AlertOctagon size={11} /> Échéance dépassée
+              </Badge>
+            ) : null}
           </div>
           <h2 className={styles.detailTitle}>{reco.titre}</h2>
           <div className={styles.detailMeta}>

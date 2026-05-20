@@ -51,7 +51,10 @@ export function Sidebar({
     >
       <header className={styles.workspace}>
         {!collapsed ? (
-          <span className={styles.workspaceName}>{workspaceName}</span>
+          <span className={styles.wordmark} aria-label={workspaceName}>
+            <span className={styles.wordmarkTop}>PASET</span>
+            <span className={styles.wordmarkBottom}>Mali</span>
+          </span>
         ) : null}
         <button
           type="button"
