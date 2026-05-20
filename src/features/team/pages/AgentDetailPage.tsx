@@ -7,7 +7,6 @@ import {
   MapPin,
   Pencil,
   Phone,
-  Smartphone,
   Trash2,
   UserX,
 } from 'lucide-react';

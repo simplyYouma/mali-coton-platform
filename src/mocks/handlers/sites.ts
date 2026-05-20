@@ -79,6 +79,7 @@ export const sitesHandlers = [
 
     const newSite: Site = {
       id: `site-${uuid().slice(0, 8)}`,
+      codeSite: input.codeSite ?? `SITE-${uuid().slice(0, 6).toUpperCase()}`,
       name: input.name,
       shortName: input.shortName,
       legalStatus: input.legalStatus ?? 'informel',

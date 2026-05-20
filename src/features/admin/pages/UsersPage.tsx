@@ -6,7 +6,6 @@ import {
   Checkbox,
   EmptyState,
   FormField,
-  IconButton,
   Input,
   Modal,
   Select,
@@ -17,7 +16,6 @@ import { useToast } from '@/app/providers/ToastProvider';
 import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { formatRelativeTime } from '@/lib/format';
-import type { UserRole } from '@/types/common';
 import {
   useCreateUser,
   useDeleteUser,

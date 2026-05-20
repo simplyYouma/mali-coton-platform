@@ -202,8 +202,6 @@ export function DashboardPage() {
     year: 'numeric',
   });
 
-  const conformity = isLoading ? 0 : kpis.conformityRate;
-
   const siteOptions = [
     { value: 'all', label: 'Tous les sites' },
     ...(sitesPage?.items.map((s) => ({ value: s.id, label: s.shortName })) ?? []),

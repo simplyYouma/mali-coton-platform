@@ -79,7 +79,9 @@ export function LabResultsPage() {
     const updatedSample = {
       ...(measurement?.sample ?? {
         sampleId: '',
+        containerId: '',
         labId: '',
+        status: 'bordereau_returned' as const,
         sentAt: new Date().toISOString(),
       }),
       receivedAt: entry.receivedAt

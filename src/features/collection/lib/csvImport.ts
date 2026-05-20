@@ -149,7 +149,7 @@ export function buildCollections(
     const lng = mapping.lngCol ? Number(raw[mapping.lngCol]) : NaN;
     const gps =
       Number.isFinite(lat) && Number.isFinite(lng)
-        ? { lat, lng, accuracyMeters: 50 }
+        ? { lat, lng, accuracy: 50 }
         : null;
     if (!gps) issues.push('GPS manquant');
 
@@ -177,6 +177,8 @@ export function buildCollections(
 
     const collection: Collection = {
       id: `c-import-${uuid().slice(0, 8)}`,
+      koboSubmissionUuid: uuid(),
+      koboVersion: 1,
       siteId,
       agentId: options.agentId,
       collectedAt,

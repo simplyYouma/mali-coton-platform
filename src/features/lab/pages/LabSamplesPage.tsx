@@ -913,11 +913,3 @@ function Stat({
   );
 }
 
-function KV({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.kv}>
-      <span className={styles.kvLabel}>{label}</span>
-      <span className={styles.kvValue}>{value}</span>
-    </div>
-  );
-}

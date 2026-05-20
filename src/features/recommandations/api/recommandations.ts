@@ -11,6 +11,7 @@ export interface RecommandationsQuery {
   collectionId?: string;
   statut?: string;
   niveauPriorite?: string;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export function fetchRecommandations(
