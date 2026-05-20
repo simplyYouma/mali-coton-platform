@@ -63,14 +63,14 @@
   border-radius: 0;
 }
 
-/* ── Titre — banner navy pleine largeur, mesh diagonal (meme grammaire que la sidebar) ── */
+/* ── Titre — banner UNDP brand blue pleine largeur, mesh diagonal (meme grammaire que la sidebar) ── */
 [data-page-header] > div:first-child > h1 {
   display: block;
   width: 100%;
   margin: 0;
   background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 28px),
-    var(--color-ink-night);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 28px),
+    var(--color-primary);
   color: var(--color-ink-text);
   padding: var(--space-3) var(--space-5);
   font-family: var(--font-display);
@@ -87,16 +87,16 @@
   border-radius: var(--radius-lg);
 }
 
-/* ── Span directement apres le h1 = stat/meta integree au banner navy.
- * (count "2 actifs", subtitle court, etc.) — rendu sur fond navy, petit & clair,
+/* ── Span directement apres le h1 = stat/meta integree au banner UNDP blue.
+ * (count "2 actifs", subtitle court, etc.) — rendu sur fond blue, petit & clair,
  * NE crée pas une nouvelle section au milieu. Le banner gagne juste une 2eme ligne. ── */
 [data-page-header] > div:first-child > h1 + span {
   display: block;
   margin: 0;
   background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 28px),
-    var(--color-ink-night);
-  color: var(--color-ink-muted);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 28px),
+    var(--color-primary);
+  color: rgba(255, 255, 255, 0.72);
   padding: 0 var(--space-5) var(--space-3);
   font-family: var(--font-sans);
   font-size: var(--text-xs);

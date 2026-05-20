@@ -15,7 +15,7 @@
   .visual { display: none; }
 }
 
-/* ───── Left visual — mesh aligné palette plateforme (navy + UN-blue) ───── */
+/* ───── Left visual — fond UNDP brand blue avec mesh diagonal subtle ───── */
 .visual {
   position: relative;
   padding: var(--space-8) var(--space-7);
@@ -23,18 +23,16 @@
   align-items: center;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 65% 55% at 18% 22%, color-mix(in srgb, var(--color-primary) 26%, transparent) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 45% at 88% 28%, color-mix(in srgb, var(--color-info) 22%, transparent) 0%, transparent 72%),
-    radial-gradient(ellipse 55% 55% at 72% 88%, color-mix(in srgb, var(--color-secondary) 20%, transparent) 0%, transparent 70%),
-    radial-gradient(ellipse 45% 38% at 12% 92%, color-mix(in srgb, var(--color-info) 14%, transparent) 0%, transparent 72%),
-    linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-sunken) 100%);
+    radial-gradient(ellipse 70% 60% at 20% 25%, color-mix(in srgb, #ffffff 14%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 88% 85%, color-mix(in srgb, var(--color-primary-active) 60%, transparent) 0%, transparent 72%),
+    linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
 }
 .visual::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    repeating-linear-gradient(45deg, rgba(14, 23, 48, 0.014) 0 1px, transparent 1px 28px);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 28px);
   pointer-events: none;
 }
 .visualOverlay {
@@ -46,7 +44,7 @@
   font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.22em;
-  color: var(--color-primary);
+  color: rgba(255, 255, 255, 0.82);
   font-weight: 700;
   margin-bottom: var(--space-4);
   display: inline-block;
@@ -57,21 +55,21 @@
   font-weight: var(--weight-bold);
   line-height: 1.1;
   letter-spacing: -0.025em;
-  color: var(--color-text);
+  color: #ffffff;
   margin-bottom: var(--space-6);
   max-width: 20ch;
 }
 .metaList {
   display: flex;
   gap: var(--space-6);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
   padding-top: var(--space-5);
   margin: 0;
   flex-wrap: wrap;
 }
 .metaList li {
   font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.72);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 600;
@@ -81,7 +79,7 @@
   display: block;
   font-family: var(--font-display);
   font-size: var(--text-h1);
-  color: var(--color-text);
+  color: #ffffff;
   font-weight: var(--weight-bold);
   text-transform: none;
   letter-spacing: -0.02em;

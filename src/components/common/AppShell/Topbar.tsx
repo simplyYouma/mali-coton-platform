@@ -80,6 +80,12 @@ export function Topbar() {
       </div>
 
       <div className={styles.actions}>
+        <img
+          src="/logos/logo_pnud.png"
+          alt="PNUD"
+          className={styles.pnudLogo}
+          aria-hidden="true"
+        />
         <div className={styles.profile}>
           <div className={styles.avatar} aria-hidden="true">
             {avatarSrc ? (

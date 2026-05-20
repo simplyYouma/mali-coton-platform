@@ -109,6 +109,17 @@
   margin-left: auto;
 }
 
+/* Logo PNUD officiel — discret, hauteur limitee, conserve l'aspect ratio. */
+.pnudLogo {
+  height: 32px;
+  width: auto;
+  display: inline-block;
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .pnudLogo { height: 26px; }
+}
+
 .profile {
   display: inline-flex;
   align-items: center;

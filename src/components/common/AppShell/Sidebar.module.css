@@ -7,10 +7,10 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  /* Mesh diagonal subtil (sans lueurs) sur fond navy — meme grammaire que le pane login. */
+  /* Mesh diagonal subtil sur fond UNDP brand blue (--color-primary #0468B1). */
   background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 28px),
-    var(--color-ink-night);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 28px),
+    var(--color-primary);
   color: var(--color-ink-text);
   position: sticky;
   top: 0;

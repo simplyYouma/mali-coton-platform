@@ -2,15 +2,15 @@
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
   min-height: 100vh;
-  /* Fond peint en 2 zones : navy a gauche (largeur sidebar) + bg page a droite.
-   * Si la sidebar (sticky, height:100vh) relache au scroll ou est plus courte
-   * que le viewport, la zone reste navy au lieu de laisser apparaitre le bg
-   * de page (effet 'sidebar soulevee' corrige). */
+  /* Fond peint en 2 zones : UNDP brand blue a gauche (largeur sidebar) + bg page
+   * a droite. Si la sidebar (sticky, height:100vh) relache au scroll ou est plus
+   * courte que le viewport, la zone reste blue au lieu de laisser apparaitre le
+   * bg de page (effet 'sidebar soulevee' corrige). */
   background:
     linear-gradient(
       to right,
-      var(--color-ink-night) 0,
-      var(--color-ink-night) var(--sidebar-width),
+      var(--color-primary) 0,
+      var(--color-primary) var(--sidebar-width),
       var(--color-bg) var(--sidebar-width),
       var(--color-bg) 100%
     );
