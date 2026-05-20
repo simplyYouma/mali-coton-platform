@@ -234,7 +234,7 @@ export function LabResultsPage() {
 
                 <div className={styles.cardActions}>
                   <Button
-                    variant="primary"
+                    variant="success"
                     iconLeft={<CheckCircle2 size={16} />}
                     onClick={() => handleSave(m.indicatorId)}
                     loading={patchMeasurement.isPending}

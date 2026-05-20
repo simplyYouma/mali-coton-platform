@@ -614,7 +614,7 @@ export function CollectionDetailPage() {
             Demander correction
           </Button>
           <Button
-            variant="primary"
+            variant="success"
             iconLeft={<CheckCircle2 size={16} />}
             onClick={() => setValidateModalOpen(true)}
             loading={validateMut.isPending}

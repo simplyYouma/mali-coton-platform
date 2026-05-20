@@ -396,7 +396,7 @@ function AlertDetail({
             </Button>
           ) : null}
           <Button
-            variant="primary"
+            variant="success"
             iconLeft={<CheckCircle2 size={14} />}
             onClick={onResolve}
             loading={resolveLoading}

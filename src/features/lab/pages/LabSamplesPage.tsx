@@ -482,7 +482,7 @@ export function LabSamplesPage() {
               Annuler
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               onClick={confirmTransmit}
               loading={transmitMut.isPending}
               iconLeft={<CheckCircle2 size={14} />}

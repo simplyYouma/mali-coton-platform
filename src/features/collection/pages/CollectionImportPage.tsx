@@ -322,7 +322,7 @@ export function CollectionImportPage() {
               </Button>
               <div className={styles.actionsRight}>
                 <Button
-                  variant="primary"
+                  variant="success"
                   iconLeft={<CloudUpload size={14} />}
                   onClick={onCommit}
                   loading={isCommitting}
