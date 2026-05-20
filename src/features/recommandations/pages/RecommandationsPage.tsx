@@ -29,6 +29,7 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
+import { mockUsers } from '@/mocks/fixtures/users';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import {
   useCreateRecommandation,
@@ -119,6 +120,43 @@ export function RecommandationsPage() {
     const map = new Map<string, string>();
     (sitesPage?.items ?? []).forEach((s) => map.set(s.id, s.shortName));
     return map;
+  }, [sitesPage]);
+
+  /* Annuaire des responsables possibles — alimente le Select 'Responsable
+   * du suivi'. La donnee est un string libre cote backend (cf. cahier
+   * §3.4 Recommandation), mais on contraint le pick a un nom connu pour
+   * que le MSW handler (resolveResponsable) puisse resoudre les
+   * coordonnees email/sms et que le service notification prod sache a
+   * qui ecrire. */
+  const responsableOptions = useMemo(() => {
+    type Opt = { value: string; label: string; group: 'users' | 'sites' };
+    const list: Opt[] = [];
+    const seen = new Set<string>();
+    mockUsers
+      .filter((u) => u.role === 'admin' || u.role === 'superviseur' || u.role === 'agent')
+      .forEach((u) => {
+        if (seen.has(u.fullName)) return;
+        seen.add(u.fullName);
+        const roleLabel =
+          u.role === 'admin'
+            ? 'Admin'
+            : u.role === 'superviseur'
+              ? 'Superviseur'
+              : 'Agent terrain';
+        list.push({ value: u.fullName, label: `${u.fullName} · ${roleLabel}`, group: 'users' });
+      });
+    (sitesPage?.items ?? [])
+      .filter((s) => s.responsableName)
+      .forEach((s) => {
+        if (!s.responsableName || seen.has(s.responsableName)) return;
+        seen.add(s.responsableName);
+        list.push({
+          value: s.responsableName,
+          label: `${s.responsableName} · Responsable ${s.shortName}`,
+          group: 'sites',
+        });
+      });
+    return list;
   }, [sitesPage]);
 
   const stats = useMemo(() => {
@@ -383,10 +421,14 @@ export function RecommandationsPage() {
             />
           </FormField>
           <FormField label="Responsable du suivi">
-            <Input
+            <Select<string>
               value={form.responsableSuivi}
-              onChange={(e) => setForm((s) => ({ ...s, responsableSuivi: e.target.value }))}
-              placeholder="Aminata Konaté"
+              onChange={(responsableSuivi) => setForm((s) => ({ ...s, responsableSuivi }))}
+              placeholder="Sélectionner un responsable…"
+              options={[
+                { value: '', label: '— Aucun pour l\'instant —' },
+                ...responsableOptions.map((o) => ({ value: o.value, label: o.label })),
+              ]}
             />
           </FormField>
           <FormField label="Date d'échéance">

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 import clsx from 'clsx';
 import styles from './Select.module.css';
@@ -36,12 +37,44 @@ export function Select<T extends string = string>({
   ...aria
 }: SelectProps<T>) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  );
+
+  /* Position du menu (portal vers body, position fixed) :
+   * - calcul a partir du rect du wrapper
+   * - recalcule sur open + sur scroll/resize tant qu'ouvert
+   * Evite le clipping quand le Select est dans un Modal avec overflow:auto. */
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuStyle(null);
+      return;
+    }
+    const compute = () => {
+      const el = wrapperRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setMenuStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    compute();
+    const onScroll = () => compute();
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (wrapperRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
@@ -58,7 +91,7 @@ export function Select<T extends string = string>({
 
   return (
     <div
-      ref={ref}
+      ref={wrapperRef}
       className={clsx(
         styles.wrapper,
         styles[`size-${size}`],
@@ -84,43 +117,56 @@ export function Select<T extends string = string>({
         </span>
         <ChevronDown size={16} className={clsx(styles.chevron, open && styles.chevronOpen)} />
       </button>
-      {open ? (
-        <ul role="listbox" className={styles.menu}>
-          {options.map((opt) => {
-            const isSelected = opt.value === value;
-            return (
-              <li
-                key={opt.value}
-                role="option"
-                aria-selected={isSelected}
-                aria-disabled={opt.disabled || undefined}
-                tabIndex={opt.disabled ? -1 : 0}
-                onKeyDown={(e) => {
-                  if (opt.disabled) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onChange(opt.value);
-                    setOpen(false);
-                  }
-                }}
-                onClick={() => {
-                  if (opt.disabled) return;
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                className={clsx(
-                  styles.option,
-                  isSelected && styles.optionSelected,
-                  opt.disabled && styles.optionDisabled,
-                )}
-              >
-                <span className={styles.optionLabel}>{opt.label}</span>
-                {isSelected ? <Check size={14} /> : null}
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
+      {open && menuStyle && typeof document !== 'undefined'
+        ? createPortal(
+            <ul
+              ref={menuRef}
+              role="listbox"
+              className={styles.menu}
+              style={{
+                position: 'fixed',
+                top: menuStyle.top,
+                left: menuStyle.left,
+                width: menuStyle.width,
+              }}
+            >
+              {options.map((opt) => {
+                const isSelected = opt.value === value;
+                return (
+                  <li
+                    key={opt.value}
+                    role="option"
+                    aria-selected={isSelected}
+                    aria-disabled={opt.disabled || undefined}
+                    tabIndex={opt.disabled ? -1 : 0}
+                    onKeyDown={(e) => {
+                      if (opt.disabled) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onChange(opt.value);
+                        setOpen(false);
+                      }
+                    }}
+                    onClick={() => {
+                      if (opt.disabled) return;
+                      onChange(opt.value);
+                      setOpen(false);
+                    }}
+                    className={clsx(
+                      styles.option,
+                      isSelected && styles.optionSelected,
+                      opt.disabled && styles.optionDisabled,
+                    )}
+                  >
+                    <span className={styles.optionLabel}>{opt.label}</span>
+                    {isSelected ? <Check size={14} /> : null}
+                  </li>
+                );
+              })}
+            </ul>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
