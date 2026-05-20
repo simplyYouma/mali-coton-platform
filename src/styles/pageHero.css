@@ -1,21 +1,28 @@
 /* ───────────────────────────────────────────────
  * Page header — single source of truth.
  *
- * Activé par `data-page-header` sur le <header> de chaque page.
- * Convention de markup attendue (cf. pages/feature/.../*.tsx) :
+ * Activé par `data-page-header` sur le wrapper de chaque page.
+ *
+ * Convention de markup (souple — toutes les variantes ci-dessous fonctionnent) :
  *
  *   <header data-page-header className={styles.hero}>
- *     <div className={styles.heroLeft}>
- *       <span className={styles.heroEyebrow}>…</span>   (optionnel)
- *       <h1   className={styles.heroTitle}>…</h1>       (requis)
- *       <p    className={styles.heroDescription}>…</p>  (optionnel)
+ *     <div className={styles.heroLeft}>                  (colonne principale)
+ *       <span className={styles.heroEyebrow}>…</span>    (optionnel — 1er enfant)
+ *       <h1   className={styles.heroTitle}>…</h1>        (requis)
+ *       <span className={styles.heroCount}>…</span>      (optionnel — compteur/meta)
+ *       <p    className={styles.heroDescription}>…</p>   (optionnel — description)
  *     </div>
- *     <div className={styles.heroRight | heroControls | heroActions}>…</div>
+ *     <div className={styles.heroRight | heroActions | heroKpis}>…</div>  (optionnel)
  *   </header>
  *
- * Les règles globales gagnent en spécificité sur les modules CSS locaux
- * (attribute + élément ≥ class), donc les pages héritent automatiquement
- * de l'identité visuelle. Toute modification du style se fait ici.
+ * Regle visuelle :
+ *  - eyebrow (1er enfant span)     → texte muted uppercase sur fond de page, au-dessus du banner
+ *  - h1 (titre)                    → banner navy + mesh diagonal, pleine largeur
+ *  - tout sibling apres le h1      → contenu d'une carte blanche unifiee qui prolonge le banner
+ *                                    (count en haut, description en bas, sans coupure)
+ *  - tout sibling de heroLeft      → actions/kpis alignes a droite sous le bloc
+ *
+ * Toute modification du style se fait ici. Les pages n'ont pas besoin de CSS dédié.
  * ─────────────────────────────────────────────── */
 
 [data-page-header] {
@@ -26,7 +33,7 @@
   margin-bottom: var(--space-5);
 }
 
-/* Colonne titre/description : pleine largeur */
+/* Colonne principale : pleine largeur, stack vertical sans gap (continuité visuelle) */
 [data-page-header] > div:first-child {
   display: flex;
   flex-direction: column;
@@ -36,7 +43,7 @@
   flex: 1 1 auto;
 }
 
-/* Eyebrow — texte uppercase muted sur le fond de page (pas de bg) */
+/* ── Eyebrow — petit label uppercase sur le fond de page, AU-DESSUS du banner ── */
 [data-page-header] > div:first-child > span:first-child {
   display: block;
   background: transparent;
@@ -52,7 +59,7 @@
   border-radius: 0;
 }
 
-/* Titre — banner navy pleine largeur, mesh diagonal (meme grammaire que la sidebar) */
+/* ── Titre — banner navy pleine largeur, mesh diagonal (meme grammaire que la sidebar) ── */
 [data-page-header] > div:first-child > h1 {
   display: block;
   width: 100%;
@@ -71,27 +78,42 @@
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
-/* Si le titre est dernier enfant (pas de description) → coins arrondis complets */
+/* Si le titre est dernier enfant (pas de description ni meta) → coins arrondis complets */
 [data-page-header] > div:first-child > h1:last-child {
   border-radius: var(--radius-lg);
 }
 
-/* Description — carte blanche en section dessous, hairline */
-[data-page-header] > div:first-child > p {
+/* ── Carte blanche unifiee : tout sibling apres le h1 prolonge le banner ── */
+[data-page-header] > div:first-child > h1 ~ * {
   margin: 0;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-top: none;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding: var(--space-3) var(--space-5);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-5);
   color: var(--color-text-muted);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.55;
   max-width: none;
-  font-family: var(--font-sans);
+}
+/* Premier sibling apres le h1 : ouvre la carte (top hairline + padding genereux) */
+[data-page-header] > div:first-child > h1 + * {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+/* Dernier sibling apres le h1 : ferme la carte (bottom hairline + radius) */
+[data-page-header] > div:first-child > h1 ~ *:last-child {
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding-bottom: var(--space-3);
+}
+/* Variante meta (span) : plus compact, font legerement plus petite */
+[data-page-header] > div:first-child > h1 ~ span {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
 }
 
-/* Actions / contrôles — basculent en row sous le bloc, alignés à droite */
+/* ── Actions / KPIs / contrôles — basculent en row sous le bloc, alignes a droite ── */
 [data-page-header] > div:not(:first-child) {
   align-self: flex-end;
   margin-top: var(--space-3);
@@ -101,7 +123,7 @@
   flex-wrap: wrap;
 }
 
-/* Responsive — titre légèrement réduit en mobile */
+/* ── Responsive ── */
 @media (max-width: 768px) {
   [data-page-header] > div:first-child > h1 {
     font-size: var(--text-h2);
