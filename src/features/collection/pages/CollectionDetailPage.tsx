@@ -481,8 +481,8 @@ export function CollectionDetailPage() {
                           </span>
                         </div>
                         {isLabPending ? (
-                          <span className={styles.measurePending}>
-                            <Clock size={12} /> Analyse en cours au labo
+                          <span className={styles.measureValue} aria-label="En attente du labo">
+                            —
                           </span>
                         ) : canEdit && hasValue ? (
                           <EditableMeasureValue
@@ -596,7 +596,11 @@ export function CollectionDetailPage() {
         />
       ) : null}
 
-      <CollectionTimelineSection collection={collection} usersById={usersById} />
+      <CollectionTimelineSection
+        collection={collection}
+        usersById={usersById}
+        edits={localEdits}
+      />
 
       {collection.revisions && collection.revisions.length > 0 ? (
         <CollectionRevisionsHistory
@@ -756,10 +760,43 @@ const TONE_ICON: Record<TimelineEvent['tone'], ReactNode> = {
 interface CollectionTimelineSectionProps {
   collection: Collection;
   usersById: Map<string, string>;
+  edits?: Record<string, { value: string | number; editedBy: string; editedAt: string }>;
 }
 
-function CollectionTimelineSection({ collection, usersById }: CollectionTimelineSectionProps) {
-  const events = useMemo(() => buildCollectionTimeline(collection), [collection]);
+function CollectionTimelineSection({
+  collection,
+  usersById,
+  edits,
+}: CollectionTimelineSectionProps) {
+  /* Chronologie = evenements structures de la collecte + modifications
+   * locales du sup. On ajoute pour chaque edit un evenement timeline
+   * avec qui/quand/avant->apres. */
+  const events = useMemo(() => {
+    const base = buildCollectionTimeline(collection);
+    if (!edits) return base;
+    const editEvents: TimelineEvent[] = Object.entries(edits).map(([indicatorId, edit]) => {
+      const rule = findRule(indicatorId);
+      const previous = collection.measurements.find((m) => m.indicatorId === indicatorId);
+      const beforeStr =
+        previous?.value == null || previous.value === ''
+          ? '—'
+          : String(previous.value);
+      const afterStr = String(edit.value);
+      const unit = rule?.unit ? ` ${rule.unit}` : '';
+      return {
+        id: `edit-${indicatorId}-${edit.editedAt}`,
+        label: `Mesure modifiée — ${rule?.label ?? indicatorId}`,
+        when: edit.editedAt,
+        who: edit.editedBy,
+        tone: 'sup_correction',
+        notes: `${beforeStr}${unit} → ${afterStr}${unit}`,
+      };
+    });
+    return [...base, ...editEvents].sort(
+      (a, b) => new Date(a.when).getTime() - new Date(b.when).getTime(),
+    );
+  }, [collection, edits]);
+
   if (events.length === 0) return null;
 
   return (

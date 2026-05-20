@@ -369,7 +369,9 @@ function ReviewDetail({
   ).length;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const sample = collection.measurements.slice(0, 6);
+  /* Toutes les mesures collectees sont affichees, peu importe le statut
+   * de la collecte — on veut voir ce que l'agent a soumis tel quel. */
+  const sample = collection.measurements;
 
   return (
     <>
@@ -449,7 +451,7 @@ function ReviewDetail({
 
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>
-            Aperçu des mesures ({Math.min(totalMeas, 6)}/{totalMeas})
+            Mesures collectées · {totalMeas}
           </h3>
           <div className={styles.measurementList}>
             {sample.map((m) => {

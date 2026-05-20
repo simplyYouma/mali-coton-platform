@@ -69,7 +69,10 @@ export function CollectionsListPage() {
 
   const filteredItems = useMemo(() => {
     if (!data) return [];
-    let items = data.items;
+    /* needs_correction est deprecie depuis le retrait de 'Demander
+     * correction' (la correction se fait inline par le sup). On masque
+     * ces collectes historiques de la liste. */
+    let items = data.items.filter((c) => c.status !== 'needs_correction');
     if (dateRange !== 'all') {
       const days = Number(dateRange);
       const cutoff = Date.now() - days * 86_400_000;
