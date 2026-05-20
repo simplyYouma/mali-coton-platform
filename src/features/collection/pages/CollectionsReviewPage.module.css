@@ -81,6 +81,18 @@
 .heroStat[data-tone='accent'] .heroStatValue {
   color: var(--color-accent-hover);
 }
+.heroStat[data-tone='warning'] .heroStatValue {
+  color: var(--color-amber-hover);
+}
+.heroStat[data-tone='info'] .heroStatValue {
+  color: var(--color-primary);
+}
+.heroStat[data-tone='success'] .heroStatValue {
+  color: var(--color-success);
+}
+.heroStat[data-tone='danger'] .heroStatValue {
+  color: var(--color-danger);
+}
 .heroStatLabel {
   font-size: var(--text-2xs);
   text-transform: uppercase;
@@ -130,11 +142,12 @@
   font-family: var(--font-mono);
 }
 .listUnreadBadge {
+  /* Sémantique : action requise (non lu, en attente de revue) → amber */
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
   border-radius: var(--radius-pill);
-  background: var(--color-primary);
+  background: var(--color-amber);
   color: #fff;
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
@@ -172,14 +185,13 @@
   background: var(--color-primary-soft);
 }
 
-/* ── Non lu (boite mail) : fond legerement teinte, titre en bold,
- * liseret gauche, point de presence devant le nom de site ── */
+/* ── Non lu : action requise → ton amber (warning), pas primary ── */
 .rowUnread {
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
-  box-shadow: inset 3px 0 0 0 var(--color-primary);
+  background: color-mix(in srgb, var(--color-amber) 7%, var(--color-surface));
+  box-shadow: inset 3px 0 0 0 var(--color-amber);
 }
 .rowUnread:hover {
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-amber) 12%, var(--color-surface));
 }
 .rowUnread .rowSite {
   font-weight: var(--weight-bold);
@@ -189,7 +201,7 @@
   color: var(--color-text);
 }
 .rowUnread .rowDate {
-  color: var(--color-primary);
+  color: var(--color-amber-hover);
   font-weight: var(--weight-bold);
 }
 

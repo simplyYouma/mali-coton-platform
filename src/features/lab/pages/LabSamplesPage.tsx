@@ -360,9 +360,9 @@ export function LabSamplesPage() {
           <h1 className={styles.heroTitle}>Échantillons</h1>
         </div>
         <div className={styles.heroStats}>
-          <Stat label="À envoyer" value={stats.to_send} />
-          <Stat label="Au labo" value={stats.at_lab} />
-          <Stat label="Bordereaux reçus" value={stats.returned} />
+          <Stat label="À envoyer" value={stats.to_send} tone="warning" />
+          <Stat label="Au labo" value={stats.at_lab} tone="info" />
+          <Stat label="Bordereaux reçus" value={stats.returned} tone="warning" />
           <Stat label="En retard SLA" value={stats.overdue} tone="danger" />
         </div>
       </header>
@@ -903,7 +903,7 @@ function Stat({
 }: {
   label: string;
   value: number;
-  tone?: 'danger';
+  tone?: 'danger' | 'warning' | 'info' | 'success';
 }) {
   return (
     <div className={styles.stat} data-tone={tone ?? 'neutral'}>

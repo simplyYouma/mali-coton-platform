@@ -410,24 +410,23 @@ export function CollectionDetailPage() {
       })() : null}
 
       <section className={styles.summaryGrid} aria-label="Résumé">
-        {collection.prelevements && collection.prelevements.length > 0 ? (
-          <div className={styles.summaryItem}>
-            <span className={styles.summaryLabel}>Point de prélèvement</span>
-            <span className={styles.summaryValue}>
-              {POINT_PRELEVEMENT_LABEL[collection.prelevements[0]!.pointPrelevement]}
-              <span className={styles.summaryHint}>
-                {' '}· {collection.prelevements[0]!.codePrelevement}
-              </span>
-            </span>
-          </div>
-        ) : collection.pointPrelevement ? (
-          <div className={styles.summaryItem}>
-            <span className={styles.summaryLabel}>Point de prélèvement</span>
-            <span className={styles.summaryValue}>
-              {POINT_PRELEVEMENT_LABEL[collection.pointPrelevement]}
-            </span>
-          </div>
-        ) : null}
+        <div className={styles.summaryItem}>
+          <span className={styles.summaryLabel}>Point de prélèvement</span>
+          <span className={styles.summaryValue}>
+            {collection.prelevements && collection.prelevements.length > 0 ? (
+              <>
+                {POINT_PRELEVEMENT_LABEL[collection.prelevements[0]!.pointPrelevement]}
+                <span className={styles.summaryHint}>
+                  {' '}· {collection.prelevements[0]!.codePrelevement}
+                </span>
+              </>
+            ) : collection.pointPrelevement ? (
+              POINT_PRELEVEMENT_LABEL[collection.pointPrelevement]
+            ) : (
+              <span className={styles.summaryHint}>—</span>
+            )}
+          </span>
+        </div>
         <div className={styles.summaryItem}>
           <span className={styles.summaryLabel}>Date / heure</span>
           <span className={styles.summaryValue}>{formatDateTime(collection.collectedAt)}</span>

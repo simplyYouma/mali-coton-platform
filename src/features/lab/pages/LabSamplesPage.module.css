@@ -54,6 +54,27 @@
 .stat[data-tone='danger'] .statValue {
   color: var(--color-danger);
 }
+.stat[data-tone='warning'] {
+  background: var(--color-amber-soft);
+  border-color: color-mix(in srgb, var(--color-amber) 30%, transparent);
+}
+.stat[data-tone='warning'] .statValue {
+  color: var(--color-amber-hover);
+}
+.stat[data-tone='info'] {
+  background: var(--color-primary-soft);
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+.stat[data-tone='info'] .statValue {
+  color: var(--color-primary);
+}
+.stat[data-tone='success'] {
+  background: var(--color-success-bg);
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+.stat[data-tone='success'] .statValue {
+  color: var(--color-success);
+}
 .statValue {
   font-size: var(--text-stat);
   font-weight: var(--weight-bold);

@@ -171,14 +171,17 @@ export function CollectionsReviewPage() {
           <h1 className={styles.heroTitle}>Revue des collectes</h1>
         </div>
         <div className={styles.heroStats}>
-          <div className={styles.heroStat} data-tone="primary">
+          {/* Soumises = action requise du sup → amber */}
+          <div className={styles.heroStat} data-tone="warning">
             <span className={styles.heroStatValue}>{stats.submitted}</span>
             <span className={styles.heroStatLabel}>Soumises</span>
           </div>
-          <div className={styles.heroStat} data-tone="accent">
+          {/* Bordereaux recus = etape labo, donnee neutre informationelle */}
+          <div className={styles.heroStat} data-tone="info">
             <span className={styles.heroStatValue}>{stats.labComplete}</span>
             <span className={styles.heroStatLabel}>Bordereaux reçus</span>
           </div>
+          {/* Total = agrégat neutre */}
           <div className={styles.heroStat}>
             <span className={styles.heroStatValue}>{stats.total}</span>
             <span className={styles.heroStatLabel}>Total à valider</span>
