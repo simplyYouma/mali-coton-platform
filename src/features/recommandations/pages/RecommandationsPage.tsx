@@ -286,7 +286,7 @@ export function RecommandationsPage() {
             ]}
             aria-label="Filtrer par priorité"
           />
-          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
+          <Button variant="success" iconLeft={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
             Nouvelle recommandation
           </Button>
         </div>
@@ -374,7 +374,7 @@ export function RecommandationsPage() {
             <Button variant="ghost" onClick={() => setCreateOpen(false)}>
               Annuler
             </Button>
-            <Button variant="primary" onClick={handleCreate} loading={createMut.isPending}>
+            <Button variant="success" onClick={handleCreate} loading={createMut.isPending}>
               Créer
             </Button>
           </>

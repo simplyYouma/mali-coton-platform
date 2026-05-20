@@ -161,7 +161,7 @@ export function SiteForm({ open, onClose, site }: SiteFormProps) {
           <Button variant="ghost" onClick={onClose} disabled={isPending}>
             Annuler
           </Button>
-          <Button variant="primary" onClick={handleSubmit} loading={isPending}>
+          <Button variant="success" onClick={handleSubmit} loading={isPending}>
             {isEdit ? 'Enregistrer' : 'Créer le site'}
           </Button>
         </>

@@ -146,7 +146,7 @@ export function TeamListPage() {
             />
           </div>
           <Button
-            variant="primary"
+            variant="success"
             iconLeft={<Plus size={14} />}
             onClick={() => setCreateOpen(true)}
           >
@@ -242,7 +242,7 @@ export function TeamListPage() {
               Annuler
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               onClick={handleCreate}
               loading={createMut.isPending}
               iconLeft={<UserCheck size={14} />}

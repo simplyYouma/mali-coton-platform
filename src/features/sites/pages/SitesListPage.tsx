@@ -101,7 +101,7 @@ export function SitesListPage() {
               </Button>
             </Link>
             {canManage ? (
-              <Button variant="primary" iconLeft={<Plus size={16} />} onClick={openCreate}>
+              <Button variant="success" iconLeft={<Plus size={16} />} onClick={openCreate}>
                 Nouveau site
               </Button>
             ) : null}
@@ -167,7 +167,7 @@ export function SitesListPage() {
           description="Essayez d'ajuster les filtres ou de vider la recherche."
           action={
             canManage ? (
-              <Button variant="primary" iconLeft={<Plus size={16} />} onClick={openCreate}>
+              <Button variant="success" iconLeft={<Plus size={16} />} onClick={openCreate}>
                 Créer le premier site
               </Button>
             ) : (

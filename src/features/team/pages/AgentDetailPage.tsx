@@ -373,7 +373,7 @@ export function AgentDetailPage() {
               Annuler
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               onClick={handleSave}
               loading={updateMut.isPending}
             >

@@ -243,7 +243,7 @@ export function UsersPage() {
               aria-label="Rechercher un utilisateur"
             />
           </div>
-          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={openCreate}>
+          <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
             Ajouter
           </Button>
         </div>
@@ -379,7 +379,7 @@ export function UsersPage() {
               Annuler
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               iconLeft={editing ? <Pencil size={14} /> : <Plus size={14} />}
               onClick={handleSubmit}
               loading={createMut.isPending || updateMut.isPending}

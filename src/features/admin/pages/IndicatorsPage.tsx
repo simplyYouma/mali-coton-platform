@@ -254,7 +254,7 @@ export function IndicatorsPage() {
               aria-label="Rechercher un indicateur"
             />
           </div>
-          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={openCreate}>
+          <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
             Ajouter
           </Button>
         </div>
@@ -418,7 +418,7 @@ export function IndicatorsPage() {
               Annuler
             </Button>
             <Button
-              variant="primary"
+              variant="success"
               onClick={handleSubmit}
               loading={createMut.isPending || updateMut.isPending}
             >

@@ -159,7 +159,7 @@ export function RefDataPage() {
           <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
             Réinitialiser
           </Button>
-          <Button variant="primary" iconLeft={<Plus size={14} />} onClick={openCreate}>
+          <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
             Ajouter
           </Button>
         </div>
@@ -317,7 +317,7 @@ function RefEntryForm({
             Annuler
           </Button>
           <Button
-            variant="primary"
+            variant="success"
             onClick={handleSubmit}
             disabled={!code.trim() || !label.trim()}
           >
