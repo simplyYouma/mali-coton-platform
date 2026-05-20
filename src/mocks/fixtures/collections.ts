@@ -1,4 +1,5 @@
 import type {
+  AcquisitionMode,
   Collection,
   CollectionNotification,
   CollectionStatus,
@@ -515,11 +516,22 @@ export const mockCollections: Collection[] = (() => {
       rejectedAt,
     };
 
-    // Le flacon contient 2 analyses : sulfates + métaux lourds
+    /* Le flacon contient maintenant un panel d'analyses realiste pour
+     * un effluent de teinture : MES, DBO5, DCO, NH4, sulfates +
+     * 4 metaux. Les valeurs intermediaires sont generees autour des
+     * pics historiques du site, avec un offset pour les sites critiques
+     * (dianeguela). */
     const valuePresent =
       lc.status === 'bordereau_returned' ||
       lc.status === 'rejected_by_supervisor' ||
       lc.status === 'accepted';
+    const labAcq: AcquisitionMode =
+      valuePresent && lc.status === 'accepted' ? 'lab_received' : 'lab_pending';
+    const labValue = (base: number, criticalMultiplier = 3): number | null => {
+      if (!valuePresent) return null;
+      const mult = lc.siteId === 'site-dianeguela' ? criticalMultiplier : 1;
+      return Number((base * mult * (0.85 + Math.random() * 0.3)).toFixed(2));
+    };
 
     const collectionStatus: CollectionStatus =
       lc.status === 'accepted' ? 'lab_complete' : 'awaiting_lab';
@@ -617,22 +629,70 @@ export const mockCollections: Collection[] = (() => {
         hasNearbyWatercourse: SITES_WITH_WATERCOURSE.has(lc.siteId),
       },
       measurements: [
+        /* In-situ — saisis par l'agent sur place avec ses appareils. */
         { indicatorId: 'water.ph', acquisition: 'in_situ', value: 8.5, unit: '' },
+        { indicatorId: 'water.temperature', acquisition: 'in_situ', value: 28.5, unit: '°C' },
+        { indicatorId: 'water.conductivity', acquisition: 'in_situ', value: 2100, unit: 'µS/cm' },
+        { indicatorId: 'water.turbidity', acquisition: 'in_situ', value: 35, unit: 'NTU' },
+        { indicatorId: 'air.pm25', acquisition: 'in_situ', value: 22, unit: 'µg/m³' },
+        /* Lab — pointent toutes vers le meme flacon (sharedSample), elles
+         * sont envoyees en un meme bordereau. */
         {
           indicatorId: 'water.sulfates',
-          acquisition: valuePresent && lc.status === 'accepted' ? 'lab_received' : 'lab_pending',
+          acquisition: labAcq,
           value: valuePresent ? lc.sulfatesValue ?? null : null,
           unit: 'mg/L',
           sample: sharedSample,
         },
         {
+          indicatorId: 'water.mes',
+          acquisition: labAcq,
+          value: labValue(95),
+          unit: 'mg/L',
+          sample: sharedSample,
+        },
+        {
+          indicatorId: 'water.dbo5',
+          acquisition: labAcq,
+          value: labValue(60),
+          unit: 'mg O₂/L',
+          sample: sharedSample,
+        },
+        {
+          indicatorId: 'water.dco',
+          acquisition: labAcq,
+          value: labValue(180),
+          unit: 'mg O₂/L',
+          sample: sharedSample,
+        },
+        {
+          indicatorId: 'water.nh4',
+          acquisition: labAcq,
+          value: labValue(2.1, 2),
+          unit: 'mg/L',
+          sample: sharedSample,
+        },
+        {
           indicatorId: 'water.metals.cr',
-          acquisition: valuePresent && lc.status === 'accepted' ? 'lab_received' : 'lab_pending',
+          acquisition: labAcq,
           value: valuePresent ? lc.heavyMetalsValue ?? null : null,
           unit: 'mg/L',
           sample: sharedSample,
         },
-        { indicatorId: 'air.pm25', acquisition: 'in_situ', value: 22, unit: 'µg/m³' },
+        {
+          indicatorId: 'water.metals.pb',
+          acquisition: labAcq,
+          value: labValue(0.04, 4),
+          unit: 'mg/L',
+          sample: sharedSample,
+        },
+        {
+          indicatorId: 'water.metals.cd',
+          acquisition: labAcq,
+          value: labValue(0.008, 3),
+          unit: 'mg/L',
+          sample: sharedSample,
+        },
       ],
       photos: [],
       agentCertified: true,
