@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Circle,
@@ -7,16 +7,26 @@ import {
   Marker,
   Popup,
   TileLayer,
+  useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { AlertTriangle, Droplets, Layers, MapPin } from 'lucide-react';
+import {
+  AlertTriangle,
+  Droplets,
+  Flame,
+  Layers,
+  MapPin,
+  Maximize2,
+  Target,
+} from 'lucide-react';
 import { Badge, Button, Skeleton } from '@/components/common';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { formatRelativeTime } from '@/lib/format';
 import type { ConformityLevel } from '@/types/common';
+import type { Collection } from '@/features/collection/api/collection.types';
 import styles from './MappingPage.module.css';
 
 /**
@@ -94,6 +104,10 @@ export function MappingPage() {
   const [showCollections, setShowCollections] = useState(false);
   const [showAlerts, setShowAlerts] = useState(true);
   const [showWatercourses, setShowWatercourses] = useState(false);
+  const [showRiskZones, setShowRiskZones] = useState(true);
+  /* Cible courante du fly-to — declenche par le clic sur un site dans
+   * le panel lateral. Le composant MapFocus se charge de centrer. */
+  const [focusTarget, setFocusTarget] = useState<[number, number, number] | null>(null);
 
   /** Conformité du site selon le filtre domaine actif. */
   const conformityFor = (siteId: string): ConformityLevel => {
@@ -141,6 +155,56 @@ export function MappingPage() {
     const lng = sites.reduce((s, x) => s + x.coordinates.lng, 0) / sites.length;
     return [lat, lng];
   }, [sites]);
+
+  /* Stats par site agreges des collectes — dernieres valeurs cle +
+   * sparkline pH 90 jours pour afficher dans la popup. */
+  type SiteStats = {
+    lastCollectionAt: string | null;
+    lastPh: number | null;
+    lastSulfates: number | null;
+    lastEpi: number | null;
+    phSeries: number[];
+    activeAlerts: number;
+  };
+  const siteStats = useMemo(() => {
+    const map = new Map<string, SiteStats>();
+    const cutoff = Date.now() - 90 * 86_400_000;
+    for (const s of sites) {
+      const all = (collectionsPage?.items ?? []).filter(
+        (c: Collection) => c.siteId === s.id,
+      );
+      const sorted = [...all].sort(
+        (a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime(),
+      );
+      const latest = sorted[0];
+      const getVal = (c: Collection | undefined, ind: string) => {
+        if (!c) return null;
+        const m = c.measurements.find((x) => x.indicatorId === ind);
+        const v = m?.value;
+        return typeof v === 'number' && Number.isFinite(v) ? v : null;
+      };
+      const phSeries = all
+        .filter((c) => new Date(c.collectedAt).getTime() >= cutoff)
+        .sort((a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime())
+        .map((c) => {
+          const m = c.measurements.find((x) => x.indicatorId === 'water.ph');
+          return typeof m?.value === 'number' && Number.isFinite(m.value) ? m.value : null;
+        })
+        .filter((v): v is number => v != null);
+      const activeAlerts = (alertsPage?.items ?? []).filter(
+        (a) => a.siteId === s.id && a.status === 'active',
+      ).length;
+      map.set(s.id, {
+        lastCollectionAt: latest?.collectedAt ?? null,
+        lastPh: getVal(latest, 'water.ph'),
+        lastSulfates: getVal(latest, 'water.sulfates'),
+        lastEpi: getVal(latest, 'health.epi_usage'),
+        phSeries,
+        activeAlerts,
+      });
+    }
+    return map;
+  }, [sites, collectionsPage, alertsPage]);
 
   return (
     <div className={styles.page}>
@@ -239,6 +303,70 @@ export function MappingPage() {
                 </span>
               </span>
             </label>
+            <label className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={showRiskZones}
+                onChange={(e) => setShowRiskZones(e.target.checked)}
+              />
+              <span className={styles.toggleBody}>
+                <span className={styles.toggleLabel}>
+                  Zones de risque
+                  <Flame size={11} aria-hidden="true" style={{ marginLeft: 4 }} />
+                </span>
+              </span>
+            </label>
+          </section>
+
+          {/* Sites visibles — click pour zoomer */}
+          <section className={styles.panelSection}>
+            <header className={styles.panelHead}>
+              <Target size={14} aria-hidden="true" />
+              <span>Sites surveillés</span>
+            </header>
+            <div className={styles.sitesList}>
+              {[...sites]
+                .sort((a, b) => {
+                  /* Tri par criticite : critical > warning > conforming */
+                  const order = { critical: 0, warning: 1, conforming: 2 } as const;
+                  return order[conformityFor(a.id)] - order[conformityFor(b.id)];
+                })
+                .map((s) => {
+                  const lvl = conformityFor(s.id);
+                  const ss = siteStats.get(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={styles.siteCard}
+                      onClick={() =>
+                        setFocusTarget([s.coordinates.lat, s.coordinates.lng, 11])
+                      }
+                      data-level={lvl}
+                    >
+                      <span
+                        className={styles.siteCardDot}
+                        style={{ background: CONFORMITY_COLOR[lvl] }}
+                        aria-hidden="true"
+                      />
+                      <span className={styles.siteCardBody}>
+                        <span className={styles.siteCardName}>{s.shortName}</span>
+                        <span className={styles.siteCardMeta}>
+                          {s.location.commune}
+                          {ss?.activeAlerts ? (
+                            <>
+                              <span className={styles.siteCardSep}>·</span>
+                              <span className={styles.siteCardAlert}>
+                                {ss.activeAlerts} alerte{ss.activeAlerts > 1 ? 's' : ''}
+                              </span>
+                            </>
+                          ) : null}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
           </section>
 
           <section className={styles.panelSection}>
@@ -267,6 +395,35 @@ export function MappingPage() {
         </aside>
 
         <div className={styles.mapShell}>
+          {/* Overlay strip flottant en haut de la carte — donne un look
+           * 'command center' avec les chiffres saillants toujours visibles */}
+          <div className={styles.mapOverlay} aria-label="Synthèse géospatiale">
+            <span className={styles.mapOverlayItem}>
+              <strong>{stats.total}</strong> sites
+            </span>
+            <span className={styles.mapOverlayItem} data-tone="critical">
+              <strong>{stats.critical}</strong> hors seuil
+            </span>
+            <span className={styles.mapOverlayItem} data-tone="warning">
+              <strong>{stats.warning}</strong> à surveiller
+            </span>
+            <span className={styles.mapOverlayItem} data-tone="success">
+              <strong>{stats.conforming}</strong> conformes
+            </span>
+            <span className={styles.mapOverlaySep} aria-hidden="true" />
+            <span className={styles.mapOverlayItem} data-tone="alert">
+              <AlertTriangle size={12} /> <strong>{stats.activeCritical}</strong> alerte
+              {stats.activeCritical > 1 ? 's' : ''}
+            </span>
+            <button
+              type="button"
+              className={styles.mapOverlayBtn}
+              onClick={() => setFocusTarget([center[0], center[1], 6])}
+              title="Recentrer sur tous les sites"
+            >
+              <Maximize2 size={12} /> Recentrer
+            </button>
+          </div>
           {isLoading ? (
             <Skeleton width="100%" height="100%" />
           ) : (
@@ -342,10 +499,35 @@ export function MappingPage() {
                 </CircleMarker>
               ))}
 
+              {/* Heatmap risque : cercles concentriques sur les sites
+               * critiques pour simuler une intensite de risque. Le rayon
+               * varie selon la severite : critical=1200m, warning=800m. */}
+              {showRiskZones
+                ? sites.map((site) => {
+                    const lvl = conformityFor(site.id);
+                    if (lvl === 'conforming') return null;
+                    const isCritical = lvl === 'critical';
+                    return (
+                      <Circle
+                        key={`risk-${site.id}`}
+                        center={[site.coordinates.lat, site.coordinates.lng]}
+                        radius={isCritical ? 1200 : 800}
+                        pathOptions={{
+                          color: CONFORMITY_COLOR[lvl],
+                          weight: 0,
+                          fillColor: CONFORMITY_COLOR[lvl],
+                          fillOpacity: isCritical ? 0.14 : 0.08,
+                        }}
+                      />
+                    );
+                  })
+                : null}
+
               {/* Marqueurs sites */}
               {sites.map((site) => {
                 const lvl = conformityFor(site.id);
                 const hasAlert = sitesWithCriticalAlerts.has(site.id);
+                const ss = siteStats.get(site.id);
                 return (
                   <Marker
                     key={site.id}
@@ -354,36 +536,79 @@ export function MappingPage() {
                   >
                     <Popup>
                       <div className={styles.popup}>
-                        <h3 className={styles.popupTitle}>
-                          {site.shortName}
-                          {site.isReference ? ' ★' : ''}
-                        </h3>
+                        <header className={styles.popupHead}>
+                          <h3 className={styles.popupTitle}>
+                            {site.shortName}
+                            {site.isReference ? ' ★' : ''}
+                          </h3>
+                          <Badge
+                            size="sm"
+                            variant={
+                              lvl === 'conforming'
+                                ? 'success'
+                                : lvl === 'warning'
+                                  ? 'warning'
+                                  : 'danger'
+                            }
+                          >
+                            {CONFORMITY_LABEL[lvl]}
+                          </Badge>
+                        </header>
                         <span className={styles.popupMeta}>
-                          {site.location.commune}, {site.location.city}
+                          {site.location.commune}, {site.location.city} · {site.workforce} membres
                         </span>
-                        <span className={styles.popupMeta}>
-                          {site.workforce} membres · créé en {site.createdYear}
-                        </span>
-                        <Badge
-                          size="sm"
-                          variant={
-                            lvl === 'conforming'
-                              ? 'success'
-                              : lvl === 'warning'
-                                ? 'warning'
-                                : 'danger'
-                          }
-                        >
-                          {domain === 'all' ? CONFORMITY_LABEL[lvl] : `${DOMAIN_OPTIONS.find((d) => d.value === domain)?.label} · ${CONFORMITY_LABEL[lvl]}`}
-                        </Badge>
-                        {hasAlert ? (
-                          <span className={styles.popupAlert}>
-                            <AlertTriangle size={11} /> Alerte critique active
+
+                        {/* KPIs derniere collecte */}
+                        <div className={styles.popupKpiGrid}>
+                          <div className={styles.popupKpi}>
+                            <span className={styles.popupKpiLabel}>pH</span>
+                            <span className={styles.popupKpiValue}>
+                              {ss?.lastPh != null ? ss.lastPh.toFixed(2) : '—'}
+                            </span>
+                          </div>
+                          <div className={styles.popupKpi}>
+                            <span className={styles.popupKpiLabel}>Sulfates</span>
+                            <span className={styles.popupKpiValue}>
+                              {ss?.lastSulfates != null ? Math.round(ss.lastSulfates) : '—'}
+                              <span className={styles.popupKpiUnit}>mg/L</span>
+                            </span>
+                          </div>
+                          <div className={styles.popupKpi}>
+                            <span className={styles.popupKpiLabel}>EPI</span>
+                            <span className={styles.popupKpiValue}>
+                              {ss?.lastEpi != null ? `${Math.round(ss.lastEpi)}%` : '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Sparkline pH 90 jours */}
+                        {ss && ss.phSeries.length >= 2 ? (
+                          <div className={styles.popupSpark}>
+                            <span className={styles.popupSparkLabel}>
+                              pH · {ss.phSeries.length} mesures · 90 j
+                            </span>
+                            <PopupSparkline values={ss.phSeries} />
+                          </div>
+                        ) : null}
+
+                        {/* Derniere collecte */}
+                        {ss?.lastCollectionAt ? (
+                          <span className={styles.popupMeta}>
+                            Dernière collecte : {formatRelativeTime(ss.lastCollectionAt)}
                           </span>
                         ) : null}
+
+                        {hasAlert ? (
+                          <span className={styles.popupAlert}>
+                            <AlertTriangle size={11} /> {ss?.activeAlerts ?? 1} alerte
+                            {(ss?.activeAlerts ?? 1) > 1 ? 's' : ''} active
+                            {(ss?.activeAlerts ?? 1) > 1 ? 's' : ''}
+                          </span>
+                        ) : null}
+
                         <div className={styles.popupAction}>
                           <Link to={`/sites/${site.id}`}>
-                            <Button variant="ghost" size="sm" fullWidth>
+                            <Button variant="primary" size="sm" fullWidth>
                               Ouvrir la fiche site
                             </Button>
                           </Link>
@@ -393,10 +618,73 @@ export function MappingPage() {
                   </Marker>
                 );
               })}
+
+              {/* Composant invisible qui ecoute focusTarget et fait fly-to */}
+              <MapFocus target={focusTarget} />
             </MapContainer>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────
+ * MapFocus — composant invisible qui ecoute le focusTarget et fait
+ * flyTo via useMap (react-leaflet). Permet de centrer la carte quand
+ * le sup clique sur un site dans le panel lateral.
+ * ─────────────────────────────────────*/
+function MapFocus({ target }: { target: [number, number, number] | null }) {
+  const map = useMap();
+  const last = useRef<string | null>(null);
+  useEffect(() => {
+    if (!target) return;
+    const key = `${target[0]}:${target[1]}:${target[2]}`;
+    if (last.current === key) return;
+    last.current = key;
+    map.flyTo([target[0], target[1]], target[2], { duration: 0.8 });
+  }, [target, map]);
+  return null;
+}
+
+/* ─────────────────────────────────────
+ * PopupSparkline — petite courbe SVG des dernieres valeurs (pH 90j).
+ * ─────────────────────────────────────*/
+function PopupSparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const w = 200;
+  const h = 36;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1);
+  const pts = values
+    .map((v, i) => {
+      const x = i * step;
+      const y = h - ((v - min) / range) * (h - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' L');
+  /* Surveille la derniere valeur pour colorer la sparkline */
+  const last = values[values.length - 1]!;
+  const isOk = last >= 6.5 && last <= 8.5; // OMS pH
+  const color = isOk ? '#16a34a' : '#dc2626';
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      width="100%"
+      height={h}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path d={`M${pts}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      {/* Point final */}
+      <circle
+        cx={(values.length - 1) * step}
+        cy={h - ((last - min) / range) * (h - 4) - 2}
+        r={2.5}
+        fill={color}
+      />
+    </svg>
   );
 }
