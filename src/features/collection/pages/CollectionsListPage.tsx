@@ -146,11 +146,11 @@ export function CollectionsListPage() {
         </div>
         <div className={styles.heroActions}>
           <Link to="/collecte/import">
-            <Button variant="primary" iconLeft={<FileSpreadsheet size={16} />}>
+            <Button variant="kobo" iconLeft={<FileSpreadsheet size={16} />}>
               Importer depuis Kobo
             </Button>
           </Link>
-          {!isAgent ? <Button variant="ghost">Exporter (CSV)</Button> : null}
+          {!isAgent ? <Button variant="ghost-primary">Exporter (CSV)</Button> : null}
         </div>
       </header>
 

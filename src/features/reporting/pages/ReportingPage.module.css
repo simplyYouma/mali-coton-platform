@@ -37,6 +37,19 @@
   color: var(--color-text);
   letter-spacing: -0.02em;
   line-height: 1.05;
+  position: relative;
+  padding-left: var(--space-3);
+}
+.heroTitle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--color-primary);
+  border-radius: 2px;
 }
 .heroDescription {
   margin: 0;

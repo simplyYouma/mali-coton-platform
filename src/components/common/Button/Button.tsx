@@ -3,7 +3,15 @@ import clsx from 'clsx';
 import { Spinner } from '../Spinner/Spinner';
 import styles from './Button.module.css';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'ghost'
+  | 'ghost-primary'
+  | 'ghost-danger'
+  | 'danger'
+  | 'success'
+  | 'kobo';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

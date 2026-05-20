@@ -90,6 +90,45 @@
   border-color: var(--color-success-hover, #0a8a5b);
 }
 
+/* Kobo — branding officiel Kobo Toolbox (bleu #1d70b8) pour les actions
+ * d'import depuis Kobo. Permet de signaler visuellement le pont avec
+ * le systeme de collecte terrain. */
+.variant-kobo {
+  background: #1d70b8;
+  color: #fff;
+  border-color: #1d70b8;
+}
+.variant-kobo:hover:not(:disabled):not([aria-busy='true']) {
+  background: #155a93;
+  border-color: #155a93;
+}
+
+/* Ghost danger — bouton transparent qui se teinte en rouge au hover.
+ * Pour les actions destructives (Supprimer, Deconnecter, Annuler def). */
+.variant-ghost-danger {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: transparent;
+}
+.variant-ghost-danger:hover:not(:disabled):not([aria-busy='true']) {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 25%, transparent);
+}
+
+/* Ghost primary — bouton transparent qui se teinte en bleu au hover.
+ * Pour les actions secondaires positives (Modifier, Exporter, Voir +). */
+.variant-ghost-primary {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: transparent;
+}
+.variant-ghost-primary:hover:not(:disabled):not([aria-busy='true']) {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
 .fullWidth {
   width: 100%;
 }

@@ -505,7 +505,7 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
           </div>
         </div>
         <Button
-          variant="ghost"
+          variant="ghost-danger"
           size="sm"
           iconLeft={<Trash2 size={14} />}
           onClick={onDelete}

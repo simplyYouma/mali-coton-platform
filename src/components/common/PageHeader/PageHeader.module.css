@@ -25,6 +25,19 @@
   font-weight: var(--weight-medium);
   color: var(--color-text);
   letter-spacing: -0.01em;
+  position: relative;
+  padding-left: var(--space-3);
+}
+.title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--color-primary);
+  border-radius: 2px;
 }
 .description {
   margin-top: var(--space-2);

@@ -53,6 +53,19 @@
   letter-spacing: -0.02em;
   line-height: 1.05;
   margin: 0;
+  position: relative;
+  padding-left: var(--space-3);
+}
+.heroTitle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: var(--color-primary);
+  border-radius: 2px;
 }
 .heroSubtitle {
   font-size: var(--text-sm);
@@ -387,8 +400,8 @@
   color: var(--color-amber-hover);
 }
 .measureBordereauTag {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  background: var(--color-lavender-soft);
+  color: var(--color-lavender-hover);
 }
 
 /* Auto-évaluation système — pastille de gauche discrete par ligne, plus

@@ -369,7 +369,7 @@ export function UsersPage() {
           <>
             {editing ? (
               <Button
-                variant="ghost"
+                variant="ghost-danger"
                 iconLeft={<Trash2 size={14} />}
                 onClick={() => handleDelete(editing)}
                 loading={deleteMut.isPending}

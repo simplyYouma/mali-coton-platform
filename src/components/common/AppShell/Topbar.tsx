@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Menu, RefreshCw, UserRound } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, LogOut, Menu, RefreshCw, UserRound } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useSidebar } from '@/app/providers/SidebarProvider';
 import { useCollections } from '@/features/collection/hooks/useCollections';
@@ -19,9 +19,32 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 export function Topbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { toggleMobile } = useSidebar();
   const { data: collectionsPage } = useCollections();
+
+  /* Bouton retour visible sauf sur les pages racine. window.history.length
+   * permet de distinguer un acces direct (depuis un bookmark) d'une
+   * navigation interne. */
+  const ROOT_PATHS = new Set([
+    '/dashboard',
+    '/sites',
+    '/collecte',
+    '/labo/echantillons',
+    '/alertes',
+    '/recommandations',
+    '/agents',
+    '/cartographie',
+    '/analytics',
+    '/reporting',
+    '/admin/utilisateurs',
+    '/admin/roles',
+    '/admin/indicateurs',
+    '/admin/referentiels',
+    '/admin/audit',
+  ]);
+  const canGoBack = !ROOT_PATHS.has(location.pathname) && window.history.length > 1;
 
   const lastSyncAt = useMemo(() => {
     const items = collectionsPage?.items ?? [];
@@ -53,6 +76,18 @@ export function Topbar() {
         <Menu size={18} />
       </button>
       <div className={styles.leading}>
+        {canGoBack ? (
+          <button
+            type="button"
+            className={styles.backBtn}
+            onClick={() => navigate(-1)}
+            aria-label="Retour à la page précédente"
+            title="Retour"
+          >
+            <ArrowLeft size={14} aria-hidden="true" />
+            <span>Retour</span>
+          </button>
+        ) : null}
         {lastSyncAt ? (
           <span className={styles.syncIndicator} aria-label="Dernière collecte reçue">
             <RefreshCw size={12} aria-hidden="true" />
@@ -79,6 +114,7 @@ export function Topbar() {
 
         <IconButton
           aria-label="Se déconnecter"
+          variant="danger"
           onClick={() => {
             logout();
             navigate('/login');
