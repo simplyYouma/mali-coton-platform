@@ -20,7 +20,6 @@ import {
   Badge,
   Button,
   EmptyState,
-  FormField,
   Modal,
   Skeleton,
   Textarea,
@@ -123,58 +122,32 @@ export function CollectionDetailPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   /**
-   * Edition d'une mesure par le superviseur — modale dediee. La donnee
-   * est gardee en memoire locale (overlay sur Measurement) en attendant
-   * que le backend expose un endpoint PATCH /resultat_analyses (Phase B4).
-   * Chaque edition est tracee dans la timeline + audit.
+   * Edition d'une mesure par le superviseur — clic sur la valeur affichee
+   * la rend editable. On affiche le nombre complet, le sup tape la
+   * nouvelle valeur, on enregistre a la perte de focus (ou Entree). La
+   * modification est tracee dans le journal d'audit + chronologie. Pas
+   * de modale, pas de motif force : la trace garde l'avant/apres et
+   * suffit pour l'audit.
    */
-  const [editTarget, setEditTarget] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
-  const [editReason, setEditReason] = useState<string>('');
   const [localEdits, setLocalEdits] = useState<
-    Record<
-      string,
-      { value: string | number; reason: string; editedBy: string; editedAt: string }
-    >
+    Record<string, { value: string | number; editedBy: string; editedAt: string }>
   >({});
 
-  const openEditMeasure = (indicatorId: string, currentValue: unknown) => {
-    setEditTarget(indicatorId);
-    setEditValue(
-      currentValue == null
-        ? ''
-        : typeof currentValue === 'number'
-          ? String(currentValue)
-          : String(currentValue),
-    );
-    setEditReason('');
-  };
-
-  const confirmEditMeasure = () => {
-    if (!editTarget || !user) return;
-    if (!editValue.trim()) {
-      toast.error('La nouvelle valeur est obligatoire.');
-      return;
-    }
-    if (!editReason.trim()) {
-      toast.error('Précisez le motif de la modification.');
-      return;
-    }
-    const num = Number(editValue);
-    const finalValue = Number.isFinite(num) ? num : editValue.trim();
+  const saveEditedMeasure = (indicatorId: string, raw: string) => {
+    if (!user) return;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const num = Number(trimmed);
+    const finalValue = Number.isFinite(num) ? num : trimmed;
     setLocalEdits((prev) => ({
       ...prev,
-      [editTarget]: {
+      [indicatorId]: {
         value: finalValue,
-        reason: editReason.trim(),
         editedBy: user.id,
         editedAt: new Date().toISOString(),
       },
     }));
-    toast.success(`Mesure ${editTarget} modifiée. La modification est tracée dans l'audit.`);
-    setEditTarget(null);
-    setEditValue('');
-    setEditReason('');
+    toast.success('Mesure modifiée — tracée dans l\'audit.');
   };
 
   const site = useMemo(
@@ -459,16 +432,14 @@ export function CollectionDetailPage() {
                 <div key={domain} className={styles.domainBlock}>
                   <h3 className={styles.domainTitle}>{DOMAIN_LABEL[domain]}</h3>
                   {grouped[domain].map(({ rule, m }) => {
-                    /* Valeur affichee : si le sup a modifie la mesure, on
-                     * montre l'override local (en attendant Phase B4 backend). */
                     const edit = localEdits[m.indicatorId];
                     const displayedValue = edit ? edit.value : m.value;
                     const hasValue = displayedValue != null && displayedValue !== '';
                     const isLabPending = m.acquisition === 'lab_pending';
                     const isLabReceived = m.acquisition === 'lab_received';
 
-                    /* Evaluation auto par le systeme depuis la regle normative
-                     * — c'est le systeme qui dit OK / hors seuil, plus le sup. */
+                    /* Auto-evaluation systeme — toujours affichee si on a une
+                     * valeur, meme pour un bordereau fraichement recu. */
                     const numericValue = typeof displayedValue === 'number'
                       ? displayedValue
                       : Number(displayedValue);
@@ -477,6 +448,7 @@ export function CollectionDetailPage() {
                         ? computeLocalConformity(rule, numericValue)
                         : null;
                     const canEdit = role === 'superviseur' || role === 'admin';
+
                     return (
                       <div
                         key={m.indicatorId}
@@ -487,10 +459,18 @@ export function CollectionDetailPage() {
                         <div className={styles.measureMain}>
                           <span className={styles.measureLabel}>
                             {rule?.label ?? m.indicatorId}
+                            {isLabReceived ? (
+                              <span
+                                className={styles.measureBordereauTag}
+                                title="Valeur issue du bordereau labo"
+                              >
+                                <Beaker size={10} /> labo
+                              </span>
+                            ) : null}
                             {edit ? (
                               <span
                                 className={styles.measureEditedTag}
-                                title={`Modifiée par le superviseur — motif : ${edit.reason}`}
+                                title="Valeur modifiée par le superviseur"
                               >
                                 <Pencil size={10} /> éditée
                               </span>
@@ -504,17 +484,25 @@ export function CollectionDetailPage() {
                           <span className={styles.measurePending}>
                             <Clock size={12} /> Analyse en cours au labo
                           </span>
+                        ) : canEdit && hasValue ? (
+                          <EditableMeasureValue
+                            indicatorId={m.indicatorId}
+                            value={displayedValue}
+                            unit={rule?.unit}
+                            onSave={saveEditedMeasure}
+                          />
                         ) : (
                           <span className={styles.measureValue}>
                             {formatMeasureValue(displayedValue)}
                             {rule?.unit ? ` ${rule.unit}` : ''}
                           </span>
                         )}
-                        {/* Indicatif source/eval — un seul badge condense */}
+                        {/* Auto-evaluation systeme : toujours montree, jamais
+                         * masquee par un autre indicatif (Bordereau recu, etc.) */}
                         {isLabPending ? (
-                          <Badge variant="warning" size="sm">Lab en cours</Badge>
-                        ) : isLabReceived && !edit && evalLevel === 'conforming' ? (
-                          <Badge variant="info" size="sm">Bordereau reçu</Badge>
+                          <Badge variant="warning" size="sm">
+                            <Clock size={12} /> Lab en cours
+                          </Badge>
                         ) : evalLevel === 'conforming' ? (
                           <Badge variant="success" size="sm" title="Auto-évaluation système">
                             <CheckCircle2 size={12} /> Conforme
@@ -530,20 +518,6 @@ export function CollectionDetailPage() {
                         ) : (
                           <Badge variant="neutral" size="sm">In situ</Badge>
                         )}
-                        {/* Le sup peut modifier la valeur — utile si lecture
-                         * suspecte / valeur a corriger. La modification est
-                         * tracee dans audit + timeline. */}
-                        {canEdit && hasValue ? (
-                          <button
-                            type="button"
-                            className={styles.rowEditBtn}
-                            onClick={() => openEditMeasure(m.indicatorId, displayedValue)}
-                            aria-label={`Modifier la mesure ${rule?.label ?? m.indicatorId}`}
-                            title="Modifier"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                        ) : null}
                       </div>
                     );
                   })}
@@ -688,68 +662,6 @@ export function CollectionDetailPage() {
         </div>
       </Modal>
 
-      <Modal
-        open={editTarget !== null}
-        onClose={() => setEditTarget(null)}
-        title={editTarget ? `Modifier ${findRule(editTarget)?.label ?? editTarget}` : 'Modifier la mesure'}
-        width={520}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setEditTarget(null)}>
-              Annuler
-            </Button>
-            <Button variant="success" onClick={confirmEditMeasure}>
-              Enregistrer la modification
-            </Button>
-          </>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <FormField
-            label={`Nouvelle valeur${
-              editTarget && findRule(editTarget)?.unit
-                ? ` (${findRule(editTarget)?.unit})`
-                : ''
-            }`}
-            required
-          >
-            <input
-              type="text"
-              inputMode="decimal"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              placeholder="Ex : 7.2"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--color-surface)',
-                fontSize: 'var(--text-body)',
-              }}
-            />
-          </FormField>
-          <FormField label="Motif de la modification" required>
-            <Textarea
-              rows={3}
-              value={editReason}
-              onChange={(e) => setEditReason(e.target.value)}
-              placeholder="Ex : erreur de saisie, calibrage du pH-mètre corrigé, valeur recoupée avec le bordereau labo…"
-            />
-          </FormField>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 'var(--text-xs)',
-              color: 'var(--color-text-muted)',
-              lineHeight: 1.5,
-            }}
-          >
-            La modification est <strong>tracée dans le journal d'audit</strong> et apparaît dans la chronologie de la collecte (qui · quand · valeur avant/après · motif).
-          </p>
-        </div>
-      </Modal>
-
       <PhotoLightbox
         photos={collection.photos}
         startIndex={lightboxIndex ?? 0}
@@ -757,6 +669,76 @@ export function CollectionDetailPage() {
         onClose={() => setLightboxIndex(null)}
       />
     </div>
+  );
+}
+
+/* ─────────────────────────────────────
+ * EditableMeasureValue — clic sur la valeur la rend editable inline.
+ * Affiche le nombre complet (pas l'arrondi) pendant l'edition, et au
+ * blur/Entree on enregistre avec arrondi selon l'unite.
+ * ─────────────────────────────────────*/
+function EditableMeasureValue({
+  indicatorId,
+  value,
+  unit,
+  onSave,
+}: {
+  indicatorId: string;
+  value: string | number | null | undefined;
+  unit?: string;
+  onSave: (indicatorId: string, raw: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>(() => (value == null ? '' : String(value)));
+
+  const commit = () => {
+    setEditing(false);
+    /* Pas de save si vide ou identique a la valeur actuelle. */
+    if (!draft.trim()) return;
+    if (String(value) === draft.trim()) return;
+    onSave(indicatorId, draft);
+  };
+
+  if (editing) {
+    return (
+      <span className={styles.measureValueEditWrap}>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+            } else if (e.key === 'Escape') {
+              setDraft(value == null ? '' : String(value));
+              setEditing(false);
+            }
+          }}
+          autoFocus
+          className={styles.measureValueInput}
+          aria-label={`Modifier la valeur de ${indicatorId}`}
+        />
+        {unit ? <span className={styles.measureValueUnit}>{unit}</span> : null}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={styles.measureValueEditable}
+      onClick={() => {
+        setDraft(value == null ? '' : String(value));
+        setEditing(true);
+      }}
+      title="Cliquer pour modifier"
+    >
+      {formatMeasureValue(value ?? null)}
+      {unit ? ` ${unit}` : ''}
+    </button>
   );
 }
 
