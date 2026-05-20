@@ -306,4 +306,52 @@ export const mockAuditLogs: AuditLogEntry[] = [
     resourceLabel: 'Observateur',
     details: 'Permission Cartographie · none → read',
   },
+  /* Echantillon supplementaire de rejets recents — refletent les motifs
+   * realistes appliques sur les fixtures collectes (cf. REJECTION_REASONS
+   * dans mocks/fixtures/collections.ts). */
+  {
+    id: 'audit-021',
+    occurredAt: daysAgo(5.2),
+    actorId: 'u-sup-1',
+    actorName: 'Moussa Coulibaly',
+    actorRole: 'superviseur',
+    action: 'collection.reject',
+    resourceType: 'collection',
+    resourceId: 'col-0017',
+    resourceLabel: 'ATPEK · 2026-04-12',
+    ipAddress: '10.42.1.18',
+    userAgent: 'Chrome 121 / macOS',
+    details:
+      'Sulfates labo = 8 520 mg/L = 4× le pic historique du site. Bordereau renvoyé au LNE pour ré-analyse en duplicate.',
+  },
+  {
+    id: 'audit-022',
+    occurredAt: daysAgo(7.4),
+    actorId: 'u-sup-1',
+    actorName: 'Moussa Coulibaly',
+    actorRole: 'superviseur',
+    action: 'collection.reject',
+    resourceType: 'collection',
+    resourceId: 'col-0024',
+    resourceLabel: 'Dianéguéla · 2026-04-10',
+    ipAddress: '10.42.1.18',
+    userAgent: 'Chrome 121 / macOS',
+    details:
+      'Photo de l\'effluent floue, point GPS hors enceinte du site (50 m de décalage). Re-soumission requise avec preuves visuelles claires.',
+  },
+  {
+    id: 'audit-023',
+    occurredAt: daysAgo(12.6),
+    actorId: 'u-sup-1',
+    actorName: 'Moussa Coulibaly',
+    actorRole: 'superviseur',
+    action: 'collection.reject',
+    resourceType: 'collection',
+    resourceId: 'col-0046',
+    resourceLabel: 'GALA-NI-MASSIRIW · 2026-04-05',
+    ipAddress: '10.42.1.18',
+    userAgent: 'Chrome 121 / macOS',
+    details:
+      'Conductivité in-situ 12 800 µS/cm incohérente avec turbidité 8 NTU. Probable confusion entre flacons effluent et cours d\'eau amont.',
+  },
 ];

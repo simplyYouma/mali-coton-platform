@@ -6,6 +6,7 @@ import {
   Beaker,
   Bell,
   CheckCircle2,
+  ChevronDown,
   Clock,
   FlaskConical,
   History,
@@ -132,6 +133,18 @@ export function CollectionDetailPage() {
   const [localEdits, setLocalEdits] = useState<
     Record<string, { value: string | number; editedBy: string; editedAt: string }>
   >({});
+
+  /* Sections par domaine collapsibles — toutes deroulees par defaut.
+   * On stocke seulement les domaines explicitement plies. */
+  const [collapsedDomains, setCollapsedDomains] = useState<Set<IndicatorDomain>>(new Set());
+  const toggleDomain = (domain: IndicatorDomain) => {
+    setCollapsedDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(domain)) next.delete(domain);
+      else next.add(domain);
+      return next;
+    });
+  };
 
   const saveEditedMeasure = (indicatorId: string, raw: string) => {
     if (!user) return;
@@ -428,9 +441,28 @@ export function CollectionDetailPage() {
           <div className={styles.sectionBody}>
             {(Object.keys(grouped) as IndicatorDomain[])
               .filter((d) => grouped[d].length > 0)
-              .map((domain) => (
-                <div key={domain} className={styles.domainBlock}>
-                  <h3 className={styles.domainTitle}>{DOMAIN_LABEL[domain]}</h3>
+              .map((domain) => {
+                const isCollapsed = collapsedDomains.has(domain);
+                const count = grouped[domain].length;
+                return (
+                <div key={domain} className={styles.domainBlock} data-collapsed={isCollapsed ? 'true' : undefined}>
+                  <button
+                    type="button"
+                    className={styles.domainHeader}
+                    onClick={() => toggleDomain(domain)}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={styles.domainChevron}
+                      data-collapsed={isCollapsed ? 'true' : undefined}
+                      aria-hidden="true"
+                    />
+                    <span className={styles.domainTitle}>{DOMAIN_LABEL[domain]}</span>
+                    <span className={styles.domainCount}>{count}</span>
+                  </button>
+                  {!isCollapsed ? (
+                  <div className={styles.domainBody}>
                   {grouped[domain].map(({ rule, m }) => {
                     const edit = localEdits[m.indicatorId];
                     const displayedValue = edit ? edit.value : m.value;
@@ -480,6 +512,13 @@ export function CollectionDetailPage() {
                             {rule?.method ?? m.thresholdSource ?? rule?.source ?? '—'}
                           </span>
                         </div>
+                        {/* Vue du seuil normatif au milieu — barre OK
+                         * range + marker sur la position de la valeur. */}
+                        <ThresholdView
+                          rule={rule}
+                          value={Number.isFinite(numericValue) ? numericValue : null}
+                          level={evalLevel}
+                        />
                         {isLabPending ? (
                           <span className={styles.measureValue} aria-label="En attente du labo">
                             —
@@ -521,8 +560,11 @@ export function CollectionDetailPage() {
                       </div>
                     );
                   })}
+                  </div>
+                  ) : null}
                 </div>
-              ))}
+                );
+              })}
           </div>
         </section>
       ) : null}
@@ -672,6 +714,73 @@ export function CollectionDetailPage() {
         open={lightboxIndex !== null}
         onClose={() => setLightboxIndex(null)}
       />
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────
+ * ThresholdView — barre horizontale montrant le seuil normatif min-max
+ * de l'indicateur avec un marqueur de la valeur courante. Affiche
+ * seulement si la regle a au moins une borne (minOk ou maxOk).
+ * ─────────────────────────────────────*/
+function ThresholdView({
+  rule,
+  value,
+  level,
+}: {
+  rule: ReturnType<typeof findRule>;
+  value: number | null;
+  level: 'conforming' | 'warning' | 'critical' | null;
+}) {
+  if (!rule) return <span className={styles.thresholdEmpty} />;
+  const { minOk, maxOk, unit } = rule;
+  /* Pas de borne definie → on n'affiche rien (cellule vide pour ne pas
+   * casser la grille des lignes voisines). */
+  if (minOk === undefined && maxOk === undefined) {
+    return <span className={styles.thresholdEmpty} />;
+  }
+  /* Calcule un domaine visuel autour du seuil pour placer la valeur :
+   * - 30 % de marge sous minOk / au-dessus de maxOk
+   * - inclut la valeur si elle deborde */
+  const lo = minOk !== undefined ? minOk : (maxOk ?? 0) * 0.3;
+  const hi = maxOk !== undefined ? maxOk : (minOk ?? 0) * 1.7;
+  const pad = (hi - lo) * 0.3 || Math.max(1, hi * 0.3);
+  let domainMin = lo - pad;
+  let domainMax = hi + pad;
+  if (value != null) {
+    domainMin = Math.min(domainMin, value);
+    domainMax = Math.max(domainMax, value);
+  }
+  if (domainMax <= domainMin) domainMax = domainMin + 1;
+  const pct = (v: number) =>
+    Math.max(0, Math.min(100, ((v - domainMin) / (domainMax - domainMin)) * 100));
+  const okStart = minOk !== undefined ? pct(minOk) : 0;
+  const okEnd = maxOk !== undefined ? pct(maxOk) : 100;
+  const markerPct = value != null ? pct(value) : null;
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : Number(n.toFixed(2)));
+  const seuilLabel =
+    minOk !== undefined && maxOk !== undefined
+      ? `${fmt(minOk)} – ${fmt(maxOk)} ${unit ?? ''}`.trim()
+      : minOk !== undefined
+        ? `≥ ${fmt(minOk)} ${unit ?? ''}`.trim()
+        : `≤ ${fmt(maxOk!)} ${unit ?? ''}`.trim();
+
+  return (
+    <div className={styles.thresholdView} title={`Seuil normatif : ${seuilLabel}`}>
+      <div className={styles.thresholdBar} aria-hidden="true">
+        <span
+          className={styles.thresholdOk}
+          style={{ left: `${okStart}%`, width: `${okEnd - okStart}%` }}
+        />
+        {markerPct != null ? (
+          <span
+            className={styles.thresholdMarker}
+            data-level={level ?? undefined}
+            style={{ left: `${markerPct}%` }}
+          />
+        ) : null}
+      </div>
+      <span className={styles.thresholdLabel}>{seuilLabel}</span>
     </div>
   );
 }

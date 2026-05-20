@@ -404,6 +404,63 @@
   padding-left: calc(var(--space-3) - 2px);
 }
 
+/* ── Vue du seuil normatif (au milieu de chaque ligne) ── */
+.thresholdView {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: help;
+  min-width: 0;
+}
+.thresholdEmpty {
+  /* Cellule vide pour preserver la grille des autres lignes */
+  display: block;
+}
+.thresholdBar {
+  position: relative;
+  height: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: visible;
+}
+.thresholdOk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--color-success-bg);
+  border-top: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+.thresholdMarker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  background: var(--color-text);
+  border-radius: 2px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 2px var(--color-surface-2);
+}
+.thresholdMarker[data-level='conforming'] {
+  background: var(--color-success);
+}
+.thresholdMarker[data-level='warning'] {
+  background: var(--color-amber);
+}
+.thresholdMarker[data-level='critical'] {
+  background: var(--color-danger);
+}
+.thresholdLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
 .section {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -450,10 +507,35 @@
   gap: var(--space-4);
 }
 
-/* ───── Domain block ───── */
+/* ───── Domain block — collapsible ───── */
 .domainBlock {
   display: flex;
   flex-direction: column;
+}
+.domainHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.domainHeader:hover {
+  background: var(--color-surface-2);
+}
+.domainChevron {
+  color: var(--color-text-muted);
+  transition: transform var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+.domainChevron[data-collapsed='true'] {
+  transform: rotate(-90deg);
 }
 .domainTitle {
   font-size: var(--text-2xs);
@@ -461,13 +543,26 @@
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin: 0 0 var(--space-2) 0;
-  padding-left: var(--space-3);
+  margin: 0;
+}
+.domainCount {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-weight: var(--weight-bold);
+}
+.domainBody {
+  display: flex;
+  flex-direction: column;
 }
 
 .measureRow {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr 160px auto auto;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   align-items: center;
@@ -522,7 +617,8 @@
 .photosGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding: 0 var(--space-5) var(--space-5) var(--space-5);
 }
 .photoTile {
   aspect-ratio: 1;

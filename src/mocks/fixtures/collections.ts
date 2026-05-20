@@ -159,6 +159,17 @@ export const mockCollections: Collection[] = (() => {
   const list: Collection[] = [];
   let counter = 0;
 
+  /* Motifs de rejet realistes pour les collectes rejetees — couvrent
+   * les cas typiques que le sup invoque en pratique sur une teinturerie. */
+  const REJECTION_REASONS = [
+    "pH eaux usées = 12,8 incohérent avec l'historique du site (médiane 9,2). Calibrage du pH-mètre suspecté — re-prélèvement avec sonde recalibrée demandé.",
+    "Photo de l'effluent floue, point GPS hors de l'enceinte du site (50 m de décalage). Re-soumission requise avec preuves visuelles claires.",
+    "Volume d'échantillon sulfates insuffisant pour analyse complète (35 mL au lieu des 100 mL contractuels LNE). Demande de re-prélèvement.",
+    "Sulfates labo = 8 520 mg/L = 4× le pic historique du site. Bordereau renvoyé au LNE pour ré-analyse en duplicate (suspicion d'erreur de dilution).",
+    "Conductivité in-situ 12 800 µS/cm incohérente avec turbidité 8 NTU. Probable confusion entre flacons effluent et cours d'eau amont. À reprendre.",
+    "Photo principale manquante. Vue d'ensemble de l'atelier requise pour validation visuelle des conditions de prélèvement.",
+  ];
+
   // Historique long pour chaque site (12 collectes étalées sur 90 jours)
   for (const site of SITES) {
     for (let i = 0; i < 12; i++) {
@@ -168,7 +179,11 @@ export const mockCollections: Collection[] = (() => {
       const collectedIso = daysAgo(days);
       const weather = weatherForDate(collectedIso);
       const isValidated = status === 'validated';
+      const isRejected = status === 'rejected';
       const includeValidationNote = isValidated && Math.random() < 0.55;
+      const rejectionReason = isRejected
+        ? REJECTION_REASONS[counter % REJECTION_REASONS.length]
+        : undefined;
       list.push({
         id: `col-${String(counter).padStart(4, '0')}`,
         koboSubmissionUuid: koboUuid(counter),
@@ -253,11 +268,13 @@ export const mockCollections: Collection[] = (() => {
         ],
         photos: [],
         notes: i === 0 ? 'Visite régulière. RAS sur les conditions d\'accueil.' : undefined,
-        validatedBy: isValidated ? 'u-sup-1' : undefined,
-        validatedAt: isValidated ? daysAgo(Math.max(0, days - 0.4)) : undefined,
+        validatedBy: isValidated || isRejected ? 'u-sup-1' : undefined,
+        validatedAt:
+          isValidated || isRejected ? daysAgo(Math.max(0, days - 0.4)) : undefined,
         validationNotes: includeValidationNote
           ? VALIDATION_NOTES_BANK[counter % VALIDATION_NOTES_BANK.length]
           : undefined,
+        rejectionReason,
       });
     }
   }
