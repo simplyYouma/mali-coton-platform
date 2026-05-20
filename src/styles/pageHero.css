@@ -82,39 +82,59 @@
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
-/* Si le titre est dernier enfant (pas de description ni meta) → coins arrondis complets */
+/* Si le titre est dernier enfant (pas de meta ni description) → coins arrondis complets */
 [data-page-header] > div:first-child > h1:last-child {
   border-radius: var(--radius-lg);
 }
 
-/* ── Carte blanche unifiee : tout sibling apres le h1 prolonge le banner ── */
-[data-page-header] > div:first-child > h1 ~ * {
+/* ── Span directement apres le h1 = stat/meta integree au banner navy.
+ * (count "2 actifs", subtitle court, etc.) — rendu sur fond navy, petit & clair,
+ * NE crée pas une nouvelle section au milieu. Le banner gagne juste une 2eme ligne. ── */
+[data-page-header] > div:first-child > h1 + span {
+  display: block;
+  margin: 0;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 28px),
+    var(--color-ink-night);
+  color: var(--color-ink-muted);
+  padding: 0 var(--space-5) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.02em;
+  border: none;
+  border-radius: 0;
+  flex: 0 0 auto;
+  max-width: none;
+  text-transform: none;
+}
+/* h1 perd sa marge basse en presence d'une span meta (banner continue) */
+[data-page-header] > div:first-child > h1:has(+ span) {
+  padding-bottom: var(--space-2);
+}
+/* Si la span meta est le dernier enfant (pas de description) → ferme le banner avec radius */
+[data-page-header] > div:first-child > h1 + span:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* ── Description / contenu hors banner : carte blanche pleine largeur sous le banner. ── */
+[data-page-header] > div:first-child > h1 ~ :not(span) {
   margin: 0;
   background: var(--color-surface);
-  border-left: 1px solid var(--color-border);
-  border-right: 1px solid var(--color-border);
-  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: var(--space-3) var(--space-5);
   color: var(--color-text-muted);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.55;
   max-width: none;
+  flex: 0 0 auto;
 }
-/* Premier sibling apres le h1 : ouvre la carte (top hairline + padding genereux) */
-[data-page-header] > div:first-child > h1 + * {
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-3);
-}
-/* Dernier sibling apres le h1 : ferme la carte (bottom hairline + radius) */
-[data-page-header] > div:first-child > h1 ~ *:last-child {
-  border-bottom: 1px solid var(--color-border);
+/* Si on a une span meta ET une description, la description ferme le banner avec son radius */
+[data-page-header] > div:first-child > h1 ~ :not(span):last-child {
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding-bottom: var(--space-3);
-}
-/* Variante meta (span) : plus compact, font legerement plus petite */
-[data-page-header] > div:first-child > h1 ~ span {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
 }
 
 /* ── Actions / KPIs / contrôles — basculent en row sous le bloc, alignes a droite ── */
