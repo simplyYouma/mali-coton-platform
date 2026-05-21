@@ -75,7 +75,7 @@
   flex: 1;
 }
 .headerLogo {
-  height: 50px;
+  height: 100px;
   width: auto;
   max-width: 110px;
   flex-shrink: 0;
