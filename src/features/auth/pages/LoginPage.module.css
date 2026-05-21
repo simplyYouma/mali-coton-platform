@@ -15,17 +15,29 @@
   .visual { display: none; }
 }
 
-/* ───── Left visual — fond UNDP brand blue avec mesh diagonal subtle ───── */
+/* ───── Left visual — fond UNDP brand blue + image en bas qui transparait ───── */
 .visual {
   position: relative;
   padding: var(--space-8) var(--space-7);
   display: flex;
   align-items: center;
   overflow: hidden;
-  background:
+  background-color: var(--color-primary);
+  /* Couches (haut -> bas) : glow blanc · overlay bleu degrade (opaque en haut,
+   * translucide en bas pour laisser transparaitre l'image) · image en bas. */
+  background-image:
     radial-gradient(ellipse 70% 60% at 20% 25%, color-mix(in srgb, #ffffff 14%, transparent) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 45% at 88% 85%, color-mix(in srgb, var(--color-primary-active) 60%, transparent) 0%, transparent 72%),
-    linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+    linear-gradient(
+      180deg,
+      var(--color-primary) 0%,
+      var(--color-primary) 38%,
+      color-mix(in srgb, var(--color-primary-hover) 86%, transparent) 70%,
+      color-mix(in srgb, var(--color-primary-active) 62%, transparent) 100%
+    ),
+    url('/img/background.jpeg');
+  background-size: auto, auto, cover;
+  background-position: center, center, bottom center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 .visual::before {
   content: '';
