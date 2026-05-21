@@ -29,6 +29,10 @@ export function Sidebar({
   workspaceName = 'PASET Mali',
 }: SidebarProps) {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebar();
+  /* En mobile, le drawer affiche toujours la sidebar complete : l'etat
+   * `collapsed` (desktop uniquement) est neutralise tant que le drawer
+   * mobile est ouvert. */
+  const collapsedEffective = collapsed && !mobileOpen;
 
   return (
     <>
@@ -43,14 +47,14 @@ export function Sidebar({
     <aside
       className={clsx(
         styles.sidebar,
-        collapsed && styles.collapsed,
+        collapsedEffective && styles.collapsed,
         mobileOpen && styles.mobileOpen,
       )}
       aria-label="Navigation principale"
-      data-collapsed={collapsed}
+      data-collapsed={collapsedEffective}
     >
       <header className={styles.workspace}>
-        {!collapsed ? (
+        {!collapsedEffective ? (
           <div className={styles.workspaceBrand}>
             <span className={styles.wordmark} aria-label={workspaceName}>
               <span className={styles.wordmarkTop}>PASET</span>
@@ -65,18 +69,24 @@ export function Sidebar({
         ) : null}
         <button
           type="button"
-          onClick={toggle}
-          aria-label={collapsed ? 'Déplier la barre latérale' : 'Replier la barre latérale'}
+          onClick={() => (mobileOpen ? setMobileOpen(false) : toggle())}
+          aria-label={
+            mobileOpen
+              ? 'Fermer le menu'
+              : collapsed
+                ? 'Déplier la barre latérale'
+                : 'Replier la barre latérale'
+          }
           className={styles.collapseToggle}
         >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          {collapsedEffective ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </header>
 
       <nav className={styles.nav}>
         {sections.map((section, idx) => (
           <div key={idx} className={styles.section}>
-            {!collapsed && section.title ? (
+            {!collapsedEffective && section.title ? (
               <p className={styles.sectionTitle}>{section.title}</p>
             ) : null}
             <ul className={styles.sectionList}>
@@ -85,7 +95,7 @@ export function Sidebar({
                   <NavLink
                     to={item.to}
                     end={item.exact}
-                    title={collapsed ? item.label : undefined}
+                    title={collapsedEffective ? item.label : undefined}
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
                       clsx(styles.link, isActive && styles.linkActive)
@@ -94,7 +104,7 @@ export function Sidebar({
                     <span className={styles.linkIcon} aria-hidden="true">
                       {item.icon}
                     </span>
-                    {!collapsed ? (
+                    {!collapsedEffective ? (
                       <>
                         <span className={styles.linkLabel}>{item.label}</span>
                         {item.badge !== undefined ? (
