@@ -111,6 +111,28 @@
   margin-bottom: var(--space-1);
 }
 
+/* Signature institutionnelle — logo PNUD blanc en pied de la section visuelle */
+.visualSignature {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+.visualSignatureLabel {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.66);
+  font-weight: 700;
+}
+.visualLogo {
+  height: 88px;
+  width: auto;
+  align-self: flex-start;
+}
+
 /* ───── Right form pane — card centree, soft & elegante ───── */
 .formPane {
   display: flex;

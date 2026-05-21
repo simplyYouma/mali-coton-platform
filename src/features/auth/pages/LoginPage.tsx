@@ -39,6 +39,15 @@ export function LoginPage() {
             <li><span>49</span> indicateurs</li>
             <li><span>3 ans</span> de suivi</li>
           </ul>
+
+          <div className={styles.visualSignature}>
+            <span className={styles.visualSignatureLabel}>Programme appuyé par</span>
+            <img
+              src="/logos/PNUD-Logo-White-Large.png"
+              alt="PNUD"
+              className={styles.visualLogo}
+            />
+          </div>
         </div>
       </section>
 
