@@ -51,10 +51,17 @@ export function Sidebar({
     >
       <header className={styles.workspace}>
         {!collapsed ? (
-          <span className={styles.wordmark} aria-label={workspaceName}>
-            <span className={styles.wordmarkTop}>PASET</span>
-            <span className={styles.wordmarkBottom}>Mali</span>
-          </span>
+          <div className={styles.workspaceBrand}>
+            <span className={styles.wordmark} aria-label={workspaceName}>
+              <span className={styles.wordmarkTop}>PASET</span>
+              <span className={styles.wordmarkBottom}>Mali</span>
+            </span>
+            <img
+              src="/logos/PNUD-Logo-White-Large.png"
+              alt="PNUD"
+              className={styles.headerLogo}
+            />
+          </div>
         ) : null}
         <button
           type="button"
@@ -110,16 +117,6 @@ export function Sidebar({
           </div>
         ))}
       </nav>
-
-      {!collapsed ? (
-        <footer className={styles.sidebarFooter}>
-          <img
-            src="/logos/PNUD-Logo-White-Large.png"
-            alt="PNUD"
-            className={styles.footerLogo}
-          />
-        </footer>
-      ) : null}
 
     </aside>
     </>
