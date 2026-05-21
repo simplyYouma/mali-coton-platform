@@ -26,8 +26,15 @@ export function LoginPage() {
       <section className={styles.visual} aria-hidden="true">
         <div className={styles.visualOverlay}>
           <div className={styles.brand}>
-            <span className={styles.brandWordmarkTop}>PASET</span>
-            <span className={styles.brandWordmarkBottom}>MALI</span>
+            <span className={styles.brandWordmark}>
+              <span className={styles.brandWordmarkTop}>PASET</span>
+              <span className={styles.brandWordmarkBottom}>MALI</span>
+            </span>
+            <img
+              src="/logos/PNUD-Logo-White-Large.png"
+              alt="PNUD"
+              className={styles.brandLogo}
+            />
           </div>
           <p className={styles.eyebrow}>PNUD Mali · UNDP-MLI-00492</p>
           <h2 className={styles.visualTitle}>
@@ -39,15 +46,6 @@ export function LoginPage() {
             <li><span>49</span> indicateurs</li>
             <li><span>3 ans</span> de suivi</li>
           </ul>
-
-          <div className={styles.visualSignature}>
-            <span className={styles.visualSignatureLabel}>Programme appuyé par</span>
-            <img
-              src="/logos/PNUD-Logo-White-Large.png"
-              alt="PNUD"
-              className={styles.visualLogo}
-            />
-          </div>
         </div>
       </section>
 

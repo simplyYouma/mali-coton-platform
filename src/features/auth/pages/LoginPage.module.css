@@ -40,30 +40,41 @@
   max-width: 520px;
   margin: 0 auto;
 }
-/* Wordmark PASET MALI — meme grammaire que la sidebar (PASET bold + MALI light tracking) */
+/* En-tete co-brandee : wordmark PASET MALI a gauche + logo PNUD a droite */
 .brand {
-  display: inline-flex;
-  flex-direction: column;
-  line-height: 1;
-  font-family: var(--font-display);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
   margin-bottom: var(--space-7);
   padding-bottom: var(--space-5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   width: 100%;
 }
+.brandWordmark {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1;
+  font-family: var(--font-display);
+}
 .brandWordmarkTop {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: #ffffff;
 }
 .brandWordmarkBottom {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 300;
   letter-spacing: 0.32em;
   color: rgba(255, 255, 255, 0.78);
   margin-top: 6px;
   text-transform: uppercase;
+}
+.brandLogo {
+  height: 96px;
+  width: auto;
+  flex-shrink: 0;
 }
 .eyebrow {
   font-size: var(--text-2xs);
@@ -111,27 +122,6 @@
   margin-bottom: var(--space-1);
 }
 
-/* Signature institutionnelle — logo PNUD blanc en pied de la section visuelle */
-.visualSignature {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-7);
-  padding-top: var(--space-5);
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-}
-.visualSignatureLabel {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.66);
-  font-weight: 700;
-}
-.visualLogo {
-  height: 88px;
-  width: auto;
-  align-self: flex-start;
-}
 
 /* ───── Right form pane — card centree, soft & elegante ───── */
 .formPane {
