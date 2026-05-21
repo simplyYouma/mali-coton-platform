@@ -64,7 +64,7 @@
   gap: var(--space-2);
   padding: var(--space-4);
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  min-height: 72px;
+  min-height: 82px;
 }
 /* Bloc marque : wordmark PASET MALI + logo PNUD blanc a sa droite */
 .workspaceBrand {
@@ -75,9 +75,9 @@
   flex: 1;
 }
 .headerLogo {
-  height: 38px;
+  height: 50px;
   width: auto;
-  max-width: 96px;
+  max-width: 110px;
   flex-shrink: 0;
   padding-left: var(--space-3);
   border-left: 1px solid rgba(255, 255, 255, 0.20);
