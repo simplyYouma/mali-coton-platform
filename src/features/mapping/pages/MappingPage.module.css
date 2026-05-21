@@ -121,34 +121,48 @@
   }
 }
 
-/* Bouton toggle du panel — visible en permanence en haut a gauche */
+/* Bouton toggle du panel.
+ * - Panel ouvert : integre dans le coin haut-droit du panneau de filtres.
+ * - Panel replie : poignee de reouverture sur le bord gauche de la carte,
+ *   centree verticalement (style onglet / drawer handle). */
 .panelToggle {
   position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
   z-index: 600;
-  width: 32px;
-  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
   color: var(--color-text-muted);
   cursor: pointer;
-  box-shadow: 0 2px 6px -2px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 2px 8px -3px rgba(15, 23, 42, 0.18);
   transition: background-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
 }
 .panelToggle:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
 }
-/* Quand le panel est ouvert, on positionne le toggle juste a droite
- * du panel (a 280px + margin) */
+
+/* Panel ouvert : petit bouton carre dans le coin haut-droit du panneau */
 .layout:not([data-panel-collapsed='true']) .panelToggle {
-  left: calc(280px + var(--space-3));
+  top: var(--space-3);
+  left: calc(280px - 32px - var(--space-3));
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+}
+
+/* Panel replie : poignee verticale sur le bord gauche de la carte */
+.layout[data-panel-collapsed='true'] .panelToggle {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 56px;
+  border-left: none;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 /* ───── Side panel ───── */

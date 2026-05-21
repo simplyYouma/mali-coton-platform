@@ -7,6 +7,7 @@ import {
   Marker,
   Popup,
   TileLayer,
+  ZoomControl,
   useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
@@ -390,7 +391,16 @@ export function MappingPage() {
           {isLoading ? (
             <Skeleton width="100%" height="100%" />
           ) : (
-            <MapContainer center={center} zoom={6} className={styles.map} scrollWheelZoom>
+            <MapContainer
+              center={center}
+              zoom={6}
+              className={styles.map}
+              scrollWheelZoom
+              zoomControl={false}
+            >
+              {/* Zoom deplace en bas a gauche : libere le coin haut-gauche
+               * (bouton de repli du panneau) et le coin haut-droit (Recentrer). */}
+              <ZoomControl position="bottomleft" />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
