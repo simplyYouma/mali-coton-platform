@@ -111,6 +111,16 @@ export function Sidebar({
         ))}
       </nav>
 
+      {!collapsed ? (
+        <footer className={styles.sidebarFooter}>
+          <img
+            src="/logos/PNUD-Logo-White-Large.png"
+            alt="PNUD"
+            className={styles.footerLogo}
+          />
+        </footer>
+      ) : null}
+
     </aside>
     </>
   );
