@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, FlaskConical, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileSpreadsheet, FlaskConical, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Badge,
   Button,
@@ -257,6 +258,32 @@ export function IndicatorsPage() {
               aria-label="Rechercher un indicateur"
             />
           </div>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={14} />}
+            disabled={filtered.length === 0}
+            onClick={() => {
+              exportRowsToXlsx({
+                filename: 'indicateurs',
+                sheetName: 'Indicateurs',
+                columns: [
+                  { header: 'ID', accessor: (i) => i.id },
+                  { header: 'Libellé', accessor: (i) => i.label },
+                  { header: 'Domaine', accessor: (i) => i.domain },
+                  { header: 'Unité', accessor: (i) => i.unit ?? '' },
+                  { header: 'Méthode', accessor: (i) => i.method ?? '' },
+                  { header: 'Source', accessor: (i) => i.source ?? '' },
+                  { header: 'Min OK', accessor: (i) => i.minOk ?? '' },
+                  { header: 'Max OK', accessor: (i) => i.maxOk ?? '' },
+                  { header: 'Labo uniquement', accessor: (i) => (i.labOnly ? 'Oui' : 'Non') },
+                  { header: 'Actif', accessor: (i) => (i.isActive === false ? 'Non' : 'Oui') },
+                ],
+                rows: filtered,
+              });
+            }}
+          >
+            Exporter XLSX
+          </Button>
           <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
             Ajouter
           </Button>

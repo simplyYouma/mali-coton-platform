@@ -77,12 +77,14 @@
 .runningMeta {
   font-size: 8.5pt;
   color: #64748b;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .runningCounter {
   font-size: 9pt;
   color: #64748b;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   letter-spacing: 0.04em;
 }
@@ -235,7 +237,8 @@
   font-size: 13pt;
   color: #475569;
   margin: 4px 0 0 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 .coverMeta {
@@ -418,7 +421,8 @@
 .dataValue {
   font-weight: 700;
   color: #0f172a;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .data_warning .dataValue { color: #b45309; }
 .data_critical .dataValue { color: #dc2626; }

@@ -30,11 +30,25 @@ export function LoginPage() {
               <span className={styles.brandWordmarkTop}>PASET</span>
               <span className={styles.brandWordmarkBottom}>MALI</span>
             </span>
-            <img
-              src="/logos/PNUD-Logo-White-Large.png"
-              alt="PNUD"
-              className={styles.brandLogo}
-            />
+            <div className={styles.brandPartners} aria-label="Partenaires du projet">
+              <img
+                src="/logos/PNUD-Logo-White-Large.png"
+                alt="PNUD"
+                className={styles.brandLogo}
+              />
+              <span className={styles.brandDivider} aria-hidden="true" />
+              <img
+                src="/logos/Flag_of_Japan.png"
+                alt="Japon"
+                className={styles.brandLogoSmall}
+              />
+              <span className={styles.brandDivider} aria-hidden="true" />
+              <img
+                src="/logos/Armoiries_Mali.png"
+                alt="République du Mali"
+                className={styles.brandLogoSmall}
+              />
+            </div>
           </div>
           <p className={styles.eyebrow}>PNUD Mali · UNDP-MLI-00492</p>
           <h2 className={styles.visualTitle}>

@@ -1,6 +1,7 @@
 import { useMemo, useState, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Search, Filter, MapPin, Pencil, Plus, Trash2, FileSpreadsheet } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   PageHeader,
   Button,
@@ -62,6 +63,29 @@ export function SitesListPage() {
     [allSites, commune],
   );
 
+  const handleExport = () => {
+    exportRowsToXlsx({
+      filename: 'sites',
+      sheetName: 'Sites',
+      columns: [
+        { header: 'Code', accessor: (s) => s.shortName },
+        { header: 'Nom complet', accessor: (s) => s.name },
+        { header: 'Type', accessor: (s) => s.type },
+        { header: 'Statut légal', accessor: (s) => s.legalStatus },
+        { header: 'Effectif', accessor: (s) => s.workforce },
+        { header: 'Année création', accessor: (s) => s.createdYear },
+        { header: 'Commune', accessor: (s) => s.location.commune },
+        { header: 'Ville', accessor: (s) => s.location.city },
+        { header: 'Quartier', accessor: (s) => s.location.quartier ?? '' },
+        { header: 'Latitude', accessor: (s) => s.coordinates.lat },
+        { header: 'Longitude', accessor: (s) => s.coordinates.lng },
+        { header: 'Conformité', accessor: (s) => s.conformity },
+      ],
+      rows: sites,
+    });
+    toast.success(`Export XLSX — ${sites.length} sites.`);
+  };
+
   const openCreate = () => {
     setEditing(null);
     setFormOpen(true);
@@ -96,6 +120,14 @@ export function SitesListPage() {
         description="Référentiel des sites pilotes et leur conformité actuelle."
         actions={
           <>
+            <Button
+              variant="excel"
+              iconLeft={<FileSpreadsheet size={16} />}
+              onClick={handleExport}
+              disabled={sites.length === 0}
+            >
+              Exporter XLSX
+            </Button>
             <Link to="/cartographie">
               <Button variant="secondary" iconLeft={<MapPin size={16} />}>
                 Voir sur la carte

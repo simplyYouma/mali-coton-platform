@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Mail, Pencil, Phone, Plus, Search, Trash2, UserCheck, UserX } from 'lucide-react';
+import { FileSpreadsheet, Mail, Pencil, Phone, Plus, Search, Trash2, UserCheck, UserX } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Badge,
   Button,
@@ -246,6 +247,30 @@ export function UsersPage() {
               aria-label="Rechercher un utilisateur"
             />
           </div>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={14} />}
+            disabled={filtered.length === 0}
+            onClick={() => {
+              exportRowsToXlsx({
+                filename: 'utilisateurs',
+                sheetName: 'Utilisateurs',
+                columns: [
+                  { header: 'ID', accessor: (u) => u.id },
+                  { header: 'Nom', accessor: (u) => u.fullName },
+                  { header: 'E-mail', accessor: (u) => u.email },
+                  { header: 'Téléphone', accessor: (u) => u.phone ?? '' },
+                  { header: 'Rôle', accessor: (u) => u.role },
+                  { header: 'Statut', accessor: (u) => (u.isActive ? 'Actif' : 'Inactif') },
+                  { header: 'Sites assignés', accessor: (u) => u.assignedSiteIds.join(', ') },
+                  { header: 'Créé le', accessor: (u) => u.createdAt ?? '' },
+                ],
+                rows: filtered,
+              });
+            }}
+          >
+            Exporter XLSX
+          </Button>
           <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
             Ajouter
           </Button>

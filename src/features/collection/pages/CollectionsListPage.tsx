@@ -16,6 +16,7 @@ import {
   Select,
 } from '@/components/common';
 import { useCollections } from '../hooks/useCollections';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { mockUsers } from '@/mocks/fixtures/users';
@@ -106,6 +107,25 @@ export function CollectionsListPage() {
     setPage(1);
   }, [tab, siteFilter, dateRange, q]);
 
+  const handleExport = () => {
+    exportRowsToXlsx({
+      filename: 'collectes',
+      sheetName: 'Collectes',
+      columns: [
+        { header: 'ID', accessor: (c) => c.id },
+        { header: 'Site', accessor: (c) => sitesById.get(c.siteId)?.shortName ?? c.siteId },
+        { header: 'Agent', accessor: (c) => usersById.get(c.agentId) ?? c.agentId },
+        { header: 'Date collecte', accessor: (c) => c.collectedAt },
+        { header: 'Statut', accessor: (c) => STATUS_LABEL[c.status] },
+        { header: 'Mesures', accessor: (c) => c.measurements.length },
+        { header: 'Photos', accessor: (c) => c.photos.length },
+        { header: 'Synchronisé le', accessor: (c) => c.syncedAt ?? '' },
+        { header: 'Validé le', accessor: (c) => c.validatedAt ?? '' },
+      ],
+      rows: filteredItems,
+    });
+  };
+
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageItems = filteredItems.slice(
@@ -150,7 +170,16 @@ export function CollectionsListPage() {
               Importer depuis Kobo
             </Button>
           </Link>
-          {!isAgent ? <Button variant="ghost-primary">Exporter (CSV)</Button> : null}
+          {!isAgent ? (
+            <Button
+              variant="excel"
+              iconLeft={<FileSpreadsheet size={16} />}
+              onClick={handleExport}
+              disabled={filteredItems.length === 0}
+            >
+              Exporter XLSX
+            </Button>
+          ) : null}
         </div>
       </header>
 

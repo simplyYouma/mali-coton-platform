@@ -119,7 +119,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Colonne mesure pH */
@@ -140,7 +141,8 @@
   font-weight: var(--weight-semibold);
 }
 .measureValue {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--weight-bold);
   color: var(--color-primary-active);
   font-size: var(--text-sm);
@@ -149,7 +151,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   color: var(--color-text-disabled);
   background: var(--color-surface-2);
@@ -169,7 +172,8 @@
   font-size: var(--text-sm);
   color: var(--color-text);
   font-weight: var(--weight-medium);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .dateRelative {
   font-size: var(--text-xs);

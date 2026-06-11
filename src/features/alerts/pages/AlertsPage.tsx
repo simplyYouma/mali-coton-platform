@@ -6,8 +6,10 @@ import {
   Clock,
   CloudOff,
   Eye,
+  FileSpreadsheet,
   ShieldAlert,
 } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Button,
   EmptyState,
@@ -154,6 +156,26 @@ export function AlertsPage() {
 
   const canAct = role === 'superviseur' || role === 'admin';
 
+  const handleExport = () => {
+    exportRowsToXlsx({
+      filename: 'alertes',
+      sheetName: 'Alertes',
+      columns: [
+        { header: 'ID', accessor: (a) => a.id },
+        { header: 'Titre', accessor: (a) => a.title },
+        { header: 'Sévérité', accessor: (a) => a.severity },
+        { header: 'Statut', accessor: (a) => STATUS_LABEL[a.status] },
+        { header: 'Catégorie', accessor: (a) => CATEGORY_LABEL[a.category] },
+        { header: 'Site', accessor: (a) => (a.siteId ? sitesById.get(a.siteId) ?? '' : '') },
+        { header: 'Soulevée le', accessor: (a) => a.raisedAt },
+        { header: 'Prise en compte le', accessor: (a) => a.acknowledgedAt ?? '' },
+        { header: 'Résolue le', accessor: (a) => a.resolvedAt ?? '' },
+        { header: 'Résumé', accessor: (a) => a.summary ?? '' },
+      ],
+      rows: items,
+    });
+  };
+
   return (
     <div className={styles.page}>
       <header className={styles.hero} data-page-header>
@@ -163,6 +185,16 @@ export function AlertsPage() {
           <p className={styles.heroDescription}>
             Boîte de réception des dépassements de seuils et anomalies à traiter.
           </p>
+        </div>
+        <div className={styles.heroActions}>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={16} />}
+            onClick={handleExport}
+            disabled={items.length === 0}
+          >
+            Exporter XLSX
+          </Button>
         </div>
       </header>
 

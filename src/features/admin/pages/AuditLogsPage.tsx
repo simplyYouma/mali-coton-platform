@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
-import { EmptyState, Input, Skeleton } from '@/components/common';
+import { FileSpreadsheet, Search } from 'lucide-react';
+import { Button, EmptyState, Input, Skeleton } from '@/components/common';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { useAuditLogs } from '../hooks/useAdmin';
 import type { AuditFilter, AuditLogEntry } from '../api/admin.types';
@@ -105,6 +106,30 @@ export function AuditLogsPage() {
               aria-label="Rechercher dans le journal"
             />
           </label>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={14} />}
+            disabled={items.length === 0}
+            onClick={() => {
+              exportRowsToXlsx({
+                filename: 'audit',
+                sheetName: 'Audit',
+                columns: [
+                  { header: 'Horodatage', accessor: (e) => e.occurredAt },
+                  { header: 'Acteur', accessor: (e) => e.actorName ?? e.actorId },
+                  { header: 'Rôle', accessor: (e) => e.actorRole },
+                  { header: 'Action', accessor: (e) => ACTION_LABEL[e.action] ?? e.action },
+                  { header: 'Type ressource', accessor: (e) => e.resourceType },
+                  { header: 'ID ressource', accessor: (e) => e.resourceId ?? '' },
+                  { header: 'Libellé', accessor: (e) => e.resourceLabel ?? '' },
+                  { header: 'Détails', accessor: (e) => e.details ?? '' },
+                ],
+                rows: items,
+              });
+            }}
+          >
+            Exporter XLSX
+          </Button>
         </div>
       </div>
 

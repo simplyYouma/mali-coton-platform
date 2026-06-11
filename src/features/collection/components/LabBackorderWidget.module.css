@@ -56,7 +56,8 @@
   text-overflow: ellipsis;
 }
 .delay {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   color: var(--color-danger);
   font-weight: var(--weight-semibold);
   text-align: right;

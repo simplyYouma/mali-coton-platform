@@ -139,7 +139,8 @@
 .listCount {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .listUnreadBadge {
   /* Sémantique : action requise (non lu, en attente de revue) → amber */
@@ -252,7 +253,8 @@
   text-overflow: ellipsis;
 }
 .rowDate {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   white-space: nowrap;
@@ -398,7 +400,8 @@
   color: var(--color-text-muted);
 }
 .measurementValue {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   color: var(--color-text);
   font-weight: var(--weight-semibold);

@@ -109,7 +109,8 @@
   color: #fff;
 }
 .chipCount {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
   padding: 1px 6px;

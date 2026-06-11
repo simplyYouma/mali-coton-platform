@@ -170,7 +170,8 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   font-weight: var(--weight-regular);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Score qualité (C4) ── */
@@ -246,7 +247,8 @@
   color: var(--color-text);
 }
 .qualityIssueWeight {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
   color: var(--color-danger);
   font-weight: var(--weight-bold);
@@ -316,7 +318,8 @@
   font-size: var(--text-xs);
 }
 .anomaliesZ {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   text-align: right;
@@ -335,7 +338,8 @@
     background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out);
   /* Reprend exactement le style de .measureValue */
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--weight-bold);
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
@@ -355,7 +359,8 @@
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--weight-bold);
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
@@ -365,7 +370,8 @@
 .measureValueUnit {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Tag 'editee' / 'labo' a cote du libelle */
@@ -415,7 +421,8 @@
   color: var(--color-text-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -476,7 +483,8 @@
   background: var(--color-danger);
 }
 .thresholdLabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-2xs);
   color: var(--color-text-muted);
   white-space: nowrap;
@@ -522,7 +530,8 @@
   margin: 4px 0 0;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .sectionBody {
   padding: var(--space-5);
@@ -571,7 +580,8 @@
 }
 .domainCount {
   margin-left: auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-2xs);
   color: var(--color-text-muted);
   background: var(--color-surface-2);
@@ -614,7 +624,8 @@
   color: var(--color-text-muted);
 }
 .measureValue {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   color: var(--color-text);
   font-weight: var(--weight-bold);
@@ -679,7 +690,8 @@
 }
 .photoCaptionTime {
   display: block;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-2xs);
   letter-spacing: 0.05em;
   opacity: 0.85;
@@ -735,7 +747,8 @@
 .validationBannerMeta {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .validationBannerNotes {
   margin: 0;
@@ -800,7 +813,8 @@
 .correctionMeta {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .correctionNotes {
   margin: 0;
@@ -837,7 +851,8 @@
   color: var(--color-amber-hover);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Flacons labo (ligne compacte par flacon) ── */
@@ -1038,7 +1053,8 @@
 .timelineMeta {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 .timelineDateChip {
   align-self: center;
@@ -1046,7 +1062,8 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   background: var(--color-surface-2);
   border-radius: var(--radius-pill);

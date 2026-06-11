@@ -5,6 +5,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  FileSpreadsheet,
   ListChecks,
   MapPin,
   Plus,
@@ -13,6 +14,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Badge,
   Button,
@@ -225,6 +227,33 @@ export function RecommandationsPage() {
           <p className={styles.heroDescription}>
             Boîte de réception des actions correctives identifiées sur les sites.
           </p>
+        </div>
+        <div className={styles.heroActions}>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={16} />}
+            disabled={items.length === 0}
+            onClick={() => {
+              exportRowsToXlsx({
+                filename: 'recommandations',
+                sheetName: 'Recommandations',
+                columns: [
+                  { header: 'ID', accessor: (r) => r.id },
+                  { header: 'Titre', accessor: (r) => r.titre },
+                  { header: 'Priorité', accessor: (r) => PRIORITE_LABEL[r.niveauPriorite] },
+                  { header: 'Statut', accessor: (r) => STATUT_LABEL[r.statut] },
+                  { header: 'Site', accessor: (r) => (r.siteId ? sitesById.get(r.siteId) ?? '' : 'Transversal') },
+                  { header: 'Créée le', accessor: (r) => r.createdAt },
+                  { header: 'Échéance', accessor: (r) => r.dateEcheance ?? '' },
+                  { header: 'En retard', accessor: (r) => (isOverdue(r) ? 'Oui' : 'Non') },
+                  { header: 'Description', accessor: (r) => r.description },
+                ],
+                rows: items,
+              });
+            }}
+          >
+            Exporter XLSX
+          </Button>
         </div>
       </header>
 

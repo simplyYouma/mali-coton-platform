@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Beaker,
   CheckCircle2,
+  FileSpreadsheet,
   FileText,
   MapPin,
   PackageCheck,
@@ -10,6 +11,7 @@ import {
   RefreshCw,
   Send,
 } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import { Badge, Button, Modal, Skeleton, Textarea } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
@@ -354,6 +356,34 @@ export function LabSamplesPage() {
           <p className={styles.heroDescription}>
             Pipeline des flacons : envoi au labo, suivi, bordereaux et clôture.
           </p>
+        </div>
+        <div className={styles.heroActions}>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={16} />}
+            disabled={list.length === 0}
+            onClick={() => {
+              exportRowsToXlsx({
+                filename: `echantillons-${tab}`,
+                sheetName: 'Echantillons',
+                columns: [
+                  { header: 'Collecte', accessor: (f) => f.collection.id },
+                  { header: 'Site', accessor: (f) => sitesById.get(f.collection.siteId) ?? f.collection.siteId },
+                  { header: 'Flacon (container)', accessor: (f) => f.containerId },
+                  { header: 'Sample ID', accessor: (f) => f.sample.sampleId ?? '' },
+                  { header: 'Statut', accessor: (f) => f.sample.status },
+                  { header: 'Laboratoire', accessor: (f) => labsById.get(f.sample.labId)?.name ?? f.sample.labId },
+                  { header: 'Envoyé le', accessor: (f) => f.sample.sentAt ?? '' },
+                  { header: 'Jours depuis envoi', accessor: (f) => f.daysSinceSent },
+                  { header: 'En retard', accessor: (f) => (f.isOverdue ? 'Oui' : 'Non') },
+                  { header: 'Mesures', accessor: (f) => f.measurements.length },
+                ],
+                rows: list,
+              });
+            }}
+          >
+            Exporter XLSX
+          </Button>
         </div>
       </header>
 

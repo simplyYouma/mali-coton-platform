@@ -11,7 +11,8 @@ export type ButtonVariant =
   | 'ghost-danger'
   | 'danger'
   | 'success'
-  | 'kobo';
+  | 'kobo'
+  | 'excel';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

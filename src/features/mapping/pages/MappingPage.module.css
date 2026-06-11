@@ -463,7 +463,8 @@
   font-weight: var(--weight-bold);
 }
 .popupKpiValue {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   color: var(--color-text);
   font-weight: var(--weight-bold);

@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  FileSpreadsheet,
   Plus,
   Search,
   UserCheck,
   Users as UsersIcon,
 } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Badge,
   Button,
@@ -148,6 +150,39 @@ export function TeamListPage() {
               aria-label="Rechercher un agent"
             />
           </div>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={14} />}
+            disabled={filtered.length === 0}
+            onClick={() => {
+              exportRowsToXlsx({
+                filename: 'agents',
+                sheetName: 'Agents',
+                columns: [
+                  { header: 'ID', accessor: (a) => a.id },
+                  { header: 'Nom complet', accessor: (a) => a.fullName },
+                  { header: 'E-mail', accessor: (a) => a.email },
+                  { header: 'Téléphone', accessor: (a) => a.phone ?? '' },
+                  { header: 'Identifiant Kobo', accessor: (a) => a.koboUsername ?? '' },
+                  { header: 'Statut', accessor: (a) => (a.isActive ? 'Actif' : 'Inactif') },
+                  {
+                    header: 'Sites assignés',
+                    accessor: (a) =>
+                      a.assignedSiteIds
+                        .map((id) => sitesById.get(id) ?? id)
+                        .join(', '),
+                  },
+                  {
+                    header: 'Nb collectes',
+                    accessor: (a) => collectionsByAgent.get(a.id) ?? 0,
+                  },
+                ],
+                rows: filtered,
+              });
+            }}
+          >
+            Exporter XLSX
+          </Button>
           <Button
             variant="success"
             iconLeft={<Plus size={14} />}

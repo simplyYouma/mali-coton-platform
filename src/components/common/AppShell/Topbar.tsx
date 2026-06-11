@@ -80,12 +80,25 @@ export function Topbar() {
       </div>
 
       <div className={styles.actions}>
-        <img
-          src="/logos/logo_pnud.png"
-          alt="PNUD"
-          className={styles.pnudLogo}
-          aria-hidden="true"
-        />
+        <div className={styles.partnerLogos} aria-label="Partenaires du projet">
+          <img
+            src="/logos/logo_pnud.png"
+            alt="PNUD"
+            className={styles.partnerLogo}
+          />
+          <span className={styles.partnerDivider} aria-hidden="true" />
+          <img
+            src="/logos/Flag_of_Japan.png"
+            alt="Japon — Gouvernement du Japon"
+            className={styles.partnerLogo}
+          />
+          <span className={styles.partnerDivider} aria-hidden="true" />
+          <img
+            src="/logos/Armoiries_Mali.png"
+            alt="République du Mali"
+            className={styles.partnerLogo}
+          />
+        </div>
         <div className={styles.profile}>
           <div className={styles.avatar} aria-hidden="true">
             {avatarSrc ? (

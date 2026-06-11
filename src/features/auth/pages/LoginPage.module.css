@@ -88,9 +88,35 @@
   text-transform: uppercase;
 }
 .brandLogo {
-  height: 124px;
+  height: 96px;
   width: auto;
   flex-shrink: 0;
+  display: block;
+}
+.brandPartners {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+.brandLogoSmall {
+  height: 64px;
+  width: auto;
+  flex-shrink: 0;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
+}
+.brandDivider {
+  width: 1px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.28);
+  display: inline-block;
+}
+@media (max-width: 768px) {
+  .brandLogo { height: 64px; }
+  .brandLogoSmall { height: 44px; }
+  .brandDivider { height: 36px; }
 }
 .eyebrow {
   font-size: var(--text-2xs);

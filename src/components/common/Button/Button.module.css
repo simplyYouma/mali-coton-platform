@@ -103,6 +103,18 @@
   border-color: #155a93;
 }
 
+/* Variant Excel — couleur officielle Microsoft Excel (#107C41).
+ * Reserve aux actions « Exporter XLSX ». */
+.variant-excel {
+  background: #107c41;
+  color: #fff;
+  border-color: #107c41;
+}
+.variant-excel:hover:not(:disabled):not([aria-busy='true']) {
+  background: #0b5d31;
+  border-color: #0b5d31;
+}
+
 /* Ghost danger — bouton transparent qui se teinte en rouge au hover.
  * Pour les actions destructives (Supprimer, Deconnecter, Annuler def). */
 .variant-ghost-danger {

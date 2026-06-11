@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Lock, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, Lock, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Button,
   FormField,
@@ -159,6 +160,28 @@ export function RefDataPage() {
               aria-label="Rechercher"
             />
           </div>
+          <Button
+            variant="excel"
+            iconLeft={<FileSpreadsheet size={14} />}
+            disabled={items.length === 0}
+            onClick={() => {
+              exportRowsToXlsx({
+                filename: `referentiel-${activeCategory}`,
+                sheetName: activeCategory,
+                columns: [
+                  { header: 'ID', accessor: (e) => e.id },
+                  { header: 'Code', accessor: (e) => e.code },
+                  { header: 'Libellé', accessor: (e) => e.label },
+                  { header: 'Description', accessor: (e) => e.description ?? '' },
+                  { header: 'Actif', accessor: (e) => (e.isActive ? 'Oui' : 'Non') },
+                  { header: 'Verrouillé', accessor: (e) => (e.locked ? 'Oui' : 'Non') },
+                ],
+                rows: items,
+              });
+            }}
+          >
+            Exporter XLSX
+          </Button>
           <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
             Réinitialiser
           </Button>
