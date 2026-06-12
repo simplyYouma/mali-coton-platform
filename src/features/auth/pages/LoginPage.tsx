@@ -32,9 +32,9 @@ export function LoginPage() {
             </span>
             <div className={styles.brandPartners} aria-label="Partenaires du projet">
               <img
-                src="/logos/PNUD-Logo-White-Large.png"
-                alt="PNUD"
-                className={styles.brandLogo}
+                src="/logos/Armoiries_Mali.png"
+                alt="République du Mali"
+                className={styles.brandLogoSmall}
               />
               <span className={styles.brandDivider} aria-hidden="true" />
               <img
@@ -44,9 +44,9 @@ export function LoginPage() {
               />
               <span className={styles.brandDivider} aria-hidden="true" />
               <img
-                src="/logos/Armoiries_Mali.png"
-                alt="République du Mali"
-                className={styles.brandLogoSmall}
+                src="/logos/PNUD-Logo-White-Large.png"
+                alt="PNUD"
+                className={styles.brandLogo}
               />
             </div>
           </div>

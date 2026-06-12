@@ -107,6 +107,20 @@
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
 }
+/* Drapeau du Japon — ratio 3:2 = naturellement plus large que les autres
+ * insignes circulaires/carres. On reduit la hauteur pour rester equilibre
+ * visuellement et on borde le blanc pour le decoller. */
+.brandLogoSmall[alt="Japon"] {
+  height: 44px;
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.25),
+    0 2px 6px rgba(0, 0, 0, 0.18);
+  filter: none;
+}
+@media (max-width: 768px) {
+  .brandLogoSmall[alt="Japon"] { height: 32px; }
+}
 .brandDivider {
   width: 1px;
   height: 48px;

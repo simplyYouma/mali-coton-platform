@@ -82,8 +82,8 @@ export function Topbar() {
       <div className={styles.actions}>
         <div className={styles.partnerLogos} aria-label="Partenaires du projet">
           <img
-            src="/logos/logo_pnud.png"
-            alt="PNUD"
+            src="/logos/Armoiries_Mali.png"
+            alt="République du Mali"
             className={styles.partnerLogo}
           />
           <span className={styles.partnerDivider} aria-hidden="true" />
@@ -94,8 +94,8 @@ export function Topbar() {
           />
           <span className={styles.partnerDivider} aria-hidden="true" />
           <img
-            src="/logos/Armoiries_Mali.png"
-            alt="République du Mali"
+            src="/logos/logo_pnud.png"
+            alt="PNUD"
             className={styles.partnerLogo}
           />
         </div>
