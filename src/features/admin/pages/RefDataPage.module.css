@@ -79,7 +79,12 @@
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-2);
   overflow-x: auto;
-  scrollbar-width: thin;
+  /* Cache la scrollbar mais conserve le defilement tactile/wheel. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chips::-webkit-scrollbar {
+  display: none;
 }
 .chip {
   display: inline-flex;
@@ -135,6 +140,21 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+/* ── Barre d'actions stable sous les onglets (search + export + add) ── */
+.actionsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.actionsBarRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 /* ── Table ── */

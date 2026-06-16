@@ -173,48 +173,10 @@ export function RefDataPage() {
             Vocabulaires contrôlés : unités, méthodes, types de site.
           </p>
         </div>
-        {activeTab !== 'indicateurs' ? (
-          <div className={styles.heroRight}>
-            <div className={styles.search}>
-              <Search size={14} aria-hidden="true" />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher dans la catégorie active…"
-                aria-label="Rechercher"
-              />
-            </div>
-            <Button
-              variant="excel"
-              iconLeft={<FileSpreadsheet size={14} />}
-              disabled={items.length === 0}
-              onClick={() => {
-                exportRowsToXlsx({
-                  filename: `referentiel-${activeCategory}`,
-                  sheetName: activeCategory,
-                  columns: [
-                    { header: 'ID', accessor: (e) => e.id },
-                    { header: 'Code', accessor: (e) => e.code },
-                    { header: 'Libellé', accessor: (e) => e.label },
-                    { header: 'Description', accessor: (e) => e.description ?? '' },
-                    { header: 'Actif', accessor: (e) => (e.isActive ? 'Oui' : 'Non') },
-                    { header: 'Verrouillé', accessor: (e) => (e.locked ? 'Oui' : 'Non') },
-                  ],
-                  rows: items,
-                });
-              }}
-            >
-              Exporter XLSX
-            </Button>
-            <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
-              Réinitialiser
-            </Button>
-            <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
-              Ajouter
-            </Button>
-          </div>
-        ) : null}
+        {/* Le hero reste minimaliste (title + count + description) : la barre
+         *  d'actions est rendue sous les onglets pour que la position soit
+         *  identique d'un onglet a l'autre, y compris pour Indicateurs qui
+         *  apporte son propre toolbar via le mode embedded. */}
       </header>
 
       <div className={styles.chips} role="tablist" aria-label="Onglets">
@@ -247,7 +209,49 @@ export function RefDataPage() {
         <IndicatorsPage embedded />
       ) : (
         <>
-          <p className={styles.contentHint}>{CATEGORY_HINT[activeCategory]}</p>
+          <div className={styles.actionsBar}>
+            <p className={styles.contentHint}>{CATEGORY_HINT[activeCategory]}</p>
+            <div className={styles.actionsBarRight}>
+              <div className={styles.search}>
+                <Search size={14} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Rechercher dans la catégorie active…"
+                  aria-label="Rechercher"
+                />
+              </div>
+              <Button
+                variant="excel"
+                iconLeft={<FileSpreadsheet size={14} />}
+                disabled={items.length === 0}
+                onClick={() => {
+                  exportRowsToXlsx({
+                    filename: `referentiel-${activeCategory}`,
+                    sheetName: activeCategory,
+                    columns: [
+                      { header: 'ID', accessor: (e) => e.id },
+                      { header: 'Code', accessor: (e) => e.code },
+                      { header: 'Libellé', accessor: (e) => e.label },
+                      { header: 'Description', accessor: (e) => e.description ?? '' },
+                      { header: 'Actif', accessor: (e) => (e.isActive ? 'Oui' : 'Non') },
+                      { header: 'Verrouillé', accessor: (e) => (e.locked ? 'Oui' : 'Non') },
+                    ],
+                    rows: items,
+                  });
+                }}
+              >
+                Exporter XLSX
+              </Button>
+              <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
+                Réinitialiser
+              </Button>
+              <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
+                Ajouter
+              </Button>
+            </div>
+          </div>
 
           <div className={styles.tableWrap}>
             <table className={styles.table}>
