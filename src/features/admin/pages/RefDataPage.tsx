@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FileSpreadsheet, Lock, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { useIndicatorsAdmin } from '../hooks/useAdmin';
+import { IndicatorsPage } from './IndicatorsPage';
 import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Button,
@@ -35,11 +38,32 @@ const CATEGORIES: RefCategory[] = [
 
 const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }));
 
+/** Cle d'onglet : indicateurs (special, panel custom) ou categorie de ref data. */
+type TabKey = 'indicateurs' | RefCategory;
+
+/** Indicateurs en premier (onglet principal), suivi des referentiels du CDC. */
+const TAB_ORDER: TabKey[] = ['indicateurs', ...CATEGORIES];
+const TAB_LABEL: Record<TabKey, string> = {
+  indicateurs: 'Indicateurs',
+  ...CATEGORY_LABEL,
+};
+
 export function RefDataPage() {
   const toast = useToast();
   const confirm = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(() => loadRefData());
-  const [activeCategory, setActiveCategory] = useState<RefCategory>('units');
+  /** Onglet actif — initialise depuis ?tab=... pour back-compat /admin/indicateurs. */
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const fromUrl = searchParams.get('tab') as TabKey | null;
+    if (fromUrl && (TAB_ORDER as string[]).includes(fromUrl)) return fromUrl;
+    return 'indicateurs';
+  });
+  /** Une categorie RefData n'est active que si on n'est pas sur l'onglet Indicateurs. */
+  const activeCategory: RefCategory = activeTab === 'indicateurs' ? 'units' : activeTab;
+  /** Catalogue d'indicateurs — pour afficher le compteur sur l'onglet. */
+  const indicatorsQuery = useIndicatorsAdmin();
+  const indicatorsCount = indicatorsQuery.data?.items.length ?? 0;
   const [editing, setEditing] = useState<{ entry: RefEntry; category: RefCategory } | null>(
     null,
   );
@@ -96,14 +120,14 @@ export function RefDataPage() {
         [editing.category]: oldList,
         [targetCategory]: newList,
       });
-      setActiveCategory(targetCategory);
+      setActiveTab(targetCategory);
     } else {
       const list = [...(data[targetCategory] ?? [])];
       const idx = list.findIndex((e) => e.id === entry.id);
       if (idx >= 0) list[idx] = entry;
       else list.unshift(entry);
       persist({ ...data, [targetCategory]: list });
-      setActiveCategory(targetCategory);
+      setActiveTab(targetCategory);
     }
     setFormOpen(false);
     toast.success(editing ? 'Entrée modifiée.' : 'Entrée ajoutée au référentiel.');
@@ -149,132 +173,147 @@ export function RefDataPage() {
             Vocabulaires contrôlés : unités, méthodes, types de site.
           </p>
         </div>
-        <div className={styles.heroRight}>
-          <div className={styles.search}>
-            <Search size={14} aria-hidden="true" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher dans la catégorie active…"
-              aria-label="Rechercher"
-            />
+        {activeTab !== 'indicateurs' ? (
+          <div className={styles.heroRight}>
+            <div className={styles.search}>
+              <Search size={14} aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher dans la catégorie active…"
+                aria-label="Rechercher"
+              />
+            </div>
+            <Button
+              variant="excel"
+              iconLeft={<FileSpreadsheet size={14} />}
+              disabled={items.length === 0}
+              onClick={() => {
+                exportRowsToXlsx({
+                  filename: `referentiel-${activeCategory}`,
+                  sheetName: activeCategory,
+                  columns: [
+                    { header: 'ID', accessor: (e) => e.id },
+                    { header: 'Code', accessor: (e) => e.code },
+                    { header: 'Libellé', accessor: (e) => e.label },
+                    { header: 'Description', accessor: (e) => e.description ?? '' },
+                    { header: 'Actif', accessor: (e) => (e.isActive ? 'Oui' : 'Non') },
+                    { header: 'Verrouillé', accessor: (e) => (e.locked ? 'Oui' : 'Non') },
+                  ],
+                  rows: items,
+                });
+              }}
+            >
+              Exporter XLSX
+            </Button>
+            <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
+              Réinitialiser
+            </Button>
+            <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
+              Ajouter
+            </Button>
           </div>
-          <Button
-            variant="excel"
-            iconLeft={<FileSpreadsheet size={14} />}
-            disabled={items.length === 0}
-            onClick={() => {
-              exportRowsToXlsx({
-                filename: `referentiel-${activeCategory}`,
-                sheetName: activeCategory,
-                columns: [
-                  { header: 'ID', accessor: (e) => e.id },
-                  { header: 'Code', accessor: (e) => e.code },
-                  { header: 'Libellé', accessor: (e) => e.label },
-                  { header: 'Description', accessor: (e) => e.description ?? '' },
-                  { header: 'Actif', accessor: (e) => (e.isActive ? 'Oui' : 'Non') },
-                  { header: 'Verrouillé', accessor: (e) => (e.locked ? 'Oui' : 'Non') },
-                ],
-                rows: items,
-              });
-            }}
-          >
-            Exporter XLSX
-          </Button>
-          <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
-            Réinitialiser
-          </Button>
-          <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
-            Ajouter
-          </Button>
-        </div>
+        ) : null}
       </header>
 
-      <div className={styles.chips} role="tablist" aria-label="Catégorie">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="tab"
-            aria-selected={c === activeCategory}
-            className={`${styles.chip} ${c === activeCategory ? styles.chipActive : ''}`}
-            onClick={() => {
-              setActiveCategory(c);
-              setQuery('');
-            }}
-          >
-            {CATEGORY_LABEL[c]}
-            <span className={styles.chipCount}>{counts[c]}</span>
-          </button>
-        ))}
+      <div className={styles.chips} role="tablist" aria-label="Onglets">
+        {TAB_ORDER.map((t) => {
+          const count = t === 'indicateurs' ? indicatorsCount : counts[t];
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={t === activeTab}
+              className={`${styles.chip} ${t === activeTab ? styles.chipActive : ''}`}
+              onClick={() => {
+                setActiveTab(t);
+                setQuery('');
+                const next = new URLSearchParams(searchParams);
+                if (t === 'indicateurs') next.set('tab', 'indicateurs');
+                else next.delete('tab');
+                setSearchParams(next, { replace: true });
+              }}
+            >
+              {TAB_LABEL[t]}
+              <span className={styles.chipCount}>{count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <p className={styles.contentHint}>{CATEGORY_HINT[activeCategory]}</p>
+      {activeTab === 'indicateurs' ? (
+        <IndicatorsPage embedded />
+      ) : (
+        <>
+          <p className={styles.contentHint}>{CATEGORY_HINT[activeCategory]}</p>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Libellé</th>
-              <th>Description</th>
-              <th aria-label="Actions" />
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td colSpan={4} className={styles.empty}>
-                  Aucune entrée dans cette catégorie.
-                </td>
-              </tr>
-            ) : (
-              items.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <code className={styles.code}>{e.code}</code>
-                  </td>
-                  <td>
-                    <span className={styles.labelCell}>
-                      <span className={styles.label}>{e.label}</span>
-                      {e.locked ? (
-                        <span
-                          className={styles.lockIcon}
-                          title="Socle CDC — suppression bloquée"
-                          aria-label="Socle CDC"
-                        >
-                          <Lock size={11} />
-                        </span>
-                      ) : null}
-                    </span>
-                  </td>
-                  <td className={styles.description}>
-                    {e.description ?? <span className={styles.muted}>—</span>}
-                  </td>
-                  <td className={styles.actions}>
-                    <IconButton
-                      aria-label="Modifier"
-                      variant="ghost"
-                      onClick={() => openEdit(e, activeCategory)}
-                    >
-                      <Pencil size={14} />
-                    </IconButton>
-                    <IconButton
-                      aria-label="Supprimer"
-                      variant="ghost"
-                      onClick={() => void removeEntry(e)}
-                      disabled={e.locked}
-                    >
-                      <Trash2 size={14} />
-                    </IconButton>
-                  </td>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Libellé</th>
+                  <th>Description</th>
+                  <th aria-label="Actions" />
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className={styles.empty}>
+                      Aucune entrée dans cette catégorie.
+                    </td>
+                  </tr>
+                ) : (
+                  items.map((e) => (
+                    <tr key={e.id}>
+                      <td>
+                        <code className={styles.code}>{e.code}</code>
+                      </td>
+                      <td>
+                        <span className={styles.labelCell}>
+                          <span className={styles.label}>{e.label}</span>
+                          {e.locked ? (
+                            <span
+                              className={styles.lockIcon}
+                              title="Socle CDC — suppression bloquée"
+                              aria-label="Socle CDC"
+                            >
+                              <Lock size={11} />
+                            </span>
+                          ) : null}
+                        </span>
+                      </td>
+                      <td className={styles.description}>
+                        {e.description ?? <span className={styles.muted}>—</span>}
+                      </td>
+                      <td className={styles.actions}>
+                        <IconButton
+                          aria-label="Modifier"
+                          variant="ghost"
+                          onClick={() => openEdit(e, activeCategory)}
+                        >
+                          <Pencil size={14} />
+                        </IconButton>
+                        <IconButton
+                          aria-label="Supprimer"
+                          variant="ghost"
+                          onClick={() => void removeEntry(e)}
+                          disabled={e.locked}
+                        >
+                          <Trash2 size={14} />
+                        </IconButton>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       <RefEntryForm
         open={formOpen}

@@ -10,7 +10,6 @@ import {
   Lightbulb,
   Users,
   UsersRound,
-  ListChecks,
   ScrollText,
   Beaker,
   ShieldCheck,
@@ -123,13 +122,15 @@ const ALL_NAV: NavSpec[] = [
     roles: ['admin'],
     section: 'admin',
   },
-  {
-    to: '/admin/indicateurs',
-    label: 'Indicateurs',
-    icon: <ListChecks size={18} />,
-    roles: ['admin'],
-    section: 'admin',
-  },
+  /* Indicateurs : integre comme onglet de /admin/referentiels.
+   * On masque l'entree dediee, la route conserve sa redirection. */
+  // {
+  //   to: '/admin/indicateurs',
+  //   label: 'Indicateurs',
+  //   icon: <ListChecks size={18} />,
+  //   roles: ['admin'],
+  //   section: 'admin',
+  // },
   {
     to: '/admin/referentiels',
     label: 'Référentiels',

@@ -15,7 +15,6 @@ import {
   UsersPage,
   RolesPage,
   AuditLogsPage,
-  IndicatorsPage,
   RefDataPage,
 } from '@/features/admin';
 import { AlertsPage } from '@/features/alerts';
@@ -125,13 +124,11 @@ export function AppRoutes() {
             </RoleGuard>
           }
         />
+        {/* Indicateurs : integre comme onglet de Referentiels.
+            On preserve l'URL legacy en redirigeant vers ?tab=indicateurs. */}
         <Route
           path="/admin/indicateurs"
-          element={
-            <RoleGuard roles={['admin']}>
-              <IndicatorsPage />
-            </RoleGuard>
-          }
+          element={<Navigate to="/admin/referentiels?tab=indicateurs" replace />}
         />
         <Route
           path="/admin/referentiels"

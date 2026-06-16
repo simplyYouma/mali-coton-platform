@@ -99,7 +99,13 @@ function formatBounds(i: Indicator): string {
   return `≥ ${i.minOk}`;
 }
 
-export function IndicatorsPage() {
+interface IndicatorsPageProps {
+  /** Mode embarque dans un autre conteneur (ex: onglet de RefDataPage) :
+   *  on n'affiche ni le wrapper .page ni le hero/titre. */
+  embedded?: boolean;
+}
+
+export function IndicatorsPage({ embedded = false }: IndicatorsPageProps = {}) {
   const toast = useToast();
   const confirm = useConfirm();
   const { data, isLoading } = useIndicatorsAdmin();
@@ -235,60 +241,68 @@ export function IndicatorsPage() {
     }
   };
 
+  const actionBar = (
+    <div className={styles.heroRight}>
+      <div className={styles.search}>
+        <Search size={14} aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Rechercher un indicateur…"
+          aria-label="Rechercher un indicateur"
+        />
+      </div>
+      <Button
+        variant="excel"
+        iconLeft={<FileSpreadsheet size={14} />}
+        disabled={filtered.length === 0}
+        onClick={() => {
+          exportRowsToXlsx({
+            filename: 'indicateurs',
+            sheetName: 'Indicateurs',
+            columns: [
+              { header: 'ID', accessor: (i) => i.id },
+              { header: 'Libellé', accessor: (i) => i.label },
+              { header: 'Domaine', accessor: (i) => i.domain },
+              { header: 'Unité', accessor: (i) => i.unit ?? '' },
+              { header: 'Méthode', accessor: (i) => i.method ?? '' },
+              { header: 'Source', accessor: (i) => i.source ?? '' },
+              { header: 'Min OK', accessor: (i) => i.minOk ?? '' },
+              { header: 'Max OK', accessor: (i) => i.maxOk ?? '' },
+              { header: 'Labo uniquement', accessor: (i) => (i.labOnly ? 'Oui' : 'Non') },
+              { header: 'Actif', accessor: (i) => (i.isActive === false ? 'Non' : 'Oui') },
+            ],
+            rows: filtered,
+          });
+        }}
+      >
+        Exporter XLSX
+      </Button>
+      <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
+        Ajouter
+      </Button>
+    </div>
+  );
+
   return (
-    <div className={styles.page}>
-      <header className={styles.hero} data-page-header>
-        <div className={styles.heroLeft}>
-          <h1 className={styles.heroTitle}>Indicateurs</h1>
-          <span className={styles.heroCount}>
-            {totalActive} actifs · {totalLab} labo · {items.length} au total
-          </span>
-          <p className={styles.heroDescription}>
-            Catalogue normatif des paramètres mesurés.
-          </p>
-        </div>
-        <div className={styles.heroRight}>
-          <div className={styles.search}>
-            <Search size={14} aria-hidden="true" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher un indicateur…"
-              aria-label="Rechercher un indicateur"
-            />
+    <div className={embedded ? styles.embeddedRoot : styles.page}>
+      {!embedded ? (
+        <header className={styles.hero} data-page-header>
+          <div className={styles.heroLeft}>
+            <h1 className={styles.heroTitle}>Indicateurs</h1>
+            <span className={styles.heroCount}>
+              {totalActive} actifs · {totalLab} labo · {items.length} au total
+            </span>
+            <p className={styles.heroDescription}>
+              Catalogue normatif des paramètres mesurés.
+            </p>
           </div>
-          <Button
-            variant="excel"
-            iconLeft={<FileSpreadsheet size={14} />}
-            disabled={filtered.length === 0}
-            onClick={() => {
-              exportRowsToXlsx({
-                filename: 'indicateurs',
-                sheetName: 'Indicateurs',
-                columns: [
-                  { header: 'ID', accessor: (i) => i.id },
-                  { header: 'Libellé', accessor: (i) => i.label },
-                  { header: 'Domaine', accessor: (i) => i.domain },
-                  { header: 'Unité', accessor: (i) => i.unit ?? '' },
-                  { header: 'Méthode', accessor: (i) => i.method ?? '' },
-                  { header: 'Source', accessor: (i) => i.source ?? '' },
-                  { header: 'Min OK', accessor: (i) => i.minOk ?? '' },
-                  { header: 'Max OK', accessor: (i) => i.maxOk ?? '' },
-                  { header: 'Labo uniquement', accessor: (i) => (i.labOnly ? 'Oui' : 'Non') },
-                  { header: 'Actif', accessor: (i) => (i.isActive === false ? 'Non' : 'Oui') },
-                ],
-                rows: filtered,
-              });
-            }}
-          >
-            Exporter XLSX
-          </Button>
-          <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
-            Ajouter
-          </Button>
-        </div>
-      </header>
+          {actionBar}
+        </header>
+      ) : (
+        <div className={styles.embeddedActions}>{actionBar}</div>
+      )}
 
       <div className={styles.toolbar}>
         <div className={styles.chips} role="group" aria-label="Filtrer par domaine">
