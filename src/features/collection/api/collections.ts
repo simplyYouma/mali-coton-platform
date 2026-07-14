@@ -1,6 +1,14 @@
 import type { Paginated } from '@/types/common';
 import { http } from '@/lib/http';
+import { API_MODE, resourcePath } from '@/lib/apiConfig';
+import { unwrapPaginated, iriToId } from '@/lib/jsonld';
 import type { Collection, Indicator, Measurement } from './collection.types';
+import {
+  toCollection,
+  toCollectionFromKoboImport,
+  type CollecteTerrain,
+} from './collections.adapter';
+import type { ImportKoboHistory } from './koboImport';
 
 export interface CollectionsQuery {
   siteId?: string;
@@ -8,27 +16,38 @@ export interface CollectionsQuery {
   agentId?: string;
 }
 
-export function fetchCollections(query: CollectionsQuery = {}): Promise<Paginated<Collection>> {
-  return http<Paginated<Collection>>('/collections', { query: { ...query } });
+export async function fetchCollections(
+  _query: CollectionsQuery = {},
+): Promise<Paginated<Collection>> {
+  // En live : les collectes proviennent des imports Kobo (GET /api/import_kobos)
+  const raw = await http<unknown>(resourcePath('collections'));
+  if (API_MODE === 'live') {
+    const page = unwrapPaginated<ImportKoboHistory>(raw);
+    return { ...page, items: page.items.map(toCollectionFromKoboImport) };
+  }
+  return raw as Paginated<Collection>;
 }
 
-export function fetchCollection(id: string): Promise<Collection> {
-  return http<Collection>(`/collections/${id}`);
+export async function fetchCollection(id: string): Promise<Collection> {
+  const raw = await http<CollecteTerrain>(resourcePath('collections', id));
+  return API_MODE === 'live' ? toCollection(raw) : (raw as unknown as Collection);
 }
 
-export function fetchIndicators(): Promise<Paginated<Indicator>> {
-  return http<Paginated<Indicator>>('/indicators');
+export async function fetchIndicators(): Promise<Paginated<Indicator>> {
+  const raw = await http<unknown>(resourcePath('indicators'));
+  if (API_MODE === 'live') return unwrapPaginated<Indicator>(raw);
+  return raw as Paginated<Indicator>;
 }
 
 /**
- * Soumet une collecte au backend (utilisée par la sync queue) — CDC §3.3.
+ * Soumet une collecte au backend — CDC §3.3.
  * Header `Idempotency-Key` exigé pour permettre une reprise sûre.
  */
 export function syncCollection(
   collection: Collection,
   idempotencyKey: string,
 ): Promise<Collection> {
-  return http<Collection>('/collections/sync', {
+  return http<Collection>(resourcePath('collections') + '/sync', {
     method: 'POST',
     body: collection,
     headers: { 'Idempotency-Key': idempotencyKey },
@@ -43,7 +62,7 @@ export function validateCollection(
   validatedBy: string,
   notes?: string,
 ): Promise<Collection> {
-  return http<Collection>(`/collections/${id}`, {
+  return http<Collection>(resourcePath('collections', id), {
     method: 'PATCH',
     body: {
       status: 'validated',
@@ -62,7 +81,7 @@ export function rejectCollection(
   validatedBy: string,
   rejectionReason: string,
 ): Promise<Collection> {
-  return http<Collection>(`/collections/${id}`, {
+  return http<Collection>(resourcePath('collections', id), {
     method: 'PATCH',
     body: {
       status: 'rejected',
@@ -74,9 +93,7 @@ export function rejectCollection(
 }
 
 /**
- * Demande une correction ciblée à l'agent — moins violent que le rejet.
- * La collecte revient en statut `needs_correction`, l'agent peut rouvrir
- * le wizard à l'étape concernée et resoumettre. CDC §5.2.3 « Corriger ».
+ * Demande une correction ciblée à l'agent — CDC §5.2.3.
  */
 export function requestCorrection(
   id: string,
@@ -84,7 +101,7 @@ export function requestCorrection(
   notes: string,
   targetSteps?: string[],
 ): Promise<Collection> {
-  return http<Collection>(`/collections/${id}`, {
+  return http<Collection>(resourcePath('collections', id), {
     method: 'PATCH',
     body: {
       status: 'needs_correction',
@@ -99,27 +116,25 @@ export function requestCorrection(
 }
 
 /**
- * Patch d'une mesure individuelle — utilisé pour la saisie différée des
- * résultats labo (CDC §7.2 modèle hybride).
+ * Patch d'une mesure individuelle — CDC §7.2 modèle hybride.
  */
 export function patchMeasurement(
   collectionId: string,
   indicatorId: string,
   patch: Partial<Measurement>,
 ): Promise<Collection> {
-  return http<Collection>(`/collections/${collectionId}/measurements/${indicatorId}`, {
-    method: 'PATCH',
-    body: patch,
-  });
+  return http<Collection>(
+    `${resourcePath('collections', collectionId)}/measurements/${indicatorId}`,
+    { method: 'PATCH', body: patch },
+  );
 }
 
-/* ─── Workflow labo : actions sur un flacon (containerId) ─── */
+/* ─── Workflow labo ─── */
 
 export interface SendSampleInput {
   collectionId: string;
   containerId: string;
   sentBy: string;
-  /** Le superviseur choisit le labo destinataire au moment de l'envoi. */
   labId: string;
 }
 
@@ -142,7 +157,6 @@ export interface TransmitBordereauInput {
   analyzedBy: string;
   bordereauRef?: string;
   bordereauUrl?: string;
-  /** Valeurs analysées par indicateur du flacon. */
   values: Array<{ indicatorId: string; value: number | string }>;
 }
 
@@ -154,28 +168,32 @@ export interface RejectBordereauInput {
 }
 
 export function markSampleSent(input: SendSampleInput): Promise<Collection> {
-  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/send`, {
+  const base = resourcePath('collections', input.collectionId);
+  return http<Collection>(`${base}/lab-samples/${input.containerId}/send`, {
     method: 'POST',
     body: { sentBy: input.sentBy, labId: input.labId },
   });
 }
 
 export function markSampleReceived(input: ReceiveSampleInput): Promise<Collection> {
-  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/receive`, {
+  const base = resourcePath('collections', input.collectionId);
+  return http<Collection>(`${base}/lab-samples/${input.containerId}/receive`, {
     method: 'POST',
     body: { receivedBy: input.receivedBy },
   });
 }
 
 export function refuseSample(input: RefuseSampleInput): Promise<Collection> {
-  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/refuse`, {
+  const base = resourcePath('collections', input.collectionId);
+  return http<Collection>(`${base}/lab-samples/${input.containerId}/refuse`, {
     method: 'POST',
     body: { reason: input.reason, refusedBy: input.refusedBy },
   });
 }
 
 export function transmitBordereau(input: TransmitBordereauInput): Promise<Collection> {
-  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/transmit`, {
+  const base = resourcePath('collections', input.collectionId);
+  return http<Collection>(`${base}/lab-samples/${input.containerId}/transmit`, {
     method: 'POST',
     body: {
       analyzedBy: input.analyzedBy,
@@ -187,8 +205,12 @@ export function transmitBordereau(input: TransmitBordereauInput): Promise<Collec
 }
 
 export function rejectBordereau(input: RejectBordereauInput): Promise<Collection> {
-  return http<Collection>(`/collections/${input.collectionId}/lab-samples/${input.containerId}/reject`, {
+  const base = resourcePath('collections', input.collectionId);
+  return http<Collection>(`${base}/lab-samples/${input.containerId}/reject`, {
     method: 'POST',
     body: { reason: input.reason, rejectedBy: input.rejectedBy },
   });
 }
+
+// Évite un import inutilisé du lint
+void iriToId;

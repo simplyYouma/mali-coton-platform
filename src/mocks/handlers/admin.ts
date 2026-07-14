@@ -20,7 +20,10 @@ const usersStore: ManagedUser[] = mockUsers.map((u) => ({
   id: u.id,
   email: u.email,
   fullName: u.fullName,
+  nom: '',
+  prenom: u.fullName,
   role: u.role,
+  roleIris: [],
   assignedSiteIds: u.assignedSiteIds,
   locale: u.locale,
   isActive: true,
@@ -28,8 +31,6 @@ const usersStore: ManagedUser[] = mockUsers.map((u) => ({
   lastLoginAt:
     u.id === 'u-agent-bko' ? new Date(Date.now() - 18 * 60_000).toISOString() : undefined,
   phone: u.phone,
-  koboUsername: u.koboUsername,
-  labId: u.labId,
 }));
 
 const thresholdsStore: ThresholdConfig[] = mockThresholds.map((t) => ({ ...t }));
@@ -61,18 +62,20 @@ export const adminHandlers = [
   http.post('/api/v1/users', async ({ request }) => {
     await delay(220);
     const body = (await request.json()) as UserCreateInput;
+    const nom = body.nom ?? '';
+    const prenom = body.prenom ?? '';
     const created: ManagedUser = {
       id: `u-${uuid().slice(0, 8)}`,
       email: body.email,
-      fullName: body.fullName,
-      role: body.role,
-      assignedSiteIds: body.assignedSiteIds,
-      locale: body.locale,
-      isActive: true,
+      nom,
+      prenom,
+      fullName: [prenom, nom].filter(Boolean).join(' ') || body.email,
+      role: 'visitor',
+      roleIris: body.roles ?? [],
+      assignedSiteIds: [],
+      locale: 'fr',
+      isActive: body.actif ?? true,
       createdAt: new Date().toISOString(),
-      phone: body.phone,
-      koboUsername: body.koboUsername,
-      labId: body.labId,
     };
     usersStore.push(created);
     return HttpResponse.json(created, { status: 201 });

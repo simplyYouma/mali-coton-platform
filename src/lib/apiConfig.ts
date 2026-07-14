@@ -9,7 +9,7 @@
 
 export type ApiMode = 'mock' | 'live';
 
-const envMode = (import.meta.env.VITE_API_MODE as ApiMode | undefined) ?? 'mock';
+const envMode = (import.meta.env.VITE_API_MODE as ApiMode | undefined) ?? 'live';
 const envBaseUrl =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://187.127.225.182';
 
@@ -32,7 +32,7 @@ export const USE_MSW: boolean = API_MODE === 'mock';
 export const RESOURCE_PATH: Record<string, string> = {
   // ressource frontend → segment URL effectif (sans préfixe)
   sites: API_MODE === 'live' ? 'site_teintures' : 'sites',
-  collections: API_MODE === 'live' ? 'collecte_terrains' : 'collections',
+  collections: API_MODE === 'live' ? 'import_kobos' : 'collections',
   labs: API_MODE === 'live' ? 'laboratoires' : 'labs',
   users: 'users',
   roles: 'roles',
@@ -50,6 +50,13 @@ export const RESOURCE_PATH: Record<string, string> = {
   analyses: 'analyse_laboratoires',
   resultats: 'resultat_analyses',
   validations: 'validation_superviseurs',
+  // imports Kobo
+  importKobos: 'import_kobos',
+  // formulaires dynamiques (Phase C)
+  formulaires: API_MODE === 'live' ? 'formulaire_collectes' : 'formulaires',
+  champFormulaires: 'champ_formulaires',
+  soumissions: API_MODE === 'live' ? 'soumission_formulaires' : 'soumissions',
+  reponses: 'reponse_champs',
 };
 
 /** Helper pour construire un path complet à partir d'une ressource logique. */

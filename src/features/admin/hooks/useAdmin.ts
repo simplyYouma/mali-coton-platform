@@ -1,14 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createIndicator,
+  createPermission,
+  createRole,
   createUser,
   deleteIndicator,
+  deletePermission,
+  deleteRole,
   deleteUser,
   fetchAuditLogs,
   fetchIndicatorsAdmin,
+  fetchPermissions,
+  fetchRoles,
   fetchThresholds,
   fetchUsers,
   updateIndicator,
+  updatePermission,
+  updateRole,
   updateThreshold,
   updateUser,
   type IndicatorCreateInput,
@@ -16,18 +24,81 @@ import {
 } from '../api/admin';
 import type {
   AuditFilter,
+  PermissionCreateInput,
+  PermissionUpdateInput,
+  RoleCreateInput,
+  RoleUpdateInput,
   ThresholdUpdateInput,
   UserCreateInput,
   UserUpdateInput,
 } from '../api/admin.types';
 
 const USERS_KEY = ['admin', 'users'] as const;
+const ROLES_KEY = ['admin', 'roles'] as const;
+const PERMISSIONS_KEY = ['admin', 'permissions'] as const;
 const THRESHOLDS_KEY = ['admin', 'thresholds'] as const;
 const AUDIT_KEY = ['admin', 'audit'] as const;
 const INDICATORS_KEY = ['admin', 'indicators'] as const;
 
 export function useUsers() {
   return useQuery({ queryKey: USERS_KEY, queryFn: fetchUsers });
+}
+
+export function useRoles() {
+  return useQuery({ queryKey: ROLES_KEY, queryFn: fetchRoles });
+}
+
+export function useCreateRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RoleCreateInput) => createRole(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ROLES_KEY }),
+  });
+}
+
+export function useUpdateRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: RoleUpdateInput }) => updateRole(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ROLES_KEY }),
+  });
+}
+
+export function useDeleteRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteRole(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ROLES_KEY }),
+  });
+}
+
+export function usePermissions() {
+  return useQuery({ queryKey: PERMISSIONS_KEY, queryFn: fetchPermissions });
+}
+
+export function useCreatePermission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PermissionCreateInput) => createPermission(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PERMISSIONS_KEY }),
+  });
+}
+
+export function useUpdatePermission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: PermissionUpdateInput }) =>
+      updatePermission(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PERMISSIONS_KEY }),
+  });
+}
+
+export function useDeletePermission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deletePermission(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PERMISSIONS_KEY }),
+  });
 }
 
 export function useCreateUser() {

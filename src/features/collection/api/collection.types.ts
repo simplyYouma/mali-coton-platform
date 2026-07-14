@@ -415,7 +415,7 @@ export const STATUS_VARIANT: Record<
  * `awaiting_lab` → `lab_complete`.
  */
 export function hasPendingLabSamples(collection: Collection): boolean {
-  return collection.measurements.some((m) => m.acquisition === 'lab_pending');
+  return (collection.measurements ?? []).some((m) => m.acquisition === 'lab_pending');
 }
 
 export const LAB_SAMPLE_STATUS_LABEL: Record<LabSampleStatus, string> = {

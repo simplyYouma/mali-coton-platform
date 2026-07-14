@@ -5,7 +5,6 @@
   width: 100%;
 }
 
-/* ── Hero — carte titre subtilement teintee ── */
 .hero {
   display: flex;
   align-items: center;
@@ -13,10 +12,9 @@
   gap: var(--space-4);
 }
 .heroLeft {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 .heroTitle {
   font-family: var(--font-display);
@@ -27,83 +25,63 @@
   line-height: 1;
   margin: 0;
 }
-
-/* Styles du header de page : voir src/styles/pageHero.css (single source of truth). */
-.heroCount {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
 .heroDescription {
-  margin: 4px 0 0 0;
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  max-width: 60ch;
-  line-height: 1.5;
-  flex-basis: 100%;
 }
-.heroRight {
+
+/* ── Tabs ── */
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+.tab {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-/* ── Toolbar : chips + légende ── */
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-.chips {
-  display: inline-flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.chip {
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  padding: 6px 16px;
+  border-radius: calc(var(--radius-md) - 2px);
+  border: none;
+  background: transparent;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
 }
-.chip:hover {
-  border-color: var(--color-border-strong);
+.tab:hover {
   color: var(--color-text);
+  background: var(--color-surface);
 }
-.chipActive {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-primary);
-}
-.chipActive:hover {
-  background: var(--color-primary-hover);
-  color: #fff;
-}
-.legend {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-.legendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  font-weight: var(--weight-medium);
+.tabActive {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
-/* ── Tableau ── */
-.tableWrap {
+/* ── Panel header ── */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.panelCount {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ── Table ── */
+.tableWrapper {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
@@ -115,140 +93,100 @@
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
-.cornerCell,
-.roleCell {
-  background: var(--color-surface-2);
-  padding: var(--space-3) var(--space-4);
+.table th {
+  text-align: left;
   font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
   font-weight: var(--weight-bold);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--color-border);
-}
-.cornerCell {
-  text-align: left;
-  min-width: 240px;
-}
-.roleCell {
-  text-align: center;
-  min-width: 140px;
-}
-.roleHead {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.lockIcon {
-  color: var(--color-primary);
-}
-
-.groupRow td {
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-bg);
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-text-muted);
-  font-weight: var(--weight-bold);
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-.moduleRow {
-  transition: background-color var(--duration-fast) var(--ease-out);
-}
-.moduleRow:hover {
   background: var(--color-surface-2);
 }
-.moduleCell {
+.table td {
   padding: var(--space-3) var(--space-4);
-  color: var(--color-text);
-  font-weight: var(--weight-medium);
   border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
   vertical-align: middle;
 }
-.permCell {
-  padding: 0;
-  text-align: center;
-  border-bottom: 1px solid var(--color-border);
-  position: relative;
+.table tbody tr:last-child td {
+  border-bottom: none;
 }
-.permCell[data-modified='true']::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-amber);
-}
-
-.cellBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: var(--space-3);
-  background: transparent;
-  border: none;
+.row {
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease-out);
 }
-.cellBtn:hover:not(:disabled) {
+.row:hover {
   background: var(--color-surface-2);
 }
-.cellLocked {
-  cursor: not-allowed;
-  opacity: 0.55;
+.cellMain {
+  font-weight: var(--weight-semibold);
 }
-
-.pill {
+.code {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  color: var(--color-text-muted);
+}
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+.iconBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-pill);
-  border: 1px solid transparent;
-}
-.pillWrite {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-}
-.pillRead {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-}
-.pillNone {
-  background: var(--color-surface-2);
-  color: var(--color-text-disabled);
-  border-color: var(--color-border);
-}
-
-.footnote {
-  margin: 0;
-  font-size: var(--text-xs);
+  border: none;
+  background: transparent;
   color: var(--color-text-muted);
-  text-align: center;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+.iconBtn:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
 }
 
-@media (max-width: 768px) {
-  .hero {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .legend {
-    justify-content: flex-start;
-  }
-  .cornerCell {
-    min-width: 160px;
-  }
-  .roleCell {
-    min-width: 100px;
-  }
+.skeletons {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Form ── */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.formGridFull {
+  grid-column: 1 / -1;
+}
+.checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .formGrid, .checklist { grid-template-columns: 1fr; }
 }

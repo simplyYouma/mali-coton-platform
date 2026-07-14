@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Database,
   FileText,
+  FormInput,
 } from 'lucide-react';
 import { AppShell } from '@/components/common/AppShell';
 import type { NavItem, NavSection } from '@/components/common/AppShell';
@@ -65,6 +66,13 @@ const ALL_NAV: NavSpec[] = [
     label: 'Échantillons labo',
     icon: <Beaker size={18} />,
     roles: ['admin', 'superviseur'],
+    section: 'main',
+  },
+  {
+    to: '/formulaires',
+    label: 'Formulaires',
+    icon: <FormInput size={18} />,
+    roles: ['agent', 'admin', 'superviseur'],
     section: 'main',
   },
   {
@@ -141,6 +149,13 @@ const ALL_NAV: NavSpec[] = [
     to: '/admin/audit',
     label: 'Journal d\'audit',
     icon: <ScrollText size={18} />,
+    roles: ['admin'],
+    section: 'admin',
+  },
+  {
+    to: '/admin/formulaires',
+    label: 'Modèles formulaires',
+    icon: <FormInput size={18} />,
     roles: ['admin'],
     section: 'admin',
   },

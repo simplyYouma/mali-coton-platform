@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FileSpreadsheet, Mail, Pencil, Phone, Plus, Search, Trash2, UserCheck, UserX } from 'lucide-react';
+import { FileSpreadsheet, Mail, Pencil, Plus, Search, Trash2, UserCheck, UserX } from 'lucide-react';
 import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   Badge,
@@ -9,61 +9,37 @@ import {
   FormField,
   Input,
   Modal,
-  Select,
   Skeleton,
   Switch,
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useConfirm } from '@/app/providers/ConfirmProvider';
-import { useSites } from '@/features/sites/hooks/useSites';
 import { formatRelativeTime } from '@/lib/format';
 import {
   useCreateUser,
   useDeleteUser,
+  useRoles,
   useUpdateUser,
   useUsers,
 } from '../hooks/useAdmin';
-import type { ManagedUser } from '../api/admin.types';
+import type { BackendRole, ManagedUser } from '../api/admin.types';
+import type { UserCreateInput } from '../api/admin.types';
 import styles from './UsersPage.module.css';
 
-/** Rôles éligibles à la connexion plateforme. Agents et labos sont exclus
- *  (ils n'accèdent pas à la plateforme, voir docs/CAHIER_PROJET.md §1.2). */
-type LoginableRole = 'admin' | 'superviseur' | 'visitor';
-
-const ROLE_OPTIONS: Array<{ value: LoginableRole; label: string }> = [
-  { value: 'admin', label: 'Administrateur' },
-  { value: 'superviseur', label: 'Superviseur' },
-  { value: 'visitor', label: 'Observateur' },
-];
-
-const ROLE_VARIANT: Record<LoginableRole, 'warning' | 'info' | 'neutral'> = {
-  admin: 'warning',
-  superviseur: 'info',
-  visitor: 'neutral',
-};
-
-const ROLE_LABEL: Record<LoginableRole, string> = {
-  admin: 'Administrateur',
-  superviseur: 'Superviseur',
-  visitor: 'Observateur',
-};
-
 interface FormState {
+  nom: string;
+  prenom: string;
   email: string;
-  fullName: string;
-  role: LoginableRole;
-  assignedSiteIds: string[];
-  locale: 'fr';
-  phone: string;
+  actif: boolean;
+  roleIris: string[];
 }
 
 const EMPTY_FORM: FormState = {
+  nom: '',
+  prenom: '',
   email: '',
-  fullName: '',
-  role: 'superviseur',
-  assignedSiteIds: [],
-  locale: 'fr',
-  phone: '',
+  actif: true,
+  roleIris: [],
 };
 
 function initials(name: string): string {
@@ -76,13 +52,16 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-type RoleFilter = 'all' | LoginableRole;
+function resolveRoleLabels(roleIris: string[], rolesMap: Map<string, BackendRole>): string {
+  if (!roleIris.length) return '—';
+  return roleIris.map((iri) => rolesMap.get(iri)?.libelle ?? iri).join(', ');
+}
 
 export function UsersPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const { data: usersPage, isLoading } = useUsers();
-  const { data: sitesPage } = useSites();
+  const { data: rolesData = [] } = useRoles();
   const createMut = useCreateUser();
   const updateMut = useUpdateUser();
   const deleteMut = useDeleteUser();
@@ -90,38 +69,30 @@ export function UsersPage() {
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [query, setQuery] = useState('');
 
-  const sitesList = useMemo(() => sitesPage?.items ?? [], [sitesPage]);
-  const sitesById = useMemo(() => {
-    const map = new Map<string, string>();
-    sitesList.forEach((s) => map.set(s.id, s.shortName));
-    return map;
-  }, [sitesList]);
+  const rolesMap = useMemo(() => {
+    const m = new Map<string, BackendRole>();
+    rolesData.forEach((r) => {
+      if (r['@id']) m.set(r['@id'], r);
+    });
+    return m;
+  }, [rolesData]);
 
-  /** Filtre des utilisateurs : exclut les agents et labos (non-loginables). */
-  const allUsers = useMemo(
-    () =>
-      (usersPage?.items ?? []).filter(
-        (u) => u.role !== 'agent' && u.role !== 'lab',
-      ),
-    [usersPage],
-  );
+  const allUsers = useMemo(() => usersPage?.items ?? [], [usersPage]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return allUsers.filter((u) => {
-      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
-      if (
-        q &&
-        !u.fullName.toLowerCase().includes(q) &&
-        !u.email.toLowerCase().includes(q)
-      )
-        return false;
-      return true;
-    });
-  }, [allUsers, roleFilter, query]);
+    if (!q) return allUsers;
+    return allUsers.filter(
+      (u) =>
+        u.fullName.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.roleIris.some((iri) =>
+          (rolesMap.get(iri)?.libelle ?? '').toLowerCase().includes(q),
+        ),
+    );
+  }, [allUsers, query, rolesMap]);
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
@@ -131,12 +102,11 @@ export function UsersPage() {
 
   const openEdit = (user: ManagedUser) => {
     setForm({
+      nom: user.nom,
+      prenom: user.prenom,
       email: user.email,
-      fullName: user.fullName,
-      role: user.role as LoginableRole,
-      assignedSiteIds: user.assignedSiteIds,
-      locale: 'fr',
-      phone: user.phone ?? '',
+      actif: user.isActive,
+      roleIris: user.roleIris,
     });
     setEditing(user);
     setCreating(false);
@@ -147,32 +117,31 @@ export function UsersPage() {
     setCreating(false);
   };
 
-  const toggleSite = (siteId: string) => {
+  const toggleRole = (iri: string) => {
     setForm((f) => ({
       ...f,
-      assignedSiteIds: f.assignedSiteIds.includes(siteId)
-        ? f.assignedSiteIds.filter((id) => id !== siteId)
-        : [...f.assignedSiteIds, siteId],
+      roleIris: f.roleIris.includes(iri)
+        ? f.roleIris.filter((r) => r !== iri)
+        : [...f.roleIris, iri],
     }));
   };
 
   const handleSubmit = async () => {
-    if (!form.email.trim() || !form.fullName.trim()) {
-      toast.error('E-mail et nom complet obligatoires.');
+    if (!form.prenom.trim() || !form.nom.trim()) {
+      toast.error('Prénom et nom obligatoires.');
       return;
     }
-    if (form.role === 'superviseur' && form.assignedSiteIds.length === 0) {
-      toast.error('Un superviseur doit être affecté à au moins un site.');
+    if (!form.email.trim()) {
+      toast.error('E-mail obligatoire.');
       return;
     }
     try {
-      const payload = {
-        email: form.email,
-        fullName: form.fullName,
-        role: form.role,
-        assignedSiteIds: form.assignedSiteIds,
-        locale: form.locale,
-        phone: form.phone.trim() || undefined,
+      const payload: UserCreateInput = {
+        nom: form.nom.trim(),
+        prenom: form.prenom.trim(),
+        email: form.email.trim(),
+        actif: form.actif,
+        ...(form.roleIris.length > 0 && { roles: form.roleIris }),
       };
       if (editing) {
         await updateMut.mutateAsync({ id: editing.id, patch: payload });
@@ -190,13 +159,12 @@ export function UsersPage() {
   const handleToggleActive = async (user: ManagedUser) => {
     const next = !user.isActive;
     try {
-      await updateMut.mutateAsync({ id: user.id, patch: { isActive: next } });
+      await updateMut.mutateAsync({ id: user.id, patch: { actif: next } });
       toast.success(
         next
           ? `${user.fullName} réactivé — accès rétabli.`
           : `${user.fullName} désactivé — accès suspendu.`,
       );
-      // Si on est en train d'éditer cet user, mettre à jour la référence locale
       if (editing && editing.id === user.id) {
         setEditing({ ...editing, isActive: next });
       }
@@ -233,7 +201,7 @@ export function UsersPage() {
             {totalActive} actif{totalActive > 1 ? 's' : ''} · {allUsers.length} au total
           </span>
           <p className={styles.heroDescription}>
-            Gestion des comptes plateforme — admin, superviseur, observateur.
+            Gestion des comptes plateforme et des rôles associés.
           </p>
         </div>
         <div className={styles.heroRight}>
@@ -243,7 +211,7 @@ export function UsersPage() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher…"
+              placeholder="Nom, e-mail ou rôle…"
               aria-label="Rechercher un utilisateur"
             />
           </div>
@@ -257,12 +225,11 @@ export function UsersPage() {
                 sheetName: 'Utilisateurs',
                 columns: [
                   { header: 'ID', accessor: (u) => u.id },
-                  { header: 'Nom', accessor: (u) => u.fullName },
+                  { header: 'Prénom', accessor: (u) => u.prenom },
+                  { header: 'Nom', accessor: (u) => u.nom },
                   { header: 'E-mail', accessor: (u) => u.email },
-                  { header: 'Téléphone', accessor: (u) => u.phone ?? '' },
-                  { header: 'Rôle', accessor: (u) => u.role },
+                  { header: 'Rôles', accessor: (u) => resolveRoleLabels(u.roleIris, rolesMap) },
                   { header: 'Statut', accessor: (u) => (u.isActive ? 'Actif' : 'Inactif') },
-                  { header: 'Sites assignés', accessor: (u) => u.assignedSiteIds.join(', ') },
                   { header: 'Créé le', accessor: (u) => u.createdAt ?? '' },
                 ],
                 rows: filtered,
@@ -277,26 +244,6 @@ export function UsersPage() {
         </div>
       </header>
 
-      <div className={styles.chips} role="tablist" aria-label="Filtrer par rôle">
-        <button
-          type="button"
-          className={`${styles.chip} ${roleFilter === 'all' ? styles.chipActive : ''}`}
-          onClick={() => setRoleFilter('all')}
-        >
-          Tous
-        </button>
-        {ROLE_OPTIONS.map((r) => (
-          <button
-            key={r.value}
-            type="button"
-            className={`${styles.chip} ${roleFilter === r.value ? styles.chipActive : ''}`}
-            onClick={() => setRoleFilter(r.value)}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-
       <div className={styles.tableWrapper}>
         {isLoading ? (
           <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -308,8 +255,8 @@ export function UsersPage() {
           <EmptyState
             title="Aucun utilisateur"
             description={
-              query || roleFilter !== 'all'
-                ? 'Aucun utilisateur ne correspond aux filtres.'
+              query
+                ? 'Aucun utilisateur ne correspond à la recherche.'
                 : 'Créez le premier compte pour démarrer.'
             }
           />
@@ -318,78 +265,58 @@ export function UsersPage() {
             <thead>
               <tr>
                 <th>Utilisateur</th>
-                <th>Rôle</th>
-                <th>Sites affectés</th>
-                <th>Dernière connexion</th>
+                <th>Rôle(s)</th>
                 <th>Statut</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((user) => {
-                const role = user.role as LoginableRole;
-                return (
-                  <tr
-                    key={user.id}
-                    className={styles.row}
-                    onClick={() => openEdit(user)}
-                  >
-                    <td>
-                      <div className={styles.user}>
-                        <span className={styles.avatar} aria-hidden="true">
-                          {initials(user.fullName)}
-                        </span>
-                        <div className={styles.userInfo}>
-                          <span className={styles.userName}>{user.fullName}</span>
-                          <span className={styles.userEmail}>{user.email}</span>
-                        </div>
+              {filtered.map((user) => (
+                <tr
+                  key={user.id}
+                  className={styles.row}
+                  onClick={() => openEdit(user)}
+                >
+                  <td>
+                    <div className={styles.user}>
+                      <span className={styles.avatar} aria-hidden="true">
+                        {initials(user.fullName)}
+                      </span>
+                      <div className={styles.userInfo}>
+                        <span className={styles.userName}>{user.fullName}</span>
+                        <span className={styles.userEmail}>{user.email}</span>
                       </div>
-                    </td>
-                    <td>
-                      <Badge variant={ROLE_VARIANT[role]} size="sm">
-                        {ROLE_LABEL[role]}
-                      </Badge>
-                    </td>
-                    <td>
-                      {user.assignedSiteIds.length === 0 ? (
-                        <span className={styles.muted}>
-                          {user.role === 'admin' ? 'Tous (admin)' : '—'}
-                        </span>
-                      ) : (
-                        <span className={styles.sitesList}>
-                          {user.assignedSiteIds
-                            .map((id) => sitesById.get(id) ?? id)
-                            .join(' · ')}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {user.lastLoginAt ? (
-                        <span className={styles.muted}>
-                          {formatRelativeTime(user.lastLoginAt)}
-                        </span>
-                      ) : (
-                        <span className={styles.disabled}>jamais</span>
-                      )}
-                    </td>
-                    <td>
-                      <Badge variant={user.isActive ? 'success' : 'neutral'} size="sm">
-                        {user.isActive ? 'Actif' : 'Désactivé'}
-                      </Badge>
-                    </td>
-                  </tr>
-                );
-              })}
+                    </div>
+                  </td>
+                  <td>
+                    {user.roleIris.length === 0 ? (
+                      <span className={styles.muted}>Aucun rôle</span>
+                    ) : (
+                      <div className={styles.rolesList}>
+                        {user.roleIris.map((iri) => (
+                          <Badge key={iri} variant="info" size="sm">
+                            {rolesMap.get(iri)?.libelle ?? iri}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <Badge variant={user.isActive ? 'success' : 'neutral'} size="sm">
+                      {user.isActive ? 'Actif' : 'Désactivé'}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}
       </div>
 
-      {/* Détail / édition utilisateur */}
       <Modal
         open={creating || editing !== null}
         onClose={closeModal}
         title={editing ? editing.fullName : 'Nouvel utilisateur'}
-        width={640}
+        width={560}
         footer={
           <>
             {editing ? (
@@ -428,17 +355,11 @@ export function UsersPage() {
                   <Mail size={12} aria-hidden="true" />
                   {editing.email}
                 </a>
-                {editing.phone ? (
-                  <a href={`tel:${editing.phone}`} className={styles.detailLink}>
-                    <Phone size={12} aria-hidden="true" />
-                    {editing.phone}
-                  </a>
-                ) : null}
               </div>
               <div className={styles.detailMeta}>
-                {editing.lastLoginAt
-                  ? `Connecté ${formatRelativeTime(editing.lastLoginAt)}`
-                  : 'Jamais connecté'}
+                {editing.createdAt
+                  ? `Créé ${formatRelativeTime(editing.createdAt)}`
+                  : ''}
               </div>
             </div>
             <div className={styles.detailToggle}>
@@ -450,13 +371,9 @@ export function UsersPage() {
               />
               <span className={styles.detailToggleHint}>
                 {editing.isActive ? (
-                  <>
-                    <UserCheck size={11} aria-hidden="true" /> Accès autorisé
-                  </>
+                  <><UserCheck size={11} aria-hidden="true" /> Accès autorisé</>
                 ) : (
-                  <>
-                    <UserX size={11} aria-hidden="true" /> Accès suspendu
-                  </>
+                  <><UserX size={11} aria-hidden="true" /> Accès suspendu</>
                 )}
               </span>
             </div>
@@ -464,49 +381,42 @@ export function UsersPage() {
         ) : null}
 
         <div className={styles.formGrid}>
-          <FormField label="Nom complet" required>
+          <FormField label="Prénom" required>
             <Input
-              value={form.fullName}
-              onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-              placeholder="Ex : Awa Diarra"
+              value={form.prenom}
+              onChange={(e) => setForm((f) => ({ ...f, prenom: e.target.value }))}
+              placeholder="Ex : Awa"
             />
           </FormField>
-          <FormField label="E-mail" required>
+          <FormField label="Nom" required>
             <Input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="prenom.nom@pnud.org"
-            />
-          </FormField>
-          <FormField label="Rôle" required>
-            <Select<LoginableRole>
-              options={ROLE_OPTIONS}
-              value={form.role}
-              onChange={(role) => setForm((f) => ({ ...f, role }))}
-            />
-          </FormField>
-          <FormField label="Mobile">
-            <Input
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              placeholder="+22376112233"
+              value={form.nom}
+              onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
+              placeholder="Ex : Diarra"
             />
           </FormField>
           <div className={styles.formGridFull}>
+            <FormField label="E-mail" required>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="prenom.nom@pnud.org"
+              />
+            </FormField>
+          </div>
+          <div className={styles.formGridFull}>
             <FormField
-              label="Sites affectés"
-              required={form.role === 'superviseur'}
-              hint={form.role === 'admin' ? "Un admin a accès à tous les sites." : undefined}
+              label="Rôles"
+              hint={rolesData.length === 0 ? 'Aucun rôle défini — créez des rôles d\'abord.' : undefined}
             >
               <div className={styles.checklist}>
-                {sitesList.map((site) => (
+                {rolesData.map((role) => (
                   <Checkbox
-                    key={site.id}
-                    checked={form.assignedSiteIds.includes(site.id)}
-                    onChange={() => toggleSite(site.id)}
-                    disabled={form.role === 'admin'}
-                    label={`${site.shortName} — ${site.location.commune}`}
+                    key={String(role.id)}
+                    checked={form.roleIris.includes(role['@id'] ?? '')}
+                    onChange={() => toggleRole(role['@id'] ?? '')}
+                    label={role.libelle}
                   />
                 ))}
               </div>

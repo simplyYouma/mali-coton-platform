@@ -1,5 +1,7 @@
 import type { Paginated } from '@/types/common';
 import { http } from '@/lib/http';
+import { API_MODE, resourcePath } from '@/lib/apiConfig';
+import { unwrapPaginated } from '@/lib/jsonld';
 import type { Lab } from './labs.types';
 
 export interface LabCreateInput {
@@ -10,14 +12,16 @@ export interface LabCreateInput {
   slaBusinessDays: number;
 }
 
-export function fetchLabs(): Promise<Paginated<Lab>> {
-  return http<Paginated<Lab>>('/labs');
+export async function fetchLabs(): Promise<Paginated<Lab>> {
+  const raw = await http<unknown>(resourcePath('labs'));
+  if (API_MODE === 'live') return unwrapPaginated<Lab>(raw);
+  return raw as Paginated<Lab>;
 }
 
-export function fetchLab(id: string): Promise<Lab> {
-  return http<Lab>(`/labs/${id}`);
+export async function fetchLab(id: string): Promise<Lab> {
+  return http<Lab>(resourcePath('labs', id));
 }
 
 export function createLab(input: LabCreateInput): Promise<Lab> {
-  return http<Lab>('/labs', { method: 'POST', body: input });
+  return http<Lab>(resourcePath('labs'), { method: 'POST', body: input });
 }

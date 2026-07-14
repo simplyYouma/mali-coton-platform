@@ -41,9 +41,14 @@ export function CollectionsReviewPage() {
   const items = useMemo(() => {
     const a = submittedQ.data?.items ?? [];
     const b = labCompleteQ.data?.items ?? [];
-    return [...a, ...b].sort(
-      (x, y) => new Date(y.collectedAt).getTime() - new Date(x.collectedAt).getTime(),
-    );
+    const seen = new Set<string>();
+    return [...a, ...b]
+      .filter((c) => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      })
+      .sort((x, y) => new Date(y.collectedAt).getTime() - new Date(x.collectedAt).getTime());
   }, [submittedQ.data, labCompleteQ.data]);
 
   const isLoading = submittedQ.isLoading || labCompleteQ.isLoading;

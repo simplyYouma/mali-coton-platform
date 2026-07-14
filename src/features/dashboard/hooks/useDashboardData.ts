@@ -64,7 +64,7 @@ function buildPhTimeseries(
     for (const collection of collections) {
       if (collection.siteId !== site.id) continue;
       if (!withinDays(collection.collectedAt, days)) continue;
-      const ph = collection.measurements.find((m) => m.indicatorId === 'water.ph');
+      const ph = (collection.measurements ?? []).find((m) => m.indicatorId === 'water.ph');
       const value = ph ? asNumeric(ph.value) : null;
       if (value === null) continue;
       const key = format(new Date(collection.collectedAt), 'dd/MM');
@@ -95,7 +95,7 @@ function buildLatestPm25(
       .sort((a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime());
     let found: number | null = null;
     for (const c of siteCollections) {
-      const m = c.measurements.find((x) => x.indicatorId === 'air.pm25');
+      const m = (c.measurements ?? []).find((x) => x.indicatorId === 'air.pm25');
       const v = m ? asNumeric(m.value) : null;
       if (v !== null) {
         found = v;
@@ -134,7 +134,7 @@ function buildHeatmap(
       for (const collection of collections) {
         if (collection.siteId !== site.id) continue;
         if (!withinDays(collection.collectedAt, days)) continue;
-        for (const m of collection.measurements) {
+        for (const m of (collection.measurements ?? [])) {
           const rule = findRule(m.indicatorId);
           if (!rule || rule.domain !== domain) continue;
           const numeric = asNumeric(m.value);
@@ -196,7 +196,7 @@ function buildKpis(
         lastSyncAt = c.syncedAt;
       }
     }
-    for (const m of c.measurements) {
+    for (const m of (c.measurements ?? [])) {
       const rule = findRule(m.indicatorId);
       if (!rule) continue;
       if (m.acquisition === 'lab_pending') pendingLab += 1;
@@ -252,7 +252,7 @@ function buildRecentCollections(
       agentId: c.agentId,
       collectedAt: c.collectedAt,
       status: c.status,
-      measurementsCount: c.measurements.length,
+      measurementsCount: (c.measurements ?? []).length,
     }));
 }
 

@@ -1,12 +1,14 @@
 /**
- * Minimal HTTP client. Centralises base URL, error envelope, JSON parsing.
+ * Minimal HTTP client. Centralises base URL, auth token, error envelope, JSON parsing.
  * All API access in features must go through this.
  *
  * Base URL pilotée par `apiConfig.ts` (mock /api/v1 ou live VITE_API_BASE_URL).
+ * JWT Bearer token lu depuis `tokenStore.ts` et injecté automatiquement en live.
  */
 
 import type { ApiError } from '@/types/common';
 import { API_BASE, API_MODE } from './apiConfig';
+import { getToken } from './tokenStore';
 
 export class HttpError extends Error {
   status: number;
@@ -21,44 +23,59 @@ export class HttpError extends Error {
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined>;
+  /** Passer true pour les endpoints publics (login) qui ne nécessitent pas de token. */
+  public?: boolean;
 }
 
 export async function http<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, query, headers, ...rest } = options;
-  // En mode live, API_BASE peut être une URL absolue. URL() gère les deux cas.
+  const { body, query, headers, public: isPublic, ...rest } = options;
+
   const baseUrl = API_BASE.startsWith('http')
     ? API_BASE
     : `${window.location.origin}${API_BASE}`;
   const url = new URL(`${baseUrl}${path}`);
+
   if (query) {
     Object.entries(query).forEach(([k, v]) => {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
     });
   }
 
-  // API Platform exige Accept: application/ld+json en live ;
-  // en mock on garde application/json (handlers MSW).
-  const acceptHeader =
-    API_MODE === 'live' ? 'application/ld+json' : 'application/json';
+  // API Platform exige application/ld+json en live ; MSW accepte application/json.
+  const contentType = API_MODE === 'live' ? 'application/ld+json' : 'application/json';
+
+  // Injection du Bearer token JWT (live uniquement, sauf endpoints publics).
+  const authHeader: Record<string, string> = {};
+  if (API_MODE === 'live' && !isPublic) {
+    const token = getToken();
+    if (token) authHeader['Authorization'] = `Bearer ${token}`;
+  }
 
   const response = await fetch(url.toString(), {
     headers: {
-      'Content-Type': API_MODE === 'live' ? 'application/ld+json' : 'application/json',
-      Accept: acceptHeader,
+      'Content-Type': contentType,
+      Accept: contentType,
+      ...authHeader,
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     ...rest,
   });
 
-  const contentType = response.headers.get('Content-Type') ?? '';
-  const isJson = contentType.includes('json');
+  const ct = response.headers.get('Content-Type') ?? '';
+  const isJson = ct.includes('json');
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    const errorPayload: ApiError = data?.error ?? {
-      code: 'unknown_error',
-      message: response.statusText,
+    // API Platform renvoie les erreurs sous forme {"hydra:description": "..."} ou {"message": "..."}
+    const message: string =
+      data?.['hydra:description'] ??
+      data?.message ??
+      data?.error?.message ??
+      response.statusText;
+    const errorPayload: ApiError = {
+      code: String(response.status),
+      message,
       correlationId: 'n/a',
     };
     throw new HttpError(response.status, errorPayload);
