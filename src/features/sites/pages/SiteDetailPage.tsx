@@ -1,17 +1,26 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   MapPin,
   Users,
-  Droplet,
-  Mountain,
-  Wind,
-  Trash2,
-  HeartPulse,
   ClipboardList,
   ImageOff,
   Pencil,
+  Calendar,
+  User,
+  Droplet,
+  Wrench,
+  Shield,
+  BookOpen,
+  HandHelping,
+  ListChecks,
+  MessageSquare,
+  Zap,
+  Eye,
+  Lock,
+  Flame,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Button,
@@ -26,44 +35,19 @@ import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { mockUsers } from '@/mocks/fixtures/users';
 import { findRule, computeLocalConformity } from '@/features/collection/lib/indicatorRules';
-import type {
-  Collection,
-  Measurement,
-} from '@/features/collection/api/collection.types';
+import type { Collection, Measurement } from '@/features/collection/api/collection.types';
 import { STATUS_LABEL, STATUS_VARIANT } from '@/features/collection/api/collection.types';
 import type { ConformityLevel } from '@/types/common';
-import { useSite, useDeleteSite } from '../hooks/useSites';
+import { useSite, useSiteDetail, useDeleteSite } from '../hooks/useSites';
 import { ConformityBadge } from '../components/ConformityBadge';
 import { SiteForm } from '../components/SiteForm';
 import { SITE_TYPE_LABEL } from '../api/site.types';
-import { formatRelativeTime, formatDateTime, formatGps } from '@/lib/format';
+import type { KoboCodedItem, KoboPhotoBackend } from '../api/sites.adapter';
+import { SitePhoto } from '../components/KoboImage';
+import { formatDateTime, formatGps } from '@/lib/format';
 import styles from './SiteDetailPage.module.css';
 
-const DOMAINS: Array<{
-  key: 'water' | 'soil' | 'air' | 'waste' | 'health';
-  label: string;
-  icon: ReactNode;
-}> = [
-  { key: 'water', label: 'Eaux usées', icon: <Droplet size={16} /> },
-  { key: 'soil', label: 'Sol', icon: <Mountain size={16} /> },
-  { key: 'air', label: 'Qualité de l\'air', icon: <Wind size={16} /> },
-  { key: 'waste', label: 'Déchets solides', icon: <Trash2 size={16} /> },
-  { key: 'health', label: 'Santé & sécurité', icon: <HeartPulse size={16} /> },
-];
-
-function highlightsOf(measurements: Measurement[]): string {
-  const sample = measurements
-    .slice(0, 3)
-    .map((m) => {
-      const rule = findRule(m.indicatorId);
-      const label = rule?.label ?? m.indicatorId;
-      const v = m.value === null || m.value === undefined ? '—' : m.value;
-      const unit = m.unit ?? rule?.unit ?? '';
-      return `${label}: ${v}${unit ? ' ' + unit : ''}`;
-    })
-    .join(' · ');
-  return sample || '—';
-}
+/* ─── helpers ─── */
 
 function worstConformity(measurements: Measurement[]): ConformityLevel {
   let worst: ConformityLevel = 'conforming';
@@ -79,12 +63,76 @@ function worstConformity(measurements: Measurement[]): ConformityLevel {
   return worst;
 }
 
+function isOui(val: unknown): boolean {
+  if (val == null) return false;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'number') return val === 1;
+  const s = String(val).toLowerCase();
+  return s.startsWith('oui') || s === '1' || s === 'true';
+}
+
+function OuiNon({ val }: { val: unknown }) {
+  const yes = isOui(val);
+  if (val == null || val === '') return <span className={styles.fieldEmpty}>—</span>;
+  return (
+    <span className={`${styles.ouiNon} ${yes ? styles.ouiNonOui : styles.ouiNonNon}`}>
+      {yes ? 'Oui' : 'Non'}
+    </span>
+  );
+}
+
+function Chips({ items }: { items: KoboCodedItem[] }) {
+  if (!items.length) return <span className={styles.fieldEmpty}>—</span>;
+  return (
+    <div className={styles.chipRow}>
+      {items.map((it) => (
+        <span key={it.id} className={styles.chip}>
+          {it.libelle}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className={styles.fieldRow}>
+      <span className={styles.fieldLabel}>{label}</span>
+      <span className={styles.fieldValue}>{children}</span>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={styles.sectionCard}>
+      <div className={styles.sectionHeader}>
+        <span className={styles.sectionIcon}>{icon}</span>
+        <h3 className={styles.sectionTitle}>{title}</h3>
+      </div>
+      <div className={styles.sectionBody}>{children}</div>
+    </div>
+  );
+}
+
+/* ─── Page ─── */
+
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+
   const { data: site, isLoading, isError } = useSite(id);
+  const { data: detail, isLoading: detailLoading } = useSiteDetail(id);
   const deleteMut = useDeleteSite();
 
   const { data: collectionsPage } = useCollections({ siteId: id });
@@ -96,9 +144,8 @@ export function SiteDetailPage() {
     [collectionsPage],
   );
 
-  const [tab, setTab] = useState<'overview' | 'history' | 'photos'>('overview');
+  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'photos' | 'historique'>('profil');
   const [editOpen, setEditOpen] = useState(false);
-
   const isAdmin = role === 'admin';
 
   const usersById = useMemo(() => {
@@ -107,75 +154,17 @@ export function SiteDetailPage() {
     return map;
   }, []);
 
-  const siteMetrics = useMemo(() => {
-    const windowDays = 60;
-    const dayMs = 86_400_000;
-    const now = Date.now();
-    const cutoff = now - windowDays * dayMs;
-    const cutoffPrev = now - 2 * windowDays * dayMs;
+  const cs = detail?.collecteSite ?? null;
+  const photos: KoboPhotoBackend[] = detail?.photos ?? [];
+  const typesTeinture: KoboCodedItem[] = detail?.typesTeinture ?? [];
+  const equipements: KoboCodedItem[] = detail?.equipements ?? [];
+  const epis: KoboCodedItem[] = detail?.epis ?? [];
+  const risques: KoboCodedItem[] = detail?.risquesSecurite ?? [];
+  const formations: KoboCodedItem[] = detail?.formationsRecues ?? [];
+  const appuis: KoboCodedItem[] = detail?.appuisRecus ?? [];
+  const besoins: KoboCodedItem[] = detail?.besoinsPrioritaires ?? [];
 
-    const ordered = [...siteCollections].sort(
-      (a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime(),
-    );
-
-    const phSeries: number[] = [];
-    const pm25Series: number[] = [];
-    for (const c of ordered.slice(-12)) {
-      const ph = c.measurements.find((m) => m.indicatorId === 'water.ph')?.value;
-      const pm = c.measurements.find((m) => m.indicatorId === 'air.pm25')?.value;
-      if (typeof ph === 'number') phSeries.push(ph);
-      if (typeof pm === 'number') pm25Series.push(pm);
-    }
-
-    const latestPh = phSeries.at(-1) ?? null;
-    const latestPm25 = pm25Series.at(-1) ?? null;
-
-    /* Sparkline collectes : 6 buckets sur la fenêtre */
-    const buckets = 6;
-    const bucketMs = (windowDays * dayMs) / buckets;
-    const collectionsSpark = Array(buckets).fill(0) as number[];
-    let collectionsCount = 0;
-    let collectionsPrev = 0;
-    for (const c of siteCollections) {
-      const t = new Date(c.collectedAt).getTime();
-      if (t >= cutoff) {
-        collectionsCount += 1;
-        const idx = Math.min(buckets - 1, Math.floor((t - cutoff) / bucketMs));
-        collectionsSpark[idx] = (collectionsSpark[idx] ?? 0) + 1;
-      } else if (t >= cutoffPrev) {
-        collectionsPrev += 1;
-      }
-    }
-    const collectionsTrend =
-      collectionsPrev > 0
-        ? Math.round(((collectionsCount - collectionsPrev) / collectionsPrev) * 100)
-        : 0;
-
-    return {
-      windowDays,
-      collectionsCount,
-      collectionsPrev,
-      collectionsTrend,
-      collectionsSpark,
-      phSeries,
-      pm25Series,
-      latestPh,
-      latestPm25,
-    };
-  }, [siteCollections]);
-
-  const photos = useMemo(() => {
-    /* Agrégation déduplicquée : une URL n'apparaît qu'une fois (la collecte la plus récente). */
-    const seen = new Map<string, { url: string; collectionId: string; date: string }>();
-    siteCollections.forEach((c) => {
-      c.photos.forEach((p) => {
-        if (seen.has(p.url)) return;
-        seen.set(p.url, { url: p.url, collectionId: c.id, date: c.collectedAt });
-      });
-    });
-    return Array.from(seen.values());
-  }, [siteCollections]);
-
+  /* ── loading / error ── */
   if (isLoading) {
     return (
       <div className={styles.loading}>
@@ -225,14 +214,19 @@ export function SiteDetailPage() {
         <span>Tous les sites</span>
       </Link>
 
+      {/* ── Hero ── */}
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
+            <span className={styles.heroCode}>{site.codeSite}</span>
+            {' · '}
             {SITE_TYPE_LABEL[site.type]}
           </span>
           <h1 className={styles.heroTitle}>{site.shortName}</h1>
-          {site.description ? (
-            <p className={styles.heroDescription}>{site.description}</p>
+          {site.niveauFormalisation ? (
+            <p className={styles.heroDescription}>
+              Niveau de formalisation : {site.niveauFormalisation}
+            </p>
           ) : null}
         </div>
         <div className={styles.heroActions}>
@@ -253,179 +247,270 @@ export function SiteDetailPage() {
         </div>
       </header>
 
-      {/* ── Info strip compact ── */}
+      {/* ── Info strip ── */}
       <section className={styles.infoStrip} aria-label="Informations site">
         <div className={styles.infoCell}>
           <span className={styles.infoLabel}>Localisation</span>
           <span className={styles.infoValue}>
             <MapPin size={12} aria-hidden="true" />
-            {site.location.commune}, {site.location.city}
+            {site.location.commune || cs?.ville || '—'}
           </span>
         </div>
         <div className={styles.infoCell}>
           <span className={styles.infoLabel}>Effectif</span>
           <span className={styles.infoValue}>
             <Users size={12} aria-hidden="true" />
-            {site.workforce} membres
+            {site.workforce > 0 ? `${site.workforce} personnes` : (cs?.nbEmployesTotal ?? '—')}
           </span>
         </div>
         <div className={styles.infoCell}>
-          <span className={styles.infoLabel}>Statut</span>
+          <span className={styles.infoLabel}>Statut foncier</span>
           <span className={styles.infoValue}>
-            {site.legalStatus === 'formel' ? 'Formel' : 'Informel'} · {site.createdYear}
+            {site.legalStatus === 'formel' ? 'Formel' : 'Informel'}
+            {cs?.anneeCreation ? ` · ${cs.anneeCreation}` : ''}
           </span>
         </div>
         <div className={styles.infoCell}>
           <span className={styles.infoLabel}>GPS</span>
           <span className={`${styles.infoValue} mono`}>
-            {formatGps(site.coordinates.lat, site.coordinates.lng)}
+            {site.coordinates.lat !== 0
+              ? formatGps(site.coordinates.lat, site.coordinates.lng)
+              : '—'}
           </span>
         </div>
       </section>
 
-      {/* ── Cartes metrics avec sparklines ── */}
-      <section className={styles.metricGrid} aria-label="Indicateurs clés">
-        <MetricCard
-          label="Conformité"
-          value={
-            site.conformity === 'conforming'
-              ? 'Conforme'
-              : site.conformity === 'warning'
-                ? 'À surveiller'
-                : 'Hors seuil'
-          }
-          tone={
-            site.conformity === 'conforming'
-              ? 'ok'
-              : site.conformity === 'warning'
-                ? 'warn'
-                : 'crit'
-          }
-          caption={
-            site.lastCollectionAt
-              ? `dernière · ${formatRelativeTime(site.lastCollectionAt)}`
-              : 'aucune collecte'
-          }
-        />
-        <MetricCard
-          label={`Collectes ${siteMetrics.windowDays} j`}
-          value={String(siteMetrics.collectionsCount)}
-          caption={
-            siteMetrics.collectionsTrend === 0
-              ? `précédent · ${siteMetrics.collectionsPrev}`
-              : `${siteMetrics.collectionsTrend > 0 ? '+' : ''}${siteMetrics.collectionsTrend}% vs ${siteMetrics.windowDays} j`
-          }
-          spark={siteMetrics.collectionsSpark}
-          sparkColor="var(--color-primary)"
-        />
-        <MetricCard
-          label="pH eaux usées"
-          value={
-            siteMetrics.latestPh != null ? siteMetrics.latestPh.toFixed(2) : '—'
-          }
-          tone={
-            siteMetrics.latestPh == null
-              ? undefined
-              : siteMetrics.latestPh > 8.5 || siteMetrics.latestPh < 6.5
-                ? 'crit'
-                : siteMetrics.latestPh > 8.2 || siteMetrics.latestPh < 6.8
-                  ? 'warn'
-                  : 'ok'
-          }
-          caption={`OMS 6,5 – 8,5`}
-          spark={siteMetrics.phSeries}
-          sparkColor="var(--chart-2)"
-        />
-        <MetricCard
-          label="PM2,5 air"
-          value={
-            siteMetrics.latestPm25 != null
-              ? `${siteMetrics.latestPm25.toFixed(0)}`
-              : '—'
-          }
-          unit={siteMetrics.latestPm25 != null ? 'µg/m³' : undefined}
-          tone={
-            siteMetrics.latestPm25 == null
-              ? undefined
-              : siteMetrics.latestPm25 > 25
-                ? 'crit'
-                : siteMetrics.latestPm25 > 20
-                  ? 'warn'
-                  : 'ok'
-          }
-          caption="OMS 25 µg/m³ · 24 h"
-          spark={siteMetrics.pm25Series}
-          sparkColor="var(--chart-5)"
-        />
+      {/* ── Stat tiles ── */}
+      <section className={styles.statGrid} aria-label="Chiffres clés">
+        <div className={styles.statTile}>
+          <span className={styles.statLabel}>Employés total</span>
+          <span className={styles.statValue}>
+            {cs?.nbEmployesTotal ?? site.workforce ?? '—'}
+          </span>
+        </div>
+        <div className={styles.statTile}>
+          <span className={styles.statLabel}>Femmes</span>
+          <span className={styles.statValue} data-gender="f">
+            {cs?.nbFemmes ?? site.workforceWomen ?? '—'}
+          </span>
+        </div>
+        <div className={styles.statTile}>
+          <span className={styles.statLabel}>Hommes</span>
+          <span className={styles.statValue} data-gender="m">
+            {cs?.nbHommes ?? site.workforceMen ?? '—'}
+          </span>
+        </div>
+        <div className={styles.statTile}>
+          <span className={styles.statLabel}>Types de teinture</span>
+          <span className={styles.statValue}>{typesTeinture.length || '—'}</span>
+        </div>
       </section>
 
       <Tabs
         value={tab}
         onChange={setTab}
         items={[
-          { value: 'overview', label: 'Vue d\'ensemble' },
-          { value: 'history', label: 'Historique', badge: siteCollections.length || undefined },
+          { value: 'profil', label: 'Profil du site' },
+          { value: 'conditions', label: 'Conditions de travail' },
+          { value: 'appuis', label: 'Appuis & Besoins' },
           { value: 'photos', label: 'Photos', badge: photos.length || undefined },
+          { value: 'historique', label: 'Historique', badge: siteCollections.length || undefined },
         ]}
         aria-label="Sections de la fiche site"
       />
 
       <div className={styles.body}>
-        {tab === 'overview' ? (
-          <div className={styles.split}>
-            <section className={styles.panel} aria-labelledby="domains-heading">
-              <header className={styles.panelHeader}>
-                <h2 id="domains-heading" className={styles.panelTitle}>
-                  Conformité par domaine
-                </h2>
-                <Badge variant="neutral" size="sm">
-                  Sources : OMS · Normes maliennes
-                </Badge>
-              </header>
-              <ul className={styles.domainList}>
-                {DOMAINS.map((d) => (
-                  <li key={d.key} className={styles.domainRow}>
-                    <span className={styles.domainIcon} aria-hidden="true">
-                      {d.icon}
-                    </span>
-                    <span className={styles.domainLabel}>{d.label}</span>
-                    <ConformityBadge level={site.conformityByDomain[d.key]} size="sm" />
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className={styles.panel} aria-labelledby="loc-heading">
-              <header className={styles.panelHeader}>
-                <h2 id="loc-heading" className={styles.panelTitle}>
-                  Localisation
-                </h2>
-                <Link to="/cartographie">
-                  <Button variant="ghost" size="sm">
-                    Ouvrir dans la carte
-                  </Button>
-                </Link>
-              </header>
-              <div className={styles.mapPreview}>
-                <div className={styles.mapDot} aria-hidden="true">
-                  <MapPin size={20} />
-                </div>
-                <div className={styles.mapInfo}>
-                  <p className={styles.mapTitle}>{site.shortName}</p>
-                  <p className={styles.mapSubtitle}>
-                    {site.location.address ? `${site.location.address} · ` : ''}
-                    {site.location.commune}, {site.location.city}
-                  </p>
-                  <p className={`${styles.mapCoords} mono`}>
-                    {formatGps(site.coordinates.lat, site.coordinates.lng)}
-                  </p>
-                </div>
-              </div>
-            </section>
+        {/* ── Squelette chargement (commun aux 3 onglets de collecte) ── */}
+        {detailLoading && (tab === 'profil' || tab === 'conditions' || tab === 'appuis') ? (
+          <div className={styles.ficheGrid}>
+            <Skeleton height={220} radius={12} />
+            <Skeleton height={220} radius={12} />
+            <Skeleton height={180} radius={12} />
+            <Skeleton height={180} radius={12} />
           </div>
         ) : null}
 
-        {tab === 'history' ? (
+        {/* ── Empty state sans données (commun) ── */}
+        {!detailLoading && !cs && (tab === 'profil' || tab === 'conditions' || tab === 'appuis') ? (
+          <EmptyState
+            icon={<ClipboardList size={24} />}
+            title="Pas encore de données collectées"
+            description="La fiche terrain pour ce site n'a pas encore été importée."
+          />
+        ) : null}
+
+        {/* ══ Onglet Profil du site ══ */}
+        {tab === 'profil' && cs ? (
+          <div className={styles.ficheGrid}>
+            <SectionCard title="Identification" icon={<Calendar size={16} />}>
+              <FieldRow label="Date de visite">
+                {cs.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
+              </FieldRow>
+              <FieldRow label="Agent collecteur">{cs.agent ?? '—'}</FieldRow>
+              <FieldRow label="Ville / Commune">{cs.ville ?? '—'}</FieldRow>
+              <FieldRow label="Année de création">{cs.anneeCreation ?? '—'}</FieldRow>
+              <FieldRow label="Statut juridique">{cs.statutJuridique ?? '—'}</FieldRow>
+              <FieldRow label="GPS collecte">
+                {cs.latitude && cs.longitude
+                  ? formatGps(cs.latitude, cs.longitude)
+                  : cs.gpsSiteRaw ?? '—'}
+              </FieldRow>
+            </SectionCard>
+
+            <SectionCard title="Responsable du site" icon={<User size={16} />}>
+              <FieldRow label="Nom">{cs.nomResponsable ?? site.responsableName ?? '—'}</FieldRow>
+              <FieldRow label="Genre">{cs.genreResponsable ?? '—'}</FieldRow>
+            </SectionCard>
+
+            <SectionCard title="Effectifs" icon={<Users size={16} />}>
+              <FieldRow label="Total">{cs.nbEmployesTotal ?? '—'}</FieldRow>
+              <FieldRow label="Femmes">{cs.nbFemmes ?? '—'}</FieldRow>
+              <FieldRow label="Hommes">{cs.nbHommes ?? '—'}</FieldRow>
+            </SectionCard>
+
+            <SectionCard title="Types de teinture" icon={<Flame size={16} />}>
+              <Chips items={typesTeinture} />
+            </SectionCard>
+          </div>
+        ) : null}
+
+        {/* ══ Onglet Conditions de travail ══ */}
+        {tab === 'conditions' && cs ? (
+          <div className={styles.ficheGrid}>
+            <SectionCard title="Ressource en eau" icon={<Droplet size={16} />}>
+              <FieldRow label="Source d'eau">{cs.sourceEau ?? '—'}</FieldRow>
+              <FieldRow label="État de la source">{cs.etatSourcePrincipale ?? '—'}</FieldRow>
+              <FieldRow label="Consommation (m³)">
+                {cs.consommationEauM3 != null ? `${cs.consommationEauM3} m³` : '—'}
+              </FieldRow>
+              {cs.observationsEau ? (
+                <FieldRow label="Observations">{cs.observationsEau}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="Équipements" icon={<Wrench size={16} />}>
+              <FieldRow label="Équipements disponibles">
+                <Chips items={equipements} />
+              </FieldRow>
+              <FieldRow label="État général">{cs.etatGeneralEquipements ?? '—'}</FieldRow>
+              {cs.observationsEquipements ? (
+                <FieldRow label="Observations">{cs.observationsEquipements}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />}>
+              <FieldRow label="EPI disponibles">
+                <Chips items={epis} />
+              </FieldRow>
+              <FieldRow label="Qualité des EPI">{cs.qualiteEpi ?? '—'}</FieldRow>
+              <FieldRow label="Formation EPI reçue">
+                <OuiNon val={cs.formationEpiRecue} />
+              </FieldRow>
+              {cs.observationsEpiSite ? (
+                <FieldRow label="Observations">{cs.observationsEpiSite}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />}>
+              <div className={styles.boolRow}>
+                <span className={styles.boolItem}>
+                  <Lock size={12} />
+                  Clôture
+                  <OuiNon val={cs.cloture} />
+                </span>
+                <span className={styles.boolItem}>
+                  <Zap size={12} />
+                  Éclairage
+                  <OuiNon val={cs.eclairage} />
+                </span>
+                <span className={styles.boolItem}>
+                  <Eye size={12} />
+                  Surveillance
+                  <OuiNon val={cs.surveillance} />
+                </span>
+              </div>
+              <FieldRow label="Risques identifiés">
+                <Chips items={risques} />
+              </FieldRow>
+              <FieldRow label="Accidents récents">
+                <OuiNon val={cs.accidentsRecents} />
+              </FieldRow>
+              {cs.descriptionAccidents ? (
+                <FieldRow label="Description">{cs.descriptionAccidents}</FieldRow>
+              ) : null}
+              {cs.observationsSecurite ? (
+                <FieldRow label="Observations">{cs.observationsSecurite}</FieldRow>
+              ) : null}
+            </SectionCard>
+          </div>
+        ) : null}
+
+        {/* ══ Onglet Appuis & Besoins ══ */}
+        {tab === 'appuis' && cs ? (
+          <div className={styles.ficheGrid}>
+            <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />}>
+              <FieldRow label="Comptabilité">{cs.comptabilite ?? '—'}</FieldRow>
+              <FieldRow label="Couverture sociale">{cs.couvertureSociale ?? '—'}</FieldRow>
+            </SectionCard>
+
+            <SectionCard title="Formations reçues" icon={<BookOpen size={16} />}>
+              <Chips items={formations} />
+              {cs.formationsAutre ? (
+                <FieldRow label="Autres">{cs.formationsAutre}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="Appuis reçus" icon={<HandHelping size={16} />}>
+              <Chips items={appuis} />
+            </SectionCard>
+
+            <SectionCard title="Besoins prioritaires" icon={<ListChecks size={16} />}>
+              <Chips items={besoins} />
+            </SectionCard>
+
+            {cs.observationsGenerales || cs.recommandations ? (
+              <div className={styles.fullWidth}>
+                <SectionCard title="Observations & Recommandations" icon={<MessageSquare size={16} />}>
+                  {cs.observationsGenerales ? (
+                    <FieldRow label="Observations générales">{cs.observationsGenerales}</FieldRow>
+                  ) : null}
+                  {cs.recommandations ? (
+                    <FieldRow label="Recommandations">{cs.recommandations}</FieldRow>
+                  ) : null}
+                </SectionCard>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* ══ Onglet Photos ══ */}
+        {tab === 'photos' ? (
+          photos.length === 0 ? (
+            <EmptyState
+              icon={<ImageOff size={24} />}
+              title="Aucune photo pour ce site"
+              description="Les photos Kobo apparaîtront ici une fois importées."
+            />
+          ) : (
+            <div className={styles.photoGrid}>
+              {photos.map((p) => (
+                <div key={p.id} className={styles.photoCard}>
+                  <SitePhoto
+                    src={p.downloadMediumUrl ?? p.downloadUrl}
+                    fullUrl={p.downloadLargeUrl ?? p.downloadUrl}
+                    alt={p.mediaFileBasename ?? 'Photo du site'}
+                  />
+                  {p.mediaFileBasename ? (
+                    <span className={styles.photoMeta}>{p.mediaFileBasename}</span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )
+        ) : null}
+
+        {/* ══ Onglet Historique ══ */}
+        {tab === 'historique' ? (
           <section className={styles.panel} aria-label="Historique des collectes">
             {siteCollections.length === 0 ? (
               <EmptyState
@@ -460,9 +545,6 @@ export function SiteDetailPage() {
                             {STATUS_LABEL[entry.status]}
                           </Badge>
                         </header>
-                        <p className={styles.timelineHighlights}>
-                          {highlightsOf(entry.measurements)}
-                        </p>
                         <footer className={styles.timelineFooter}>
                           <ConformityBadge level={conformity} size="sm" />
                           <Link to={`/collecte/${entry.id}`}>
@@ -479,89 +561,11 @@ export function SiteDetailPage() {
             )}
           </section>
         ) : null}
-
-        {tab === 'photos' ? (
-          photos.length === 0 ? (
-            <EmptyState
-              icon={<ImageOff size={24} />}
-              title="Pas encore de photos pour ce site"
-              description="Les photos sont prises horodatées par les agents lors de la collecte terrain. Elles apparaîtront ici une fois synchronisées."
-            />
-          ) : (
-            <div className={styles.photoGrid}>
-              {photos.map((p) => (
-                <Link
-                  key={`${p.collectionId}-${p.url}`}
-                  to={`/collecte/${p.collectionId}`}
-                  className={styles.photoCard}
-                >
-                  <img src={p.url} alt="Collecte terrain" />
-                  <span className={styles.photoMeta}>
-                    {formatRelativeTime(p.date)}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )
-        ) : null}
       </div>
 
       {isAdmin ? (
         <SiteForm open={editOpen} onClose={() => setEditOpen(false)} site={site} />
       ) : null}
     </>
-  );
-}
-
-/* ─────────── Metric Card + Sparkline ─────────── */
-
-interface MetricCardProps {
-  label: string;
-  value: string;
-  unit?: string;
-  caption?: string;
-  tone?: 'ok' | 'warn' | 'crit';
-  spark?: number[];
-  sparkColor?: string;
-}
-
-function MetricCard({ label, value, unit, caption, tone, spark, sparkColor }: MetricCardProps) {
-  return (
-    <div className={styles.metricCard} data-tone={tone}>
-      <span className={styles.metricLabel}>{label}</span>
-      <div className={styles.metricValueRow}>
-        <span className={styles.metricValue}>{value}</span>
-        {unit ? <span className={styles.metricUnit}>{unit}</span> : null}
-      </div>
-      <div className={styles.metricFoot}>
-        {caption ? <span className={styles.metricCaption}>{caption}</span> : null}
-        {spark && spark.length > 1 ? (
-          <Sparkline values={spark} color={sparkColor ?? 'var(--color-primary)'} />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function Sparkline({ values, color }: { values: number[]; color: string }) {
-  if (values.length < 2) return null;
-  const w = 60;
-  const h = 22;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const step = w / (values.length - 1);
-  const pts = values.map((v, i) => {
-    const x = i * step;
-    const y = h - ((v - min) / range) * (h - 2) - 1;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const path = `M${pts.join(' L')}`;
-  const area = `${path} L${w},${h} L0,${h} Z`;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className={styles.sparkline} aria-hidden="true">
-      <path d={area} fill={color} fillOpacity="0.10" />
-      <path d={path} fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
   );
 }

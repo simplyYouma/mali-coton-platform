@@ -38,6 +38,101 @@ export interface SiteTeintureBackend {
   updatedAt?: string | null;
 }
 
+/** Élément codé (teinture, équipement, EPI, risque, formation, appui, besoin). */
+export interface KoboCodedItem {
+  id: number;
+  siteTeintureId?: number;
+  collecteSiteId?: number;
+  code: string;
+  libelle: string;
+  createdAt?: string | null;
+}
+
+/** Photo Kobo renvoyée dans le détail d'un site. */
+export interface KoboPhotoBackend {
+  id: number;
+  siteTeintureId?: number;
+  collecteSiteId?: number;
+  questionXpath?: string | null;
+  mediaFileBasename?: string | null;
+  mimeType?: string | null;
+  downloadUrl: string;
+  downloadLargeUrl?: string | null;
+  downloadMediumUrl?: string | null;
+  downloadSmallUrl?: string | null;
+}
+
+/** Données de la collecte terrain associée au site (Kobo). */
+export interface CollecteSiteBackend {
+  id: number;
+  koboSubmissionId?: string | null;
+  koboUuid?: string | null;
+  koboFormUid?: string | null;
+  idSiteKobo?: string | null;
+  dateVisite?: string | null;
+  siteCode?: string | null;
+  ville?: string | null;
+  agent?: string | null;
+  gpsSiteRaw?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  nomResponsable?: string | null;
+  genreResponsable?: string | null;
+  anneeCreation?: number | string | null;
+  statutJuridique?: string | null;
+  typesTeinture?: string | null;
+  nbEmployesTotal?: number | null;
+  nbFemmes?: number | null;
+  nbHommes?: number | null;
+  sourceEau?: string | null;
+  etatSourcePrincipale?: string | null;
+  consommationEauM3?: number | string | null;
+  observationsEau?: string | null;
+  equipementsDisponibles?: string | null;
+  etatGeneralEquipements?: string | null;
+  observationsEquipements?: string | null;
+  epiDisponibles?: string | null;
+  qualiteEpi?: string | null;
+  formationEpiRecue?: string | boolean | null;
+  observationsEpiSite?: string | null;
+  cloture?: string | boolean | null;
+  eclairage?: string | boolean | null;
+  surveillance?: string | boolean | null;
+  risquesSecurite?: string | null;
+  accidentsRecents?: string | boolean | null;
+  descriptionAccidents?: string | null;
+  observationsSecurite?: string | null;
+  comptabilite?: string | null;
+  couvertureSociale?: string | null;
+  formationsRecues?: string | null;
+  formationsAutre?: string | null;
+  appuisRecus?: string | null;
+  besoinsPrioritaires?: string | null;
+  observationsGenerales?: string | null;
+  recommandations?: string | null;
+  photoSite1?: string | null;
+  photoSite2?: string | null;
+  photoEquipements?: string | null;
+  photoEpi?: string | null;
+  photoSecurite?: string | null;
+  statutImport?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+/** Réponse complète de GET /api/site_teintures/{id} avec données enrichies. */
+export interface SiteTeintureDetailBackend extends SiteTeintureBackend {
+  collecteSite?: CollecteSiteBackend | null;
+  typesTeinture?: KoboCodedItem[];
+  equipements?: KoboCodedItem[];
+  epis?: KoboCodedItem[];
+  risquesSecurite?: KoboCodedItem[];
+  formationsRecues?: KoboCodedItem[];
+  appuisRecus?: KoboCodedItem[];
+  besoinsPrioritaires?: KoboCodedItem[];
+  photos?: KoboPhotoBackend[];
+}
+
 function mapType(raw?: string | null): SiteType {
   if (!raw) return 'NATURELLE';
   const up = raw.toUpperCase();

@@ -52,6 +52,7 @@ export const RESOURCE_PATH: Record<string, string> = {
   validations: 'validation_superviseurs',
   // imports Kobo
   importKobos: 'import_kobos',
+  collectePhotos: 'collecte_photos',
   // formulaires dynamiques (Phase C)
   formulaires: API_MODE === 'live' ? 'formulaire_collectes' : 'formulaires',
   champFormulaires: 'champ_formulaires',

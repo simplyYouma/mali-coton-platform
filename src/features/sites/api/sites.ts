@@ -2,7 +2,7 @@ import type { Paginated } from '@/types/common';
 import { http } from '@/lib/http';
 import { API_MODE, resourcePath } from '@/lib/apiConfig';
 import { unwrapPaginated } from '@/lib/jsonld';
-import { toSite, type SiteTeintureBackend } from './sites.adapter';
+import { toSite, type SiteTeintureBackend, type SiteTeintureDetailBackend } from './sites.adapter';
 import type { Site } from './site.types';
 
 export interface SitesQuery {
@@ -45,6 +45,12 @@ export async function fetchSite(id: string): Promise<Site> {
     return toSite(raw);
   }
   return http<Site>(resourcePath('sites', id));
+}
+
+/** Retourne les données brutes backend enrichies (collecteSite, photos, listes codées). */
+export async function fetchSiteDetail(id: string): Promise<SiteTeintureDetailBackend | null> {
+  if (API_MODE !== 'live') return null;
+  return http<SiteTeintureDetailBackend>(resourcePath('sites', id));
 }
 
 export function createSite(input: SiteInput): Promise<Site> {
