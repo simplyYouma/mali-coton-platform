@@ -1,140 +1,78 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FileSpreadsheet, Lock, Pencil, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { FileSpreadsheet, Search, FlaskConical, Ruler } from 'lucide-react';
 import { exportRowsToXlsx } from '@/lib/xlsxExport';
-import {
-  Button,
-  FormField,
-  IconButton,
-  Input,
-  Modal,
-  Select,
-} from '@/components/common';
-import { useToast } from '@/app/providers/ToastProvider';
-import { useConfirm } from '@/app/providers/ConfirmProvider';
-import { uuid } from '@/lib/uuid';
-import {
-  CATEGORY_HINT,
-  CATEGORY_LABEL,
-  loadRefData,
-  resetRefData,
-  saveRefData,
-  type RefCategory,
-  type RefEntry,
-} from '../lib/refData';
+import { Button, Skeleton } from '@/components/common';
+import { useParametreAnalyses, useParametreUnites } from '../hooks/useAdmin';
 import styles from './RefDataPage.module.css';
 
-const CATEGORIES: RefCategory[] = [
-  'units',
-  'methods',
-  'sources',
-  'siteTypes',
-  'legalStatus',
-  'domains',
-  'labCapabilities',
+type Tab = 'analyses' | 'unites';
+
+const TABS: Array<{ value: Tab; label: string; icon: React.ReactNode }> = [
+  { value: 'analyses', label: 'Paramètres d\'analyse', icon: <FlaskConical size={13} /> },
+  { value: 'unites',   label: 'Unités de mesure',      icon: <Ruler size={13} /> },
 ];
 
-const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }));
+const CAT_LABEL: Record<string, string> = {
+  physique: 'Physique',
+  chimique: 'Chimique',
+};
 
 export function RefDataPage() {
-  const toast = useToast();
-  const confirm = useConfirm();
-  const [data, setData] = useState(() => loadRefData());
-  const [activeCategory, setActiveCategory] = useState<RefCategory>('units');
-  const [editing, setEditing] = useState<{ entry: RefEntry; category: RefCategory } | null>(
-    null,
-  );
-  const [formOpen, setFormOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('analyses');
   const [query, setQuery] = useState('');
 
-  const items = useMemo(() => {
-    const list = data[activeCategory] ?? [];
-    if (!query.trim()) return list;
-    const q = query.toLowerCase();
-    return list.filter(
-      (e) =>
-        e.label.toLowerCase().includes(q) ||
-        e.code.toLowerCase().includes(q) ||
-        (e.description ?? '').toLowerCase().includes(q),
+  const { data: analyses = [], isLoading: loadingA } = useParametreAnalyses();
+  const { data: unites  = [], isLoading: loadingU } = useParametreUnites();
+
+  const filteredAnalyses = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return analyses;
+    return analyses.filter(
+      (a) =>
+        a.nom.toLowerCase().includes(q) ||
+        a.categorie.toLowerCase().includes(q) ||
+        (a.description ?? '').toLowerCase().includes(q),
     );
-  }, [data, activeCategory, query]);
+  }, [analyses, query]);
 
-  const counts = useMemo(() => {
-    const map = {} as Record<RefCategory, number>;
-    for (const c of CATEGORIES) {
-      map[c] = (data[c] ?? []).length;
-    }
-    return map;
-  }, [data]);
+  const filteredUnites = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return unites;
+    return unites.filter(
+      (u) =>
+        u.libelle.toLowerCase().includes(q) ||
+        u.sigle.toLowerCase().includes(q),
+    );
+  }, [unites, query]);
 
-  const totalEntries = useMemo(
-    () => CATEGORIES.reduce((acc, c) => acc + counts[c], 0),
-    [counts],
-  );
+  const isLoading = loadingA || loadingU;
+  const totalCount = analyses.length + unites.length;
 
-  const persist = (next: Record<RefCategory, RefEntry[]>) => {
-    setData(next);
-    saveRefData(next);
-  };
-
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-
-  const openEdit = (entry: RefEntry, category: RefCategory) => {
-    setEditing({ entry, category });
-    setFormOpen(true);
-  };
-
-  const submitEntry = (entry: RefEntry, targetCategory: RefCategory) => {
-    if (editing && editing.category !== targetCategory) {
-      // Catégorie modifiée à l'édition : on retire de l'ancienne, on ajoute à la nouvelle
-      const oldList = (data[editing.category] ?? []).filter((e) => e.id !== entry.id);
-      const newList = [entry, ...(data[targetCategory] ?? [])];
-      persist({
-        ...data,
-        [editing.category]: oldList,
-        [targetCategory]: newList,
+  const handleExport = () => {
+    if (tab === 'analyses') {
+      exportRowsToXlsx({
+        filename: 'parametre-analyses',
+        sheetName: 'Paramètres',
+        columns: [
+          { header: 'ID',          accessor: (a) => a.id },
+          { header: 'Nom',         accessor: (a) => a.nom },
+          { header: 'Catégorie',   accessor: (a) => a.categorie },
+          { header: 'Description', accessor: (a) => a.description ?? '' },
+        ],
+        rows: filteredAnalyses,
       });
-      setActiveCategory(targetCategory);
     } else {
-      const list = [...(data[targetCategory] ?? [])];
-      const idx = list.findIndex((e) => e.id === entry.id);
-      if (idx >= 0) list[idx] = entry;
-      else list.unshift(entry);
-      persist({ ...data, [targetCategory]: list });
-      setActiveCategory(targetCategory);
+      exportRowsToXlsx({
+        filename: 'parametre-unites',
+        sheetName: 'Unités',
+        columns: [
+          { header: 'ID',      accessor: (u) => u.id },
+          { header: 'Libellé', accessor: (u) => u.libelle },
+          { header: 'Sigle',   accessor: (u) => u.sigle },
+        ],
+        rows: filteredUnites,
+      });
     }
-    setFormOpen(false);
-    toast.success(editing ? 'Entrée modifiée.' : 'Entrée ajoutée au référentiel.');
-  };
-
-  const removeEntry = async (entry: RefEntry) => {
-    if (entry.locked) {
-      toast.error('Cette entrée du socle CDC ne peut être supprimée.');
-      return;
-    }
-    const ok = await confirm({
-      title: `Supprimer « ${entry.label} » ?`,
-      confirmLabel: 'Supprimer',
-      tone: 'danger',
-    });
-    if (!ok) return;
-    const list = (data[activeCategory] ?? []).filter((e) => e.id !== entry.id);
-    persist({ ...data, [activeCategory]: list });
-    toast.success('Entrée supprimée.');
-  };
-
-  const handleReset = async () => {
-    const ok = await confirm({
-      title: 'Réinitialiser les référentiels ?',
-      message: 'Tous vos ajouts personnalisés seront perdus. Seul le socle CDC sera conservé.',
-      confirmLabel: 'Réinitialiser',
-      tone: 'danger',
-    });
-    if (!ok) return;
-    setData(resetRefData());
-    toast.info('Référentiels réinitialisés.');
   };
 
   return (
@@ -143,10 +81,10 @@ export function RefDataPage() {
         <div className={styles.heroLeft}>
           <h1 className={styles.heroTitle}>Référentiels</h1>
           <span className={styles.heroCount}>
-            {totalEntries} entrée{totalEntries > 1 ? 's' : ''} · {CATEGORIES.length} catégories
+            {totalCount} entrée{totalCount > 1 ? 's' : ''} · {TABS.length} catégories
           </span>
           <p className={styles.heroDescription}>
-            Vocabulaires contrôlés : unités, méthodes, types de site.
+            Paramètres d'analyse et unités de mesure du référentiel backend.
           </p>
         </div>
         <div className={styles.heroRight}>
@@ -156,236 +94,121 @@ export function RefDataPage() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher dans la catégorie active…"
+              placeholder="Rechercher…"
               aria-label="Rechercher"
             />
           </div>
           <Button
             variant="excel"
             iconLeft={<FileSpreadsheet size={14} />}
-            disabled={items.length === 0}
-            onClick={() => {
-              exportRowsToXlsx({
-                filename: `referentiel-${activeCategory}`,
-                sheetName: activeCategory,
-                columns: [
-                  { header: 'ID', accessor: (e) => e.id },
-                  { header: 'Code', accessor: (e) => e.code },
-                  { header: 'Libellé', accessor: (e) => e.label },
-                  { header: 'Description', accessor: (e) => e.description ?? '' },
-                  { header: 'Actif', accessor: (e) => (e.isActive ? 'Oui' : 'Non') },
-                  { header: 'Verrouillé', accessor: (e) => (e.locked ? 'Oui' : 'Non') },
-                ],
-                rows: items,
-              });
-            }}
+            onClick={handleExport}
+            disabled={isLoading}
           >
             Exporter XLSX
-          </Button>
-          <Button variant="ghost" iconLeft={<RotateCcw size={14} />} onClick={handleReset}>
-            Réinitialiser
-          </Button>
-          <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
-            Ajouter
           </Button>
         </div>
       </header>
 
-      <div className={styles.chips} role="tablist" aria-label="Catégorie">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="tab"
-            aria-selected={c === activeCategory}
-            className={`${styles.chip} ${c === activeCategory ? styles.chipActive : ''}`}
-            onClick={() => {
-              setActiveCategory(c);
-              setQuery('');
-            }}
-          >
-            {CATEGORY_LABEL[c]}
-            <span className={styles.chipCount}>{counts[c]}</span>
-          </button>
-        ))}
+      <div className={styles.chips} role="tablist" aria-label="Section">
+        {TABS.map((t) => {
+          const count = t.value === 'analyses' ? analyses.length : unites.length;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              role="tab"
+              aria-selected={t.value === tab}
+              className={`${styles.chip} ${t.value === tab ? styles.chipActive : ''}`}
+              onClick={() => { setTab(t.value); setQuery(''); }}
+            >
+              {t.icon}
+              {t.label}
+              <span className={styles.chipCount}>{count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <p className={styles.contentHint}>{CATEGORY_HINT[activeCategory]}</p>
-
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Libellé</th>
-              <th>Description</th>
-              <th aria-label="Actions" />
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td colSpan={4} className={styles.empty}>
-                  Aucune entrée dans cette catégorie.
-                </td>
-              </tr>
-            ) : (
-              items.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <code className={styles.code}>{e.code}</code>
-                  </td>
-                  <td>
-                    <span className={styles.labelCell}>
-                      <span className={styles.label}>{e.label}</span>
-                      {e.locked ? (
-                        <span
-                          className={styles.lockIcon}
-                          title="Socle CDC — suppression bloquée"
-                          aria-label="Socle CDC"
-                        >
-                          <Lock size={11} />
-                        </span>
-                      ) : null}
-                    </span>
-                  </td>
-                  <td className={styles.description}>
-                    {e.description ?? <span className={styles.muted}>—</span>}
-                  </td>
-                  <td className={styles.actions}>
-                    <IconButton
-                      aria-label="Modifier"
-                      variant="ghost"
-                      onClick={() => openEdit(e, activeCategory)}
-                    >
-                      <Pencil size={14} />
-                    </IconButton>
-                    <IconButton
-                      aria-label="Supprimer"
-                      variant="ghost"
-                      onClick={() => void removeEntry(e)}
-                      disabled={e.locked}
-                    >
-                      <Trash2 size={14} />
-                    </IconButton>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <RefEntryForm
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        defaultCategory={editing?.category ?? activeCategory}
-        entry={editing?.entry ?? null}
-        onSubmit={submitEntry}
-      />
+      {isLoading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={44} />)}
+        </div>
+      ) : tab === 'analyses' ? (
+        <AnalysesTable rows={filteredAnalyses} />
+      ) : (
+        <UnitesTable rows={filteredUnites} />
+      )}
     </div>
   );
 }
 
-interface RefEntryFormProps {
-  open: boolean;
-  onClose: () => void;
-  defaultCategory: RefCategory;
-  entry: RefEntry | null;
-  onSubmit: (entry: RefEntry, category: RefCategory) => void;
+/* ── Tableau paramètres d'analyse ── */
+import type { ParametreAnalyse, ParametreUnite } from '../api/referentiels';
+
+function AnalysesTable({ rows }: { rows: ParametreAnalyse[] }) {
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nom</th>
+            <th>Catégorie</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr><td colSpan={4} className={styles.empty}>Aucun paramètre trouvé.</td></tr>
+          ) : rows.map((a) => (
+            <tr key={a.id}>
+              <td><code className={styles.code}>{a.id}</code></td>
+              <td><span className={styles.label}>{a.nom}</span></td>
+              <td>
+                <span
+                  className={styles.catBadge}
+                  data-cat={a.categorie}
+                >
+                  {CAT_LABEL[a.categorie] ?? a.categorie}
+                </span>
+              </td>
+              <td className={styles.description}>
+                {a.description ?? <span className={styles.muted}>—</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
-function RefEntryForm({
-  open,
-  onClose,
-  defaultCategory,
-  entry,
-  onSubmit,
-}: RefEntryFormProps) {
-  const [category, setCategory] = useState<RefCategory>(defaultCategory);
-  const [code, setCode] = useState(entry?.code ?? '');
-  const [label, setLabel] = useState(entry?.label ?? '');
-  const [description, setDescription] = useState(entry?.description ?? '');
-
-  useEffect(() => {
-    if (open) {
-      setCategory(defaultCategory);
-      setCode(entry?.code ?? '');
-      setLabel(entry?.label ?? '');
-      setDescription(entry?.description ?? '');
-    }
-  }, [entry, open, defaultCategory]);
-
-  const handleSubmit = () => {
-    if (!code.trim() || !label.trim()) return;
-    onSubmit(
-      {
-        id: entry?.id ?? uuid(),
-        code: code.trim(),
-        label: label.trim(),
-        description: description.trim() || undefined,
-        isActive: entry?.isActive ?? true,
-        locked: entry?.locked ?? false,
-      },
-      category,
-    );
-  };
-
+/* ── Tableau unités ── */
+function UnitesTable({ rows }: { rows: ParametreUnite[] }) {
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={entry ? `Modifier ${entry.label}` : 'Nouvelle entrée'}
-      width={560}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button
-            variant="success"
-            onClick={handleSubmit}
-            disabled={!code.trim() || !label.trim()}
-          >
-            {entry ? 'Enregistrer' : 'Créer'}
-          </Button>
-        </>
-      }
-    >
-      <div className={styles.formGrid}>
-        <FormField label="Catégorie" required className={styles.formFull}>
-          <Select<RefCategory>
-            value={category}
-            onChange={(c) => setCategory(c)}
-            options={CATEGORY_OPTIONS}
-          />
-        </FormField>
-
-        <FormField label="Code" required>
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="mg/L · OMS_AIR_2021 · GALA"
-            disabled={!!entry?.locked}
-          />
-        </FormField>
-
-        <FormField label="Libellé" required>
-          <Input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Libellé affiché à l'utilisateur"
-          />
-        </FormField>
-
-        <FormField label="Description" className={styles.formFull}>
-          <Input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Détail (optionnel)"
-          />
-        </FormField>
-      </div>
-    </Modal>
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Libellé</th>
+            <th>Sigle</th>
+            <th>Paramètres liés</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr><td colSpan={4} className={styles.empty}>Aucune unité trouvée.</td></tr>
+          ) : rows.map((u) => (
+            <tr key={u.id}>
+              <td><code className={styles.code}>{u.id}</code></td>
+              <td><span className={styles.label}>{u.libelle}</span></td>
+              <td><code className={styles.code}>{u.sigle}</code></td>
+              <td className={styles.description}>{u.parametreAnalyses.length}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

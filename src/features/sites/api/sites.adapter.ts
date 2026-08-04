@@ -147,6 +147,14 @@ function mapStatutFoncier(raw?: string | null): SiteLegalStatus {
   return raw.toLowerCase().includes('formel') ? 'formel' : 'informel';
 }
 
+function cap(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
 const defaultConformity: ConformityLevel = 'conforming';
 
 /**
@@ -159,12 +167,12 @@ export function toSite(b: SiteTeintureBackend): Site {
     id: String(b.id),
     codeSite: b.codeSite,
     name: b.nomSite,
-    shortName: b.nomSite.replace(/^Teinturerie\s+/i, '').split('—')[0]!.trim() || b.codeSite,
+    shortName: b.nomSite.replace(/^Teinturerie\s+/i, '').split(/[_—]/)[0]!.trim() || b.codeSite,
     legalStatus: mapStatutFoncier(b.statutFoncier),
     niveauFormalisation: b.niveauFormalisation ?? undefined,
     location: {
-      commune: b.commune ? iriToId(b.commune) : '',
-      city: b.region ?? '',
+      commune: cap(b.commune ? iriToId(b.commune) : ''),
+      city: cap(b.region),
       quartier: b.quartier ?? undefined,
     },
     coordinates: {

@@ -209,7 +209,7 @@ export function FormulaireFormPage() {
           <Button variant="ghost" type="button" onClick={() => navigate('/admin/formulaires')}>
             Annuler
           </Button>
-          <Button variant="primary" type="submit" leftIcon={<Save size={16} />} disabled={isPending}>
+          <Button variant="primary" type="submit" iconLeft={<Save size={16} />} disabled={isPending}>
             {isPending ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer le formulaire'}
           </Button>
         </div>

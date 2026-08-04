@@ -209,7 +209,7 @@ export function ChampListPage() {
             </div>
           )}
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+        <Button variant="primary" iconLeft={<Plus size={16} />} onClick={openCreate}>
           Ajouter un champ
         </Button>
       </div>
@@ -222,7 +222,7 @@ export function ChampListPage() {
       ) : champs.length === 0 ? (
         <div className={styles.empty}>
           <p>Aucun champ. Commencez par en ajouter un.</p>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+          <Button variant="primary" iconLeft={<Plus size={16} />} onClick={openCreate}>
             Ajouter un champ
           </Button>
         </div>
@@ -299,7 +299,7 @@ export function ChampListPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingId ? 'Modifier le champ' : 'Nouveau champ'}
-        size="lg"
+        width={640}
       >
         <div className={styles.modalBody}>
           <div className={styles.modalGrid2}>

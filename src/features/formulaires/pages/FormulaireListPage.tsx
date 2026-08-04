@@ -34,7 +34,7 @@ export function FormulaireListPage() {
           f.description?.toLowerCase().includes(s),
       );
     }
-    return items.sort((a, b) => a.ordre ?? 0 - (b.ordre ?? 0));
+    return items;
   }, [data, q, typeFilter, showArchived]);
 
   const publishedCount = data?.items.filter((f) => f.statut === 'publie').length ?? 0;

@@ -11,7 +11,7 @@ export type ApiMode = 'mock' | 'live';
 
 const envMode = (import.meta.env.VITE_API_MODE as ApiMode | undefined) ?? 'live';
 const envBaseUrl =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://187.127.225.182';
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'https://api.back-paset.com';
 
 export const API_MODE: ApiMode = envMode === 'live' ? 'live' : 'mock';
 

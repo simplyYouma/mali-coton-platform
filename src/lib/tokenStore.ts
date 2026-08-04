@@ -17,6 +17,15 @@ export function clearToken(): void {
   localStorage.removeItem(KEY);
 }
 
+/** Retourne true si le token est absent ou si son claim `exp` est dépassé. */
+export function isTokenExpired(): boolean {
+  const token = getToken();
+  if (!token) return true;
+  const payload = decodeJwtPayload<{ exp?: number }>(token);
+  if (!payload?.exp) return false;
+  return Date.now() / 1000 > payload.exp;
+}
+
 /**
  * Décode le payload d'un JWT sans vérification de signature (côté client uniquement).
  * Retourne null si le token est malformé.

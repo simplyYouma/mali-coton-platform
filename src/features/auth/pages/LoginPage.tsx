@@ -68,7 +68,7 @@ export function LoginPage() {
             <FormField label="Adresse e-mail">
               <Input
                 type="email"
-                autoComplete="email"
+                autoComplete="off"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 prefix={<Mail size={14} />}
@@ -80,7 +80,7 @@ export function LoginPage() {
             <FormField label="Mot de passe">
               <Input
                 type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
+                autoComplete="off"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 prefix={<Lock size={14} />}

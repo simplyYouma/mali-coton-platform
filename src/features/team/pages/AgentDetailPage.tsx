@@ -120,10 +120,12 @@ export function AgentDetailPage() {
       return;
     }
     try {
+      const parts = form.fullName.trim().split(/\s+/);
       await updateMut.mutateAsync({
         id: agent.id,
         patch: {
-          fullName: form.fullName.trim(),
+          prenom: parts[0] ?? '',
+          nom: parts.slice(1).join(' ') || (parts[0] ?? ''),
           email: form.email.trim(),
           phone: form.phone.trim() || undefined,
           koboUsername: form.koboUsername.trim() || undefined,
@@ -142,7 +144,7 @@ export function AgentDetailPage() {
     try {
       await updateMut.mutateAsync({
         id: agent.id,
-        patch: { isActive: !agent.isActive },
+        patch: { actif: !agent.isActive },
       });
       toast.success(agent.isActive ? 'Agent désactivé.' : 'Agent réactivé.');
     } catch (err) {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -13,7 +13,6 @@ import {
 import {
   Button,
   Badge,
-  Input,
   Skeleton,
   EmptyState,
 } from '@/components/common';

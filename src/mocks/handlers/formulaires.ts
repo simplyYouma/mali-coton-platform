@@ -112,7 +112,7 @@ export const formulairesHandlers = [
           id: 5000 + i,
           champId: r.champId,
           libelle: champ?.libelle ?? `Champ ${r.champId}`,
-          typeChamp: champ?.typeChamp ?? 'text',
+          typeChamp: champ?.typeChamp ?? 'texte',
           valeurTexte: r.valeurTexte,
           valeurNombre: r.valeurNombre,
           valeurDate: r.valeurDate,

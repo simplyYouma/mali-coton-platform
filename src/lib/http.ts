@@ -67,6 +67,10 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
+    // Token expiré ou invalide → signal global (capté par SessionExpiredModal)
+    if (response.status === 401) {
+      window.dispatchEvent(new CustomEvent('auth:session-expired'));
+    }
     // API Platform renvoie les erreurs sous forme {"hydra:description": "..."} ou {"message": "..."}
     const message: string =
       data?.['hydra:description'] ??

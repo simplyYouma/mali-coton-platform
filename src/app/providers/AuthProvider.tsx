@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthenticatedUser, UserRole } from '@/types/common';
-import { setToken, clearToken, getToken } from '@/lib/tokenStore';
+import { setToken, clearToken, isTokenExpired } from '@/lib/tokenStore';
 
 interface AuthState {
   user: AuthenticatedUser | null;
@@ -35,9 +35,9 @@ export const useAuthStore = create<AuthState>()(
       // À la réhydratation, restaurer le token depuis localStorage si présent
       onRehydrateStorage: () => (state) => {
         if (state?.isAuthenticated) {
-          const token = getToken();
-          if (!token) {
-            // Token expiré ou absent → déconnecter
+          if (isTokenExpired()) {
+            // Token absent ou expiré → déconnecter immédiatement
+            clearToken();
             state.user = null;
             state.isAuthenticated = false;
           }

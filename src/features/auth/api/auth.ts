@@ -57,20 +57,6 @@ function mapRole(raw: string): UserRole {
   return map[normalized] ?? 'visitor';
 }
 
-/** Convertit un utilisateur backend en AuthenticatedUser. */
-function toAuthUser(u: BackendUser): AuthenticatedUser {
-  const rawRoles = u.rolesCollection?.values ?? [];
-  const role = rawRoles.length > 0 ? mapRole(rawRoles[0]!) : 'visitor';
-  return {
-    id: String(u.id),
-    email: u.email,
-    fullName: `${u.prenom} ${u.nom}`.trim(),
-    role,
-    assignedSiteIds: [],
-    locale: 'fr',
-  };
-}
-
 /* ── Endpoint login réel API Platform (LexikJWTAuthenticationBundle) ── */
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   if (API_MODE === 'mock') {

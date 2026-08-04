@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchParametreAnalyses, fetchParametreUnites } from '../api/referentiels';
 import {
   createIndicator,
   createPermission,
@@ -170,6 +171,22 @@ export function useDeleteIndicator() {
   return useMutation({
     mutationFn: (id: string) => deleteIndicator(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: INDICATORS_KEY }),
+  });
+}
+
+export function useParametreUnites() {
+  return useQuery({
+    queryKey: ['referentiels', 'unites'],
+    queryFn: fetchParametreUnites,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useParametreAnalyses() {
+  return useQuery({
+    queryKey: ['referentiels', 'analyses'],
+    queryFn: fetchParametreAnalyses,
+    staleTime: 5 * 60_000,
   });
 }
 

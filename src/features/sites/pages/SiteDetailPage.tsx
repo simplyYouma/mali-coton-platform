@@ -6,7 +6,6 @@ import {
   Users,
   ClipboardList,
   ImageOff,
-  Pencil,
   Calendar,
   User,
   Droplet,
@@ -21,6 +20,10 @@ import {
   Lock,
   Flame,
   AlertTriangle,
+  ChevronDown,
+  Heart,
+  Banknote,
+  UserCheck,
 } from 'lucide-react';
 import {
   Button,
@@ -30,15 +33,13 @@ import {
   Badge,
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { useToast } from '@/app/providers/ToastProvider';
-import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { mockUsers } from '@/mocks/fixtures/users';
 import { findRule, computeLocalConformity } from '@/features/collection/lib/indicatorRules';
 import type { Collection, Measurement } from '@/features/collection/api/collection.types';
 import { STATUS_LABEL, STATUS_VARIANT } from '@/features/collection/api/collection.types';
 import type { ConformityLevel } from '@/types/common';
-import { useSite, useSiteDetail, useDeleteSite } from '../hooks/useSites';
+import { useSite, useSiteDetail, useSiteEmployes } from '../hooks/useSites';
 import { ConformityBadge } from '../components/ConformityBadge';
 import { SiteForm } from '../components/SiteForm';
 import { SITE_TYPE_LABEL } from '../api/site.types';
@@ -81,13 +82,62 @@ function OuiNon({ val }: { val: unknown }) {
   );
 }
 
+/* ── Formatage des codes Kobo (underscores → lisible) ── */
+const CODE_LABELS: Record<string, string> = {
+  moins_1an: '< 1 an', '1_3ans': '1 à 3 ans', '3_5ans': '3 à 5 ans',
+  '5_10ans': '5 à 10 ans', plus_10ans: '+ 10 ans',
+  teinturiere: 'Teinturière', gestion: 'Gestion', journalier: 'Journalier', permanent: 'Permanent',
+  epi: 'EPI', formation_epi: 'Formation EPI', bilan_sante: 'Bilan santé',
+  medicaments: 'Médicaments', eau: 'Eau', equipements: 'Équipements',
+  formation_tech: 'Formation technique', formation_secu: 'Formation sécurité',
+  formation_gest: 'Formation gestion', protection_soc: 'Protection sociale',
+  infra_site: 'Infrastructure site', contact_peau: 'Contact peau',
+  fumees: 'Fumées', vapeurs: 'Vapeurs', brulures: 'Brûlures',
+  positions: 'Positions', soleil: 'Soleil', habitude: 'Habitude',
+  indisponible: 'Indisponible', autre: 'Autre',
+};
+
+function formatCode(val: string | null | undefined): string {
+  if (!val) return '—';
+  return CODE_LABELS[val] ?? val.replace(/_/g, ' ');
+}
+
+function formatName(val: string | null | undefined): string {
+  if (!val) return '—';
+  return val
+    .split(/[_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/* ── Badge qualité coloré ── */
+const QUAL_COLORS: Record<string, 'success' | 'warning' | 'danger'> = {
+  bonne: 'success', bon: 'success', toujours: 'success', suffisant: 'success',
+  acceptable: 'warning', moyen: 'warning', moyenne: 'warning',
+  partiel: 'warning', parfois: 'warning', souvent: 'warning', rarement: 'warning',
+  mauvais: 'danger', mauvaise: 'danger', frequemment: 'danger', critique: 'danger',
+};
+
+function QualBadge({ val }: { val: string | null | undefined }) {
+  if (!val) return <span className={styles.fieldEmpty}>—</span>;
+  const key = val.toLowerCase().trim();
+  const color = QUAL_COLORS[key];
+  const label = formatCode(val);
+  if (color === 'success') return <span className={`${styles.qualBadge} ${styles.qualSuccess}`}>{label}</span>;
+  if (color === 'warning') return <span className={`${styles.qualBadge} ${styles.qualWarning}`}>{label}</span>;
+  if (color === 'danger')  return <span className={`${styles.qualBadge} ${styles.qualDanger}`}>{label}</span>;
+  return <span>{label}</span>;
+}
+
+type CardColor = 'primary' | 'blue' | 'orange' | 'yellow' | 'red' | 'green' | 'purple' | 'teal' | 'amber' | 'slate';
+
 function Chips({ items }: { items: KoboCodedItem[] }) {
   if (!items.length) return <span className={styles.fieldEmpty}>—</span>;
   return (
     <div className={styles.chipRow}>
       {items.map((it) => (
         <span key={it.id} className={styles.chip}>
-          {it.libelle}
+          {formatCode(it.libelle)}
         </span>
       ))}
     </div>
@@ -104,16 +154,15 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 function SectionCard({
-  title,
-  icon,
-  children,
+  title, icon, children, color,
 }: {
   title: string;
   icon: React.ReactNode;
   children: React.ReactNode;
+  color?: CardColor;
 }) {
   return (
-    <div className={styles.sectionCard}>
+    <div className={styles.sectionCard} data-color={color}>
       <div className={styles.sectionHeader}>
         <span className={styles.sectionIcon}>{icon}</span>
         <h3 className={styles.sectionTitle}>{title}</h3>
@@ -128,12 +177,8 @@ function SectionCard({
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
-  const toast = useToast();
-  const confirm = useConfirm();
-
   const { data: site, isLoading, isError } = useSite(id);
   const { data: detail, isLoading: detailLoading } = useSiteDetail(id);
-  const deleteMut = useDeleteSite();
 
   const { data: collectionsPage } = useCollections({ siteId: id });
   const siteCollections = useMemo(
@@ -144,8 +189,20 @@ export function SiteDetailPage() {
     [collectionsPage],
   );
 
-  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'photos' | 'historique'>('profil');
+  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'employes' | 'photos' | 'historique'>('profil');
   const [editOpen, setEditOpen] = useState(false);
+  const [openEmployes, setOpenEmployes] = useState<Set<number>>(new Set());
+
+  const { data: employesData, isLoading: employesLoading } = useSiteEmployes(id);
+
+  function toggleEmploye(empId: number) {
+    setOpenEmployes((prev) => {
+      const next = new Set(prev);
+      if (next.has(empId)) next.delete(empId);
+      else next.add(empId);
+      return next;
+    });
+  }
   const isAdmin = role === 'admin';
 
   const usersById = useMemo(() => {
@@ -190,23 +247,6 @@ export function SiteDetailPage() {
     );
   }
 
-  const handleDelete = async () => {
-    const ok = await confirm({
-      title: `Supprimer ${site.shortName} ?`,
-      message: 'Suppression définitive du site et de toutes ses données associées.',
-      confirmLabel: 'Supprimer',
-      tone: 'danger',
-    });
-    if (!ok) return;
-    try {
-      await deleteMut.mutateAsync(site.id);
-      toast.success(`${site.shortName} supprimé.`);
-      window.location.href = '/sites';
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec de la suppression.');
-    }
-  };
-
   return (
     <>
       <Link to="/sites" className={styles.back}>
@@ -229,22 +269,7 @@ export function SiteDetailPage() {
             </p>
           ) : null}
         </div>
-        <div className={styles.heroActions}>
-          {isAdmin ? (
-            <>
-              <Button
-                variant="secondary"
-                iconLeft={<Pencil size={16} />}
-                onClick={() => setEditOpen(true)}
-              >
-                Modifier
-              </Button>
-              <Button variant="ghost" onClick={handleDelete} loading={deleteMut.isPending}>
-                Supprimer
-              </Button>
-            </>
-          ) : null}
-        </div>
+        <div className={styles.heroActions} />
       </header>
 
       {/* ── Info strip ── */}
@@ -313,6 +338,7 @@ export function SiteDetailPage() {
           { value: 'profil', label: 'Profil du site' },
           { value: 'conditions', label: 'Conditions de travail' },
           { value: 'appuis', label: 'Appuis & Besoins' },
+          { value: 'employes', label: 'Employés', badge: employesData?.totalEmployes || undefined },
           { value: 'photos', label: 'Photos', badge: photos.length || undefined },
           { value: 'historique', label: 'Historique', badge: siteCollections.length || undefined },
         ]}
@@ -342,11 +368,11 @@ export function SiteDetailPage() {
         {/* ══ Onglet Profil du site ══ */}
         {tab === 'profil' && cs ? (
           <div className={styles.ficheGrid}>
-            <SectionCard title="Identification" icon={<Calendar size={16} />}>
+            <SectionCard title="Identification" icon={<Calendar size={16} />} color="primary">
               <FieldRow label="Date de visite">
                 {cs.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
               </FieldRow>
-              <FieldRow label="Agent collecteur">{cs.agent ?? '—'}</FieldRow>
+              <FieldRow label="Agent collecteur">{formatName(cs.agent)}</FieldRow>
               <FieldRow label="Ville / Commune">{cs.ville ?? '—'}</FieldRow>
               <FieldRow label="Année de création">{cs.anneeCreation ?? '—'}</FieldRow>
               <FieldRow label="Statut juridique">{cs.statutJuridique ?? '—'}</FieldRow>
@@ -357,18 +383,18 @@ export function SiteDetailPage() {
               </FieldRow>
             </SectionCard>
 
-            <SectionCard title="Responsable du site" icon={<User size={16} />}>
+            <SectionCard title="Responsable du site" icon={<User size={16} />} color="purple">
               <FieldRow label="Nom">{cs.nomResponsable ?? site.responsableName ?? '—'}</FieldRow>
-              <FieldRow label="Genre">{cs.genreResponsable ?? '—'}</FieldRow>
+              <FieldRow label="Genre">{formatCode(cs.genreResponsable)}</FieldRow>
             </SectionCard>
 
-            <SectionCard title="Effectifs" icon={<Users size={16} />}>
+            <SectionCard title="Effectifs" icon={<Users size={16} />} color="teal">
               <FieldRow label="Total">{cs.nbEmployesTotal ?? '—'}</FieldRow>
               <FieldRow label="Femmes">{cs.nbFemmes ?? '—'}</FieldRow>
               <FieldRow label="Hommes">{cs.nbHommes ?? '—'}</FieldRow>
             </SectionCard>
 
-            <SectionCard title="Types de teinture" icon={<Flame size={16} />}>
+            <SectionCard title="Types de teinture" icon={<Flame size={16} />} color="amber">
               <Chips items={typesTeinture} />
             </SectionCard>
           </div>
@@ -377,9 +403,9 @@ export function SiteDetailPage() {
         {/* ══ Onglet Conditions de travail ══ */}
         {tab === 'conditions' && cs ? (
           <div className={styles.ficheGrid}>
-            <SectionCard title="Ressource en eau" icon={<Droplet size={16} />}>
-              <FieldRow label="Source d'eau">{cs.sourceEau ?? '—'}</FieldRow>
-              <FieldRow label="État de la source">{cs.etatSourcePrincipale ?? '—'}</FieldRow>
+            <SectionCard title="Ressource en eau" icon={<Droplet size={16} />} color="blue">
+              <FieldRow label="Source d'eau">{formatCode(cs.sourceEau)}</FieldRow>
+              <FieldRow label="État de la source"><QualBadge val={cs.etatSourcePrincipale} /></FieldRow>
               <FieldRow label="Consommation (m³)">
                 {cs.consommationEauM3 != null ? `${cs.consommationEauM3} m³` : '—'}
               </FieldRow>
@@ -388,21 +414,21 @@ export function SiteDetailPage() {
               ) : null}
             </SectionCard>
 
-            <SectionCard title="Équipements" icon={<Wrench size={16} />}>
+            <SectionCard title="Équipements" icon={<Wrench size={16} />} color="orange">
               <FieldRow label="Équipements disponibles">
                 <Chips items={equipements} />
               </FieldRow>
-              <FieldRow label="État général">{cs.etatGeneralEquipements ?? '—'}</FieldRow>
+              <FieldRow label="État général"><QualBadge val={cs.etatGeneralEquipements} /></FieldRow>
               {cs.observationsEquipements ? (
                 <FieldRow label="Observations">{cs.observationsEquipements}</FieldRow>
               ) : null}
             </SectionCard>
 
-            <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />}>
+            <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />} color="yellow">
               <FieldRow label="EPI disponibles">
                 <Chips items={epis} />
               </FieldRow>
-              <FieldRow label="Qualité des EPI">{cs.qualiteEpi ?? '—'}</FieldRow>
+              <FieldRow label="Qualité des EPI"><QualBadge val={cs.qualiteEpi} /></FieldRow>
               <FieldRow label="Formation EPI reçue">
                 <OuiNon val={cs.formationEpiRecue} />
               </FieldRow>
@@ -411,7 +437,7 @@ export function SiteDetailPage() {
               ) : null}
             </SectionCard>
 
-            <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />}>
+            <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />} color="red">
               <div className={styles.boolRow}>
                 <span className={styles.boolItem}>
                   <Lock size={12} />
@@ -448,29 +474,29 @@ export function SiteDetailPage() {
         {/* ══ Onglet Appuis & Besoins ══ */}
         {tab === 'appuis' && cs ? (
           <div className={styles.ficheGrid}>
-            <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />}>
-              <FieldRow label="Comptabilité">{cs.comptabilite ?? '—'}</FieldRow>
-              <FieldRow label="Couverture sociale">{cs.couvertureSociale ?? '—'}</FieldRow>
+            <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />} color="purple">
+              <FieldRow label="Comptabilité">{formatCode(cs.comptabilite)}</FieldRow>
+              <FieldRow label="Couverture sociale"><QualBadge val={cs.couvertureSociale} /></FieldRow>
             </SectionCard>
 
-            <SectionCard title="Formations reçues" icon={<BookOpen size={16} />}>
+            <SectionCard title="Formations reçues" icon={<BookOpen size={16} />} color="teal">
               <Chips items={formations} />
               {cs.formationsAutre ? (
                 <FieldRow label="Autres">{cs.formationsAutre}</FieldRow>
               ) : null}
             </SectionCard>
 
-            <SectionCard title="Appuis reçus" icon={<HandHelping size={16} />}>
+            <SectionCard title="Appuis reçus" icon={<HandHelping size={16} />} color="green">
               <Chips items={appuis} />
             </SectionCard>
 
-            <SectionCard title="Besoins prioritaires" icon={<ListChecks size={16} />}>
+            <SectionCard title="Besoins prioritaires" icon={<ListChecks size={16} />} color="amber">
               <Chips items={besoins} />
             </SectionCard>
 
             {cs.observationsGenerales || cs.recommandations ? (
               <div className={styles.fullWidth}>
-                <SectionCard title="Observations & Recommandations" icon={<MessageSquare size={16} />}>
+                <SectionCard title="Observations & Recommandations" icon={<MessageSquare size={16} />} color="slate">
                   {cs.observationsGenerales ? (
                     <FieldRow label="Observations générales">{cs.observationsGenerales}</FieldRow>
                   ) : null}
@@ -481,6 +507,148 @@ export function SiteDetailPage() {
               </div>
             ) : null}
           </div>
+        ) : null}
+
+        {/* ══ Onglet Employés ══ */}
+        {tab === 'employes' ? (
+          employesLoading ? (
+            <div className={styles.empList}>
+              {[1, 2, 3].map((i) => <Skeleton key={i} height={64} radius={12} />)}
+            </div>
+          ) : !employesData || employesData.employes.length === 0 ? (
+            <EmptyState
+              icon={<Users size={24} />}
+              title="Aucun employé enregistré"
+              description="Les fiches employés apparaîtront ici une fois collectées."
+            />
+          ) : (
+            <div className={styles.empList}>
+              {employesData.employes.map((emp) => {
+                const isOpen = openEmployes.has(emp.id);
+                const dc = emp.derniereCollecte;
+                return (
+                  <div key={emp.id} className={styles.empCard}>
+                    <button
+                      className={styles.empHeader}
+                      onClick={() => toggleEmploye(emp.id)}
+                      aria-expanded={isOpen}
+                    >
+                      <div className={styles.empHeaderLeft}>
+                        <span className={styles.empCode}>{emp.codeEmploye}</span>
+                        <span className={styles.empMeta}>
+                          {[emp.genre, emp.fonction, emp.statut].filter(Boolean).map(formatCode).join(' · ')}
+                        </span>
+                        {emp.anciennete ? (
+                          <span className={styles.chip}>{formatCode(emp.anciennete)}</span>
+                        ) : null}
+                      </div>
+                      <ChevronDown
+                        size={16}
+                        className={`${styles.empChevron} ${isOpen ? styles.empChevronOpen : ''}`}
+                      />
+                    </button>
+
+                    {isOpen ? (
+                      <div className={styles.empBody}>
+                        {/* EPI */}
+                        <div className={styles.empSection} data-color="yellow">
+                          <span className={styles.empSectionTitle}>
+                            <Shield size={13} /> EPI utilisés
+                          </span>
+                          {emp.equipementsProtection.length ? (
+                            <div className={styles.chipRow}>
+                              {emp.equipementsProtection.map((e) => (
+                                <span key={e.id} className={styles.chip}>{formatCode(e.libelle)}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className={styles.fieldEmpty}>—</span>
+                          )}
+                          {dc?.frequenceEpi ? (
+                            <FieldRow label="Fréquence EPI"><QualBadge val={dc.frequenceEpi} /></FieldRow>
+                          ) : null}
+                          {dc?.qualiteEpiPercue ? (
+                            <FieldRow label="Qualité perçue"><QualBadge val={dc.qualiteEpiPercue} /></FieldRow>
+                          ) : null}
+                          {dc?.obstaclesEpi ? (
+                            <FieldRow label="Obstacles">{formatCode(dc.obstaclesEpi)}</FieldRow>
+                          ) : null}
+                        </div>
+
+                        {/* Santé */}
+                        <div className={styles.empSection} data-color="red">
+                          <span className={styles.empSectionTitle}>
+                            <Heart size={13} /> Santé & sécurité
+                          </span>
+                          <FieldRow label="Affections dermato"><QualBadge val={dc?.affecDermato} /></FieldRow>
+                          <FieldRow label="Affections respi"><QualBadge val={dc?.affecRespi} /></FieldRow>
+                          <FieldRow label="Affections oculaires"><QualBadge val={dc?.affecOculaire} /></FieldRow>
+                          <FieldRow label="Bilan santé reçu"><OuiNon val={dc?.bilanSanteRecu} /></FieldRow>
+                          <FieldRow label="Suivi médical"><OuiNon val={dc?.suiviMedical} /></FieldRow>
+                          {dc?.expositions ? (
+                            <FieldRow label="Expositions">
+                              {dc.expositions.split(' ').map((e) => formatCode(e)).join(', ')}
+                            </FieldRow>
+                          ) : null}
+                          <FieldRow label="Confort du poste"><QualBadge val={dc?.confortPoste} /></FieldRow>
+                          <FieldRow label="Connaissance risques"><OuiNon val={dc?.connaissanceRisques} /></FieldRow>
+                          <FieldRow label="Formation sécu reçue"><OuiNon val={dc?.formationSecuRecue} /></FieldRow>
+                          {dc?.structureSante ? (
+                            <FieldRow label="Structure santé">{dc.structureSante}</FieldRow>
+                          ) : null}
+                          {dc?.obsSante ? (
+                            <FieldRow label="Observations santé">{dc.obsSante}</FieldRow>
+                          ) : null}
+                        </div>
+
+                        {/* Rémunération */}
+                        <div className={styles.empSection} data-color="green">
+                          <span className={styles.empSectionTitle}>
+                            <Banknote size={13} /> Rémunération
+                          </span>
+                          <FieldRow label="Mode">{formatCode(dc?.modeRemuneration)}</FieldRow>
+                          <FieldRow label="Revenu suffisant"><QualBadge val={dc?.revenuSuffisant} /></FieldRow>
+                          <FieldRow label="Revenu unique"><OuiNon val={dc?.revenuUnique} /></FieldRow>
+                          <FieldRow label="Couverture sociale"><OuiNon val={dc?.couvertureSociale} /></FieldRow>
+                        </div>
+
+                        {/* Besoins */}
+                        <div className={styles.empSection} data-color="amber">
+                          <span className={styles.empSectionTitle}>
+                            <UserCheck size={13} /> Besoins prioritaires
+                          </span>
+                          {emp.besoins.length ? (
+                            <div className={styles.chipRow}>
+                              {emp.besoins.map((b) => (
+                                <span key={b.id} className={styles.chip}>{formatCode(b.libelle)}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className={styles.fieldEmpty}>—</span>
+                          )}
+                        </div>
+
+                        {/* Suggestions / Observations */}
+                        {dc?.suggestionsEmploye || dc?.observations ? (
+                          <div className={styles.empSection}>
+                            <span className={styles.empSectionTitle}>
+                              <MessageSquare size={13} /> Suggestions & observations
+                            </span>
+                            {dc.suggestionsEmploye ? (
+                              <FieldRow label="Suggestions">{dc.suggestionsEmploye}</FieldRow>
+                            ) : null}
+                            {dc.observations ? (
+                              <FieldRow label="Observations">{dc.observations}</FieldRow>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : null}
 
         {/* ══ Onglet Photos ══ */}

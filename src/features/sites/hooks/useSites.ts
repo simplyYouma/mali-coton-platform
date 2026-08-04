@@ -10,6 +10,7 @@ import {
   type SitesQuery,
 } from '../api/sites';
 import { fetchSitePhotos } from '../api/sitePhotos';
+import { fetchSiteEmployes } from '../api/siteEmployes';
 
 export function useSites(query: SitesQuery = {}) {
   return useQuery({
@@ -30,6 +31,15 @@ export function useSiteDetail(id: string | undefined) {
   return useQuery({
     queryKey: ['siteDetail', id],
     queryFn: () => fetchSiteDetail(id ?? ''),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+export function useSiteEmployes(id: string | undefined) {
+  return useQuery({
+    queryKey: ['siteEmployes', id],
+    queryFn: () => fetchSiteEmployes(id!),
     enabled: Boolean(id),
     staleTime: 60_000,
   });

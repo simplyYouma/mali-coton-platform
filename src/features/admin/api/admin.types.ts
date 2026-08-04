@@ -59,6 +59,11 @@ export interface UserCreateInput {
   email: string;
   actif?: boolean;
   roles?: string[];
+  phone?: string;
+  koboUsername?: string;
+  assignedSiteIds?: string[];
+  locale?: Locale;
+  role?: UserRole;
 }
 
 export type UserUpdateInput = Partial<UserCreateInput> & { actif?: boolean };
