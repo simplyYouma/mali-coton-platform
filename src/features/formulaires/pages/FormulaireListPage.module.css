@@ -16,14 +16,17 @@
   gap: var(--space-2);
 }
 .heroEyebrow {
-  display: inline-flex;
+  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-muted);
-  font-weight: var(--weight-medium);
+  line-height: 1;
+  width: fit-content;
 }
 .heroTitle {
   font-family: var(--font-display);
@@ -49,28 +52,79 @@
 
 .stats {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-5);
-  min-width: 100px;
+  padding: var(--space-4) var(--space-6);
+  min-width: 130px;
+  text-align: center;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
+.stat:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 12px -4px rgba(4, 104, 177, 0.12);
+}
+
+/* Icône au-dessus de la valeur */
+.statIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+/* Tone primary (défaut) */
+.stat[data-tone='primary'] .statIcon,
+.stat:not([data-tone]) .statIcon {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+/* Tone success */
+.stat[data-tone='success'] {
+  border-color: rgba(5, 150, 105, 0.25);
+}
+.stat[data-tone='success'] .statIcon {
+  background: rgba(5, 150, 105, 0.10);
+  color: var(--color-success);
+}
+.stat[data-tone='success'] .statValue {
+  color: var(--color-success);
+}
+.stat[data-tone='success']:hover {
+  border-color: var(--color-success);
+  box-shadow: 0 2px 12px -4px rgba(5, 150, 105, 0.18);
+}
+
 .statValue {
   font-family: var(--font-display);
-  font-size: var(--text-h2, 1.5rem);
+  font-size: 2rem;
   font-weight: var(--weight-bold);
   color: var(--color-text);
   line-height: 1;
+  letter-spacing: -0.03em;
 }
 .statLabel {
   font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
   color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .toolbar {

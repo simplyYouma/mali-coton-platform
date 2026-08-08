@@ -5,7 +5,6 @@
  * IRI ; on doit re-mapper pour que les composants existants (qui s'attendent
  * à `Site`) continuent à fonctionner sans changement.
  */
-import { iriToId } from '@/lib/jsonld';
 import type { ConformityLevel } from '@/types/common';
 import type { Site, SiteLegalStatus, SiteType } from './site.types';
 
@@ -171,7 +170,11 @@ export function toSite(b: SiteTeintureBackend): Site {
     legalStatus: mapStatutFoncier(b.statutFoncier),
     niveauFormalisation: b.niveauFormalisation ?? undefined,
     location: {
-      commune: cap(b.commune ? iriToId(b.commune) : ''),
+      commune: cap(
+        b.communeAdministrative ??
+        (b.commune && !b.commune.startsWith('/') ? b.commune : null) ??
+        '',
+      ),
       city: cap(b.region),
       quartier: b.quartier ?? undefined,
     },

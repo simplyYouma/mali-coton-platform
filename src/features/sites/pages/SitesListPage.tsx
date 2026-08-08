@@ -43,21 +43,33 @@ export function SitesListPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
 
-  const { data, isLoading } = useSites({
-    q: q || undefined,
-    type: type === 'all' ? undefined : type,
-    conformity: conformity === 'all' ? undefined : conformity,
-  });
+  // Seule la recherche texte est envoyée à l'API (full-text).
+  // Type, conformité et commune sont filtrés côté client sur les valeurs
+  // déjà normalisées par l'adapter, ce qui évite le décalage avec les
+  // valeurs brutes Kobo renvoyées par le backend.
+  const { data, isLoading } = useSites({ q: q || undefined });
 
-  const allSites = data?.items ?? [];
+  const filteredByTypeConformity = useMemo(() => {
+    let items = data?.items ?? [];
+    if (type !== 'all') items = items.filter((s) => s.type === type);
+    if (conformity !== 'all') items = items.filter((s) => s.conformity === conformity);
+    return items;
+  }, [data, type, conformity]);
+
   const communes = useMemo(() => {
     const set = new Set<string>();
-    allSites.forEach((s) => set.add(s.location.commune));
+    filteredByTypeConformity.forEach((s) => {
+      if (s.location.commune) set.add(s.location.commune);
+    });
     return Array.from(set).sort();
-  }, [allSites]);
+  }, [filteredByTypeConformity]);
+
   const sites = useMemo(
-    () => (commune === 'all' ? allSites : allSites.filter((s) => s.location.commune === commune)),
-    [allSites, commune],
+    () =>
+      commune === 'all'
+        ? filteredByTypeConformity
+        : filteredByTypeConformity.filter((s) => s.location.commune === commune),
+    [filteredByTypeConformity, commune],
   );
 
   const handleExport = () => {

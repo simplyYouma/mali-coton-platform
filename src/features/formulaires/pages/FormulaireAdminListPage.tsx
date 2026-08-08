@@ -9,6 +9,10 @@ import {
   ListChecks,
   Power,
   PowerOff,
+  CheckCircle2,
+  PenLine,
+  Archive,
+  Layers,
 } from 'lucide-react';
 import {
   Button,
@@ -27,6 +31,12 @@ import {
   type FormulaireCollecte,
 } from '../api/formulaires.types';
 import styles from './FormulaireAdminListPage.module.css';
+
+const TYPE_LABEL: Record<string, string> = {
+  visite_initiale:      'Visite initiale',
+  controle_mensuel:     'Contrôle mensuel',
+  signalement_incident: 'Signalement',
+};
 
 export function FormulaireAdminListPage() {
   const navigate = useNavigate();
@@ -49,11 +59,18 @@ export function FormulaireAdminListPage() {
   });
 
   const counts = {
-    total: items.length,
-    actifs: items.filter((f) => f.actif && f.statut === 'publie').length,
+    total:      items.length,
+    actifs:     items.filter((f) => f.actif && f.statut === 'publie').length,
     brouillons: items.filter((f) => f.statut === 'brouillon').length,
-    archives: items.filter((f) => f.statut === 'archive').length,
+    archives:   items.filter((f) => f.statut === 'archive').length,
   };
+
+  const STATS = [
+    { label: 'Total',           value: counts.total,      icon: <ClipboardList size={18} />, tone: 'primary'  },
+    { label: 'Publiés actifs',  value: counts.actifs,     icon: <CheckCircle2 size={18} />,  tone: 'success'  },
+    { label: 'Brouillons',      value: counts.brouillons, icon: <PenLine size={18} />,       tone: 'warning'  },
+    { label: 'Archivés',        value: counts.archives,   icon: <Archive size={18} />,       tone: 'neutral'  },
+  ];
 
   const handleDelete = (f: FormulaireCollecte) => {
     if (!confirm(`Supprimer le formulaire "${f.titre}" ? Cette action est irréversible.`)) return;
@@ -67,34 +84,32 @@ export function FormulaireAdminListPage() {
   return (
     <div className={styles.page}>
       {/* Header */}
-      <div className={styles.hero}>
+      <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
-          <span className={styles.eyebrow}>
-            <ClipboardList size={14} /> Administration
+          <span className={styles.heroEyebrow}>
+            <ClipboardList size={0} /> Administration
           </span>
           <h1 className={styles.heroTitle}>Formulaires de collecte</h1>
-          <p className={styles.heroDesc}>
+          <p className={styles.heroDescription}>
             Créez et gérez les modèles de formulaires utilisés par les agents sur le terrain.
           </p>
         </div>
-        <Button
-          variant="primary"
-          iconLeft={<Plus size={16} />}
-          onClick={() => navigate('/admin/formulaires/nouveau')}
-        >
-          Nouveau formulaire
-        </Button>
-      </div>
+        <div className={styles.heroActions}>
+          <Button
+            variant="primary"
+            iconLeft={<Plus size={16} />}
+            onClick={() => navigate('/admin/formulaires/nouveau')}
+          >
+            Nouveau formulaire
+          </Button>
+        </div>
+      </header>
 
       {/* Stats */}
       <div className={styles.stats}>
-        {[
-          { label: 'Total', value: counts.total },
-          { label: 'Publiés actifs', value: counts.actifs },
-          { label: 'Brouillons', value: counts.brouillons },
-          { label: 'Archivés', value: counts.archives },
-        ].map((s) => (
-          <div key={s.label} className={styles.stat}>
+        {STATS.map((s) => (
+          <div key={s.label} className={styles.stat} data-tone={s.tone}>
+            <span className={styles.statIcon}>{s.icon}</span>
             <span className={styles.statValue}>{s.value}</span>
             <span className={styles.statLabel}>{s.label}</span>
           </div>
@@ -157,22 +172,26 @@ export function FormulaireAdminListPage() {
             <span>Formulaire</span>
             <span>Type</span>
             <span>Statut</span>
-            <span className={styles.center}>Version</span>
-            <span className={styles.center}>Champs</span>
+            <span className={styles.center}>Ver.</span>
+            <span className={styles.center}><Layers size={13} /></span>
             <span className={styles.center}>Actif</span>
             <span className={styles.right}>Actions</span>
           </div>
           {filtered.map((f) => (
-            <div key={f.id} className={styles.tableRow}>
+            <div key={f.id} className={styles.tableRow} data-statut={f.statut}>
               <div className={styles.titleCol}>
                 <span className={styles.titre}>{f.titre}</span>
-                <span className={styles.code}>{f.code}</span>
+                <code className={styles.code}>{f.code}</code>
               </div>
-              <span className={styles.type}>{f.typeFormulaire}</span>
+              <span className={styles.typePill}>
+                {TYPE_LABEL[f.typeFormulaire] ?? f.typeFormulaire}
+              </span>
               <Badge variant={STATUT_FORMULAIRE_VARIANT[f.statut]} size="sm">
                 {STATUT_FORMULAIRE_LABEL[f.statut]}
               </Badge>
-              <span className={styles.center}>v{f.version}</span>
+              <span className={styles.center}>
+                <span className={styles.versionBadge}>v{f.version}</span>
+              </span>
               <span className={styles.center}>{f.champs?.length ?? 0}</span>
               <span className={styles.center}>
                 <span className={clsx(styles.dot, f.actif ? styles.dotOn : styles.dotOff)} />

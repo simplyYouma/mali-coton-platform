@@ -1,17 +1,17 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Search, ListChecks } from 'lucide-react';
+import { ClipboardList, Search, ListChecks, CheckCircle2 } from 'lucide-react';
 import { Input, Select, Skeleton, EmptyState, Button } from '@/components/common';
 import { useFormulaires } from '../hooks/useFormulaires';
 import { FormulaireCard } from '../components/FormulaireCard';
 import styles from './FormulaireListPage.module.css';
 
-const TYPE_OPTIONS = [
-  { value: 'all', label: 'Tous les types' },
-  { value: 'visite_initiale', label: 'Visite initiale' },
-  { value: 'controle_mensuel', label: 'Contrôle mensuel' },
-  { value: 'signalement_incident', label: 'Signalement incident' },
-];
+const TYPE_LABEL: Record<string, string> = {
+  visite_initiale:      'Visite initiale',
+  controle_mensuel:     'Contrôle mensuel',
+  signalement_incident: 'Signalement incident',
+  suivi_socio:          'Suivi socio-économique',
+};
 
 export function FormulaireListPage() {
   const [q, setQ] = useState('');
@@ -19,6 +19,15 @@ export function FormulaireListPage() {
   const [showArchived, setShowArchived] = useState(false);
 
   const { data, isLoading } = useFormulaires();
+
+  // Options dérivées dynamiquement des types présents dans les données
+  const typeOptions = useMemo(() => {
+    const types = [...new Set((data?.items ?? []).map((f) => f.typeFormulaire))];
+    return [
+      { value: 'all', label: 'Tous les types' },
+      ...types.map((t) => ({ value: t, label: TYPE_LABEL[t] ?? t })),
+    ];
+  }, [data]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -44,8 +53,7 @@ export function FormulaireListPage() {
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
-            <ClipboardList size={14} />
-            Formulaires de collecte
+            <ClipboardList size={0} /> Formulaires de collecte
           </span>
           <h1 className={styles.heroTitle}>Formulaires</h1>
           <p className={styles.heroDescription}>
@@ -64,10 +72,12 @@ export function FormulaireListPage() {
       {/* Stats rapides */}
       <div className={styles.stats}>
         <div className={styles.stat}>
+          <span className={styles.statIcon}><ClipboardList size={18} /></span>
           <span className={styles.statValue}>{data?.total ?? '—'}</span>
           <span className={styles.statLabel}>Formulaires</span>
         </div>
-        <div className={styles.stat}>
+        <div className={styles.stat} data-tone="success">
+          <span className={styles.statIcon}><CheckCircle2 size={18} /></span>
           <span className={styles.statValue}>{publishedCount}</span>
           <span className={styles.statLabel}>Publiés</span>
         </div>
@@ -88,7 +98,7 @@ export function FormulaireListPage() {
         <Select<string>
           value={typeFilter}
           onChange={setTypeFilter}
-          options={TYPE_OPTIONS}
+          options={typeOptions}
           aria-label="Filtrer par type"
         />
         <label className={styles.archivedToggle}>

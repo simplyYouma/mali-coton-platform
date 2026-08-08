@@ -1,5 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchParametreAnalyses, fetchParametreUnites } from '../api/referentiels';
+import {
+  fetchReferentielsSummary,
+  fetchParametreAnalyses,
+  fetchParametreUnites,
+  createParametreAnalyse,
+  updateParametreAnalyse,
+  deleteParametreAnalyse,
+  createParametreUnite,
+  updateParametreUnite,
+  fetchNormeReferences,
+  createNormeReference,
+  updateNormeReference,
+  fetchSeuilNormatifs,
+  fetchSeuilsNonConfigures,
+  createSeuilNormatif,
+  updateSeuilNormatif,
+  deleteSeuilNormatif,
+  fetchIndicateurs,
+  type ParametreAnalyseInput,
+  type ParametreUniteInput,
+  type NormeReferenceInput,
+  type SeuilNormatifInput,
+} from '../api/referentiels';
 import {
   createIndicator,
   createPermission,
@@ -174,6 +196,16 @@ export function useDeleteIndicator() {
   });
 }
 
+export function useReferentielsSummary() {
+  return useQuery({
+    queryKey: ['referentiels', 'summary'],
+    queryFn: fetchReferentielsSummary,
+    staleTime: 30_000,
+  });
+}
+
+// ── ParametreUnite ────────────────────────────────────────────────────────────
+
 export function useParametreUnites() {
   return useQuery({
     queryKey: ['referentiels', 'unites'],
@@ -182,11 +214,154 @@ export function useParametreUnites() {
   });
 }
 
+export function useCreateParametreUnite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ParametreUniteInput) => createParametreUnite(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['referentiels', 'unites'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'summary'] });
+    },
+  });
+}
+
+export function useUpdateParametreUnite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: number; input: Partial<ParametreUniteInput> }) =>
+      updateParametreUnite(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['referentiels', 'unites'] }),
+  });
+}
+
+// ── ParametreAnalyse ──────────────────────────────────────────────────────────
+
 export function useParametreAnalyses() {
   return useQuery({
     queryKey: ['referentiels', 'analyses'],
     queryFn: fetchParametreAnalyses,
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useCreateParametreAnalyse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ParametreAnalyseInput) => createParametreAnalyse(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['referentiels', 'analyses'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'summary'] });
+    },
+  });
+}
+
+export function useUpdateParametreAnalyse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: number; input: Partial<ParametreAnalyseInput> }) =>
+      updateParametreAnalyse(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['referentiels', 'analyses'] }),
+  });
+}
+
+export function useDeleteParametreAnalyse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteParametreAnalyse(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['referentiels', 'analyses'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'summary'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'seuils', 'non-configures'] });
+    },
+  });
+}
+
+// ── NormeReference ────────────────────────────────────────────────────────────
+
+export function useNormeReferences() {
+  return useQuery({
+    queryKey: ['referentiels', 'normes'],
+    queryFn: fetchNormeReferences,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCreateNormeReference() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NormeReferenceInput) => createNormeReference(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['referentiels', 'normes'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'summary'] });
+    },
+  });
+}
+
+export function useUpdateNormeReference() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<NormeReferenceInput> }) =>
+      updateNormeReference(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['referentiels', 'normes'] }),
+  });
+}
+
+// ── SeuilNormatif ─────────────────────────────────────────────────────────────
+
+export function useSeuilNormatifs() {
+  return useQuery({
+    queryKey: ['referentiels', 'seuils'],
+    queryFn: fetchSeuilNormatifs,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSeuilsNonConfigures() {
+  return useQuery({
+    queryKey: ['referentiels', 'seuils', 'non-configures'],
+    queryFn: fetchSeuilsNonConfigures,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateSeuilNormatif() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SeuilNormatifInput) => createSeuilNormatif(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['referentiels', 'seuils'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'summary'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'seuils', 'non-configures'] });
+    },
+  });
+}
+
+export function useUpdateSeuilNormatif() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<SeuilNormatifInput> }) =>
+      updateSeuilNormatif(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['referentiels', 'seuils'] }),
+  });
+}
+
+export function useDeleteSeuilNormatif() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteSeuilNormatif(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['referentiels', 'seuils'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'summary'] });
+      qc.invalidateQueries({ queryKey: ['referentiels', 'seuils', 'non-configures'] });
+    },
+  });
+}
+
+export function useIndicateurs() {
+  return useQuery({
+    queryKey: ['referentiels', 'indicateurs'],
+    queryFn: fetchIndicateurs,
+    staleTime: 60_000,
   });
 }
 
