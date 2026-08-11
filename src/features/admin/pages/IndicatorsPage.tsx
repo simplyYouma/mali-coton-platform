@@ -55,6 +55,50 @@ export function IndicatorsPage() {
     return items;
   }, [indicateurs, filtre, q]);
 
+  const actionBar = (
+    <div className={styles.heroRight}>
+      <div className={styles.search}>
+        <Search size={14} aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Rechercher un indicateur…"
+          aria-label="Rechercher un indicateur"
+        />
+      </div>
+      <Button
+        variant="excel"
+        iconLeft={<FileSpreadsheet size={14} />}
+        disabled={filtered.length === 0}
+        onClick={() => {
+          exportRowsToXlsx({
+            filename: 'indicateurs',
+            sheetName: 'Indicateurs',
+            columns: [
+              { header: 'ID', accessor: (i) => i.id },
+              { header: 'Libellé', accessor: (i) => i.label },
+              { header: 'Domaine', accessor: (i) => i.domain },
+              { header: 'Unité', accessor: (i) => i.unit ?? '' },
+              { header: 'Méthode', accessor: (i) => i.method ?? '' },
+              { header: 'Source', accessor: (i) => i.source ?? '' },
+              { header: 'Min OK', accessor: (i) => i.minOk ?? '' },
+              { header: 'Max OK', accessor: (i) => i.maxOk ?? '' },
+              { header: 'Labo uniquement', accessor: (i) => (i.labOnly ? 'Oui' : 'Non') },
+              { header: 'Actif', accessor: (i) => (i.isActive === false ? 'Non' : 'Oui') },
+            ],
+            rows: filtered,
+          });
+        }}
+      >
+        Exporter XLSX
+      </Button>
+      <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
+        Ajouter
+      </Button>
+    </div>
+  );
+
   return (
     <div className={styles.page}>
       {/* Hero */}
