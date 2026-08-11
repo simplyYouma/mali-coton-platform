@@ -11,6 +11,7 @@ import {
 } from '../api/sites';
 import { fetchSitePhotos } from '../api/sitePhotos';
 import { fetchSiteEmployes } from '../api/siteEmployes';
+import { fetchDonneesEnvironnementales } from '../api/donneesEnv';
 
 export function useSites(query: SitesQuery = {}) {
   return useQuery({
@@ -83,5 +84,14 @@ export function useDeleteSite() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sites'] });
     },
+  });
+}
+
+export function useDonneesEnvironnementales(siteId: string | undefined) {
+  return useQuery({
+    queryKey: ['donneesEnv', siteId],
+    queryFn: () => fetchDonneesEnvironnementales(siteId!),
+    enabled: Boolean(siteId),
+    staleTime: 60_000,
   });
 }

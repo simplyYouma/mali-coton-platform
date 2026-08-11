@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -30,39 +30,18 @@ import {
   Tabs,
   Skeleton,
   EmptyState,
-  Badge,
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { useCollections } from '@/features/collection/hooks/useCollections';
-import { mockUsers } from '@/mocks/fixtures/users';
-import { findRule, computeLocalConformity } from '@/features/collection/lib/indicatorRules';
-import type { Collection, Measurement } from '@/features/collection/api/collection.types';
-import { STATUS_LABEL, STATUS_VARIANT } from '@/features/collection/api/collection.types';
-import type { ConformityLevel } from '@/types/common';
 import { useSite, useSiteDetail, useSiteEmployes } from '../hooks/useSites';
-import { ConformityBadge } from '../components/ConformityBadge';
 import { SiteForm } from '../components/SiteForm';
+import { DonneesEnvPanel } from '../components/DonneesEnvPanel';
 import { SITE_TYPE_LABEL } from '../api/site.types';
 import type { KoboCodedItem, KoboPhotoBackend } from '../api/sites.adapter';
-import { SitePhoto } from '../components/KoboImage';
+import { SitePhotoGallery } from '../components/SitePhotoGallery';
 import { formatDateTime, formatGps } from '@/lib/format';
 import styles from './SiteDetailPage.module.css';
 
 /* ─── helpers ─── */
-
-function worstConformity(measurements: Measurement[]): ConformityLevel {
-  let worst: ConformityLevel = 'conforming';
-  for (const m of measurements) {
-    const rule = findRule(m.indicatorId);
-    if (!rule) continue;
-    const v = typeof m.value === 'number' ? m.value : Number(m.value);
-    if (!Number.isFinite(v)) continue;
-    const level = computeLocalConformity(rule, v);
-    if (level === 'critical') return 'critical';
-    if (level === 'warning' && worst === 'conforming') worst = 'warning';
-  }
-  return worst;
-}
 
 function isOui(val: unknown): boolean {
   if (val == null) return false;
@@ -180,16 +159,7 @@ export function SiteDetailPage() {
   const { data: site, isLoading, isError } = useSite(id);
   const { data: detail, isLoading: detailLoading } = useSiteDetail(id);
 
-  const { data: collectionsPage } = useCollections({ siteId: id });
-  const siteCollections = useMemo(
-    () =>
-      [...(collectionsPage?.items ?? [])].sort(
-        (a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime(),
-      ),
-    [collectionsPage],
-  );
-
-  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'employes' | 'photos' | 'historique'>('profil');
+  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'employes' | 'photos' | 'env'>('profil');
   const [editOpen, setEditOpen] = useState(false);
   const [openEmployes, setOpenEmployes] = useState<Set<number>>(new Set());
 
@@ -204,12 +174,6 @@ export function SiteDetailPage() {
     });
   }
   const isAdmin = role === 'admin';
-
-  const usersById = useMemo(() => {
-    const map = new Map<string, string>();
-    mockUsers.forEach((u) => map.set(u.id, u.fullName));
-    return map;
-  }, []);
 
   const cs = detail?.collecteSite ?? null;
   const photos: KoboPhotoBackend[] = detail?.photos ?? [];
@@ -340,7 +304,7 @@ export function SiteDetailPage() {
           { value: 'appuis', label: 'Appuis & Besoins' },
           { value: 'employes', label: 'Employés', badge: employesData?.totalEmployes || undefined },
           { value: 'photos', label: 'Photos', badge: photos.length || undefined },
-          { value: 'historique', label: 'Historique', badge: siteCollections.length || undefined },
+          { value: 'env', label: 'Données env.' },
         ]}
         aria-label="Sections de la fiche site"
       />
@@ -657,78 +621,15 @@ export function SiteDetailPage() {
             <EmptyState
               icon={<ImageOff size={24} />}
               title="Aucune photo pour ce site"
-              description="Les photos Kobo apparaîtront ici une fois importées."
+              description="Les photos du site apparaîtront ici une fois importées."
             />
           ) : (
-            <div className={styles.photoGrid}>
-              {photos.map((p) => (
-                <div key={p.id} className={styles.photoCard}>
-                  <SitePhoto
-                    src={p.downloadMediumUrl ?? p.downloadUrl}
-                    fullUrl={p.downloadLargeUrl ?? p.downloadUrl}
-                    alt={p.mediaFileBasename ?? 'Photo du site'}
-                  />
-                  {p.mediaFileBasename ? (
-                    <span className={styles.photoMeta}>{p.mediaFileBasename}</span>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+            <SitePhotoGallery photos={photos} />
           )
         ) : null}
 
-        {/* ══ Onglet Historique ══ */}
-        {tab === 'historique' ? (
-          <section className={styles.panel} aria-label="Historique des collectes">
-            {siteCollections.length === 0 ? (
-              <EmptyState
-                icon={<ClipboardList size={24} />}
-                title="Aucune collecte enregistrée"
-                description="Ce site n'a pas encore été visité par un agent."
-              />
-            ) : (
-              <ul className={styles.timeline}>
-                {siteCollections.slice(0, 12).map((entry: Collection, i) => {
-                  const conformity = worstConformity(entry.measurements);
-                  const isLast = i === Math.min(siteCollections.length, 12) - 1;
-                  return (
-                    <li key={entry.id} className={styles.timelineItem}>
-                      <span
-                        className={styles.timelineDot}
-                        data-conformity={conformity}
-                        aria-hidden="true"
-                      />
-                      {!isLast ? <span className={styles.timelineLine} aria-hidden="true" /> : null}
-                      <div className={styles.timelineCard}>
-                        <header className={styles.timelineHeader}>
-                          <div>
-                            <p className={styles.timelineDate}>
-                              {formatDateTime(entry.collectedAt)}
-                            </p>
-                            <p className={styles.timelineAgent}>
-                              par {usersById.get(entry.agentId) ?? entry.agentId}
-                            </p>
-                          </div>
-                          <Badge variant={STATUS_VARIANT[entry.status]} size="sm">
-                            {STATUS_LABEL[entry.status]}
-                          </Badge>
-                        </header>
-                        <footer className={styles.timelineFooter}>
-                          <ConformityBadge level={conformity} size="sm" />
-                          <Link to={`/collecte/${entry.id}`}>
-                            <Button variant="ghost" size="sm">
-                              Détail de la collecte
-                            </Button>
-                          </Link>
-                        </footer>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        ) : null}
+        {/* ══ Onglet Données environnementales ══ */}
+        {tab === 'env' ? <DonneesEnvPanel siteId={id!} /> : null}
       </div>
 
       {isAdmin ? (

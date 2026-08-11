@@ -47,7 +47,7 @@ export interface KoboCodedItem {
   createdAt?: string | null;
 }
 
-/** Photo Kobo renvoyée dans le détail d'un site. */
+/** Photo renvoyée dans le détail d'un site. */
 export interface KoboPhotoBackend {
   id: number;
   siteTeintureId?: number;
@@ -55,7 +55,10 @@ export interface KoboPhotoBackend {
   questionXpath?: string | null;
   mediaFileBasename?: string | null;
   mimeType?: string | null;
-  downloadUrl: string;
+  /** Nouveau format : chemin relatif backend, ex. "/api/site_teintures/photos/100/afficher". */
+  url?: string | null;
+  /** Ancien format Kobo (rétrocompatibilité). */
+  downloadUrl?: string | null;
   downloadLargeUrl?: string | null;
   downloadMediumUrl?: string | null;
   downloadSmallUrl?: string | null;

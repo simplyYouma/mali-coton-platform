@@ -24,7 +24,7 @@ import { TeamListPage, AgentDetailPage } from '@/features/team';
 import { MappingPage } from '@/features/mapping';
 import { AnalyticsPage } from '@/features/analytics';
 import { ReportingPage } from '@/features/reporting';
-import { LabSamplesPage } from '@/features/lab';
+import { LabSamplesPage, PrelevementsPage, AnalysesPage } from '@/features/lab';
 import {
   FormulaireListPage,
   FormulaireCollectePage,
@@ -86,6 +86,22 @@ export function AppRoutes() {
           element={
             <RoleGuard roles={['admin', 'superviseur']}>
               <LabSamplesPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/labo/prelevements"
+          element={
+            <RoleGuard roles={['admin', 'superviseur']}>
+              <PrelevementsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/labo/analyses"
+          element={
+            <RoleGuard roles={['admin', 'superviseur']}>
+              <AnalysesPage />
             </RoleGuard>
           }
         />

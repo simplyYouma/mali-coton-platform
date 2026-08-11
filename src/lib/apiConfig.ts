@@ -18,6 +18,9 @@ export const API_MODE: ApiMode = envMode === 'live' ? 'live' : 'mock';
 /** Préfixe utilisé côté client pour construire les URLs. */
 export const API_BASE: string = API_MODE === 'mock' ? '/api/v1' : `${envBaseUrl}/api`;
 
+/** Origine du serveur backend (sans chemin), pour construire des URLs médias absolues. */
+export const API_ORIGIN: string = API_MODE === 'live' ? envBaseUrl : window.location.origin;
+
 /** True si MSW doit démarrer au bootstrap. */
 export const USE_MSW: boolean = API_MODE === 'mock';
 

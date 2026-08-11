@@ -2,19 +2,6 @@ import { http } from '@/lib/http';
 import { API_MODE } from '@/lib/apiConfig';
 import { unwrapPaginated } from '@/lib/jsonld';
 
-// ── Encoding fix ──────────────────────────────────────────────────────────────
-// L'API renvoie parfois des chaînes UTF-8 interprétées en Latin-1 ("RÃ©" → "é").
-function fixEncoding(s: string | null | undefined): string {
-  if (!s) return '';
-  try {
-    return new TextDecoder('utf-8').decode(
-      new Uint8Array([...s].map((c) => c.charCodeAt(0))),
-    );
-  } catch {
-    return s;
-  }
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParametreUnite {
@@ -207,10 +194,10 @@ export async function fetchNormeReferences(): Promise<NormeReference[]> {
   return unwrapPaginated<any>(raw).items.map((b: any) => ({
     id: String(b.id),
     code: b.code,
-    libelle: fixEncoding(b.libelle),
-    organisme: fixEncoding(b.organisme) || null,
+    libelle: b.libelle ?? '',
+    organisme: b.organisme ?? null,
     version: b.version ?? null,
-    description: fixEncoding(b.description) || null,
+    description: b.description ?? null,
     actif: b.actif ?? true,
     dateDebutValidite: b.dateDebutValidite ?? null,
     dateFinValidite: b.dateFinValidite ?? null,
@@ -250,7 +237,7 @@ export async function fetchSeuilsNonConfigures(): Promise<{ total: number; resul
     total: data.total,
     resultats: (data.resultats ?? []).map((r: any) => ({
       id: r.id,
-      libelle: fixEncoding(r.libelle),
+      libelle: r.libelle ?? '',
       domaine: r.domaine,
     })),
   };
@@ -276,15 +263,15 @@ export async function fetchIndicateurs(): Promise<Indicateur[]> {
   return (data.resultats ?? []).map((r: any) => ({
     id: r.id,
     code: r.code,
-    libelle: fixEncoding(r.libelle),
+    libelle: r.libelle ?? '',
     domaine: r.domaine,
     unite: r.unite ?? null,
     sourceNormative: r.sourceNormative
       ? {
           id: String(r.sourceNormative.id),
           code: r.sourceNormative.code,
-          libelle: fixEncoding(r.sourceNormative.libelle),
-          organisme: fixEncoding(r.sourceNormative.organisme ?? ''),
+          libelle: r.sourceNormative.libelle ?? '',
+          organisme: r.sourceNormative.organisme ?? '',
         }
       : null,
     seuilMinimal: r.seuilMinimal ?? null,

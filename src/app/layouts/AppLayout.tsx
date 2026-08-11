@@ -13,6 +13,8 @@ import {
   ListChecks,
   ScrollText,
   Beaker,
+  Microscope,
+  Pipette,
   ShieldCheck,
   Database,
   FileText,
@@ -29,7 +31,7 @@ import type { UserRole } from '@/types/common';
 
 interface NavSpec extends NavItem {
   roles: UserRole[];
-  section: 'main' | 'tools' | 'admin';
+  section: 'main' | 'labo' | 'tools' | 'admin';
 }
 
 const ALL_NAV: NavSpec[] = [
@@ -62,11 +64,25 @@ const ALL_NAV: NavSpec[] = [
     section: 'main',
   },
   {
+    to: '/labo/analyses',
+    label: 'Résultats d\'analyse',
+    icon: <Microscope size={18} />,
+    roles: ['admin', 'superviseur'],
+    section: 'labo',
+  },
+  {
+    to: '/labo/prelevements',
+    label: 'Prélèvements',
+    icon: <Pipette size={18} />,
+    roles: ['admin', 'superviseur'],
+    section: 'labo',
+  },
+  {
     to: '/labo/echantillons',
-    label: 'Échantillons labo',
+    label: 'Échantillons',
     icon: <Beaker size={18} />,
     roles: ['admin', 'superviseur'],
-    section: 'main',
+    section: 'labo',
   },
   {
     to: '/formulaires',
@@ -163,6 +179,7 @@ const ALL_NAV: NavSpec[] = [
 
 const SECTION_TITLES: Record<NavSpec['section'], string> = {
   main: 'Menu principal',
+  labo: 'Analyse & Laboratoire',
   tools: 'Outils & analyse',
   admin: 'Administration',
 };
@@ -190,7 +207,7 @@ export function AppLayout() {
     (r) => r.statut === 'proposee' || r.statut === 'en_cours',
   ).length;
 
-  const groups: Record<string, NavItem[]> = { main: [], tools: [], admin: [] };
+  const groups: Record<string, NavItem[]> = { main: [], labo: [], tools: [], admin: [] };
   ALL_NAV.forEach((item) => {
     if (!role || !item.roles.includes(role)) return;
     const { roles: _r, section, ...rest } = item;
@@ -209,7 +226,7 @@ export function AppLayout() {
     groups[section]!.push(rest);
   });
 
-  const sections: NavSection[] = (Object.keys(groups) as Array<NavSpec['section']>)
+  const sections: NavSection[] = (['main', 'labo', 'tools', 'admin'] as Array<NavSpec['section']>)
     .filter((key) => groups[key]!.length > 0)
     .map((key) => ({ title: SECTION_TITLES[key], items: groups[key]! }));
 
