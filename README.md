@@ -11,12 +11,41 @@ Plateforme numérique de suivi socio-environnemental des sites de teintureries a
 
 ## Démarrage
 
+**En un clic** — double-cliquez sur `start.bat` (Windows) ou `start.sh` (macOS/Linux).
+
+Le lanceur vérifie Node.js, installe les dépendances si besoin, démarre le serveur
+et ouvre le navigateur. En cas de problème, il affiche la cause et la marche à suivre.
+
+```bash
+./start.sh              # mode API du .env.local, sinon backend réel
+./start.sh mock         # données de démonstration, aucun backend requis
+./start.sh live         # backend réel
+./start.sh --no-browser # sans ouverture automatique du navigateur
+```
+
+> Sous Windows, passez par `start.bat` : Git Bash n'est pas associé aux fichiers
+> `.sh`, donc un double-clic sur `start.sh` n'ouvre généralement qu'un éditeur.
+> `start.bat` ne fait que retrouver Git Bash et lui confier `start.sh`.
+
+**Manuellement**, si vous préférez :
+
 ```bash
 npm install
 npm run dev
 ```
 
-L'application est accessible sur http://localhost:5173.
+L'application est accessible sur http://localhost:5173 (Vite bascule
+automatiquement sur le port suivant s'il est déjà pris).
+
+### Mode API
+
+Sans fichier `.env.local`, l'application interroge le **backend réel** —
+il faut donc une connexion pour s'authentifier. Pour travailler hors ligne avec
+les données de démonstration, lancez `./start.sh mock`, ou créez un `.env.local` :
+
+```
+VITE_API_MODE=mock
+```
 
 ## Comptes de démonstration
 
@@ -31,6 +60,7 @@ L'application est accessible sur http://localhost:5173.
 
 | Commande | Description |
 |---|---|
+| `./start.sh` | Lanceur de développement (vérifications + serveur + navigateur) |
 | `npm run dev` | Serveur de développement Vite |
 | `npm run build` | Build production typé |
 | `npm run preview` | Prévisualiser le build |
