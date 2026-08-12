@@ -2,10 +2,14 @@ import type { AuthenticatedUser } from '@/types/common';
 
 interface MockUser extends AuthenticatedUser {
   /**
-   * Mot de passe de connexion. `null` = agent terrain, ne se connecte pas à
-   * la plateforme (il travaille uniquement via Kobo Toolbox). Le record reste
-   * néanmoins dans la table pour servir de référentiel (notif e-mail/SMS,
-   * jointure agentId → nom dans la fiche collecte).
+   * Mot de passe de connexion. `null` = compte de référentiel qui ne se
+   * connecte pas (notif e-mail/SMS, jointure agentId → nom dans la fiche
+   * collecte).
+   *
+   * Les agents terrain en avaient un `null` du temps de KoboCollect. La
+   * collecte native (cf. docs/approche-collecte-native.md) fait d'eux les
+   * utilisateurs principaux de l'application installée sur tablette : ils se
+   * connectent donc désormais à la plateforme.
    */
   password: string | null;
 }
@@ -33,8 +37,8 @@ export const mockUsers: MockUser[] = [
     koboUsername: 'm.coulibaly',
     password: 'demo',
   },
-  // Agents terrain — référentiel pour la jointure agentId / nom + notif e-mail/SMS.
-  // Ne se connectent pas à la plateforme (password: null) — saisie via Kobo.
+  // Agents terrain — saisie des collectes depuis l'application installée sur
+  // leur tablette. Servent aussi de référentiel pour la jointure agentId / nom.
   {
     id: 'u-agent-bko',
     email: 'agent.bamako@sahel.com',
@@ -44,7 +48,7 @@ export const mockUsers: MockUser[] = [
     locale: 'fr',
     phone: '+22376112233',
     koboUsername: 'aicha.toure',
-    password: null,
+    password: 'demo',
   },
   {
     id: 'u-agent-segou',
@@ -55,7 +59,7 @@ export const mockUsers: MockUser[] = [
     locale: 'fr',
     phone: '+22376998877',
     koboUsername: 'issa.traore',
-    password: null,
+    password: 'demo',
   },
   {
     id: 'u-visitor-1',

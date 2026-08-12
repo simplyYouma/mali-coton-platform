@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import type { UserRole } from '@/types/common';
 import { useAuth } from './providers/AuthProvider';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { AppLayout } from './layouts/AppLayout';
@@ -35,7 +36,8 @@ import {
 import { RoleGuard } from '@/components/common';
 
 export function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
+  const accueil = defaultRoute(role);
 
   if (!isAuthenticated) {
     return (
@@ -48,10 +50,17 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to={defaultRoute()} replace />} />
+      <Route path="/login" element={<Navigate to={accueil} replace />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Navigate to={defaultRoute()} replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/" element={<Navigate to={accueil} replace />} />
+        <Route
+          path="/dashboard"
+          element={
+            <RoleGuard roles={['admin', 'superviseur', 'visitor']}>
+              <DashboardPage />
+            </RoleGuard>
+          }
+        />
         <Route path="/sites" element={<SitesListPage />} />
         <Route path="/sites/:id" element={<SiteDetailPage />} />
         <Route path="/collecte" element={<CollectionsListPage />} />
@@ -180,12 +189,19 @@ export function AppRoutes() {
             </RoleGuard>
           }
         />
-        <Route path="*" element={<Navigate to={defaultRoute()} replace />} />
+        <Route path="*" element={<Navigate to={accueil} replace />} />
       </Route>
     </Routes>
   );
 }
 
-function defaultRoute(): string {
-  return '/dashboard';
+/**
+ * Page d'entree selon le role.
+ *
+ * L'agent terrain n'a acces ni au tableau de bord ni aux pages de pilotage :
+ * sa navigation ne contient que les formulaires de collecte. L'envoyer sur
+ * /dashboard le deposerait sur un ecran absent de son propre menu.
+ */
+function defaultRoute(role: UserRole | null): string {
+  return role === 'agent' ? '/formulaires' : '/dashboard';
 }

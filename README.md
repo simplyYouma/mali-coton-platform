@@ -34,8 +34,13 @@ npm install
 npm run dev
 ```
 
-L'application est accessible sur http://localhost:5173 (Vite bascule
+L'application est accessible sur http://localhost:5180 (Vite bascule
 automatiquement sur le port suivant s'il est déjà pris).
+
+> Le port 5180 est choisi volontairement, à la place du 5173 par défaut de
+> Vite. Une application installable est identifiée par son origine, **port
+> compris** : partager le 5173 avec un autre projet installé conduit le
+> navigateur à proposer d'ouvrir PASET dans l'application voisine.
 
 ### Mode API
 
@@ -55,12 +60,12 @@ Disponibles en mode `mock` uniquement (`./start.sh mock`).
 |---|---|---|
 | Administrateur PNUD | `admin@pnud.org` | `demo` |
 | Superviseur | `superviseur@sahel.com` | `demo` |
+| Agent terrain (Bamako) | `agent.bamako@sahel.com` | `demo` |
+| Agent terrain (Ségou) | `agent.segou@sahel.com` | `demo` |
 | Observateur (lecture seule) | `observateur@pnud.org` | `demo` |
 
-Les **agents terrain** (`agent.bamako@sahel.com`, `agent.segou@sahel.com`) existent
-dans le référentiel mais **ne se connectent pas** à la plateforme : ils ont
-`password: null` et saisissent via Kobo Toolbox. Leur fiche sert aux notifications
-et à la jointure `agentId` → nom dans les collectes.
+Un agent terrain n'a accès qu'aux formulaires de collecte : il est redirigé vers
+`/formulaires` à la connexion, et le tableau de bord lui reste fermé.
 
 ## Scripts
 
@@ -111,6 +116,31 @@ src/
 
 Interface disponible en **français** (par défaut). Le **bambara** est amorcé sur les écrans agent (collecte) ; la traduction complète est planifiée en Phase L3 avec validation linguistique terrain.
 
-## Mode hors-ligne (app tablette)
+## Application installable (PWA)
 
-L'application de collecte fonctionne intégralement sans connexion. Les données sont persistées localement (IndexedDB via Dexie) et synchronisées automatiquement à la reconnexion via un *outbox pattern*.
+L'agent ouvre PASET dans le navigateur de sa tablette et l'installe sur son
+écran d'accueil : elle s'ouvre ensuite en plein écran, sans barre d'adresse,
+comme une application native.
+
+| Élément | Détail |
+|---|---|
+| Identifiant (`id`) | `/paset-mali` — distingue PASET de toute autre application servie sur la même origine |
+| Icônes | `public/icons/`, régénérables via `node tools/generate-icons.mjs` |
+| Service worker | Généré au build (Workbox). Coque applicative précachée, lectures d'API en *network-first*, images en *cache-first* |
+| Mise à jour | Proposée par une bannière, jamais imposée : une saisie en cours n'est pas interrompue |
+
+**En développement, le service worker reste éteint.** MSW pose le sien pour
+intercepter les requêtes de démonstration, et une page ne peut être contrôlée
+que par un seul service worker à la fois. La PWA ne s'active donc qu'en mode
+`live`, sur un build de production (`npm run build && npm run preview`).
+
+### Ce qui fonctionne hors ligne, et ce qui reste à faire
+
+Fonctionne : l'application **se lance** sans réseau, et les données déjà
+consultées restent affichées (dernière synchronisation en cache).
+
+À construire : la **soumission** d'un formulaire hors ligne. La file d'attente
+(`syncQueue` + IndexedDB via Dexie) n'est aujourd'hui câblée que sur l'ancienne
+feature `collection` ; la feature `formulaires` — celle de la collecte native —
+poste directement à l'API et échoue donc sans réseau. C'est le chantier suivant
+décrit dans [docs/approche-collecte-native.md](docs/approche-collecte-native.md).

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles/globals.css';
 import { App } from './app/App';
 import { USE_MSW, API_MODE, API_BASE } from './lib/apiConfig';
+import { enregistrerPwa } from './pwa/pwaRegistration';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -28,6 +29,10 @@ async function bootstrap(): Promise<void> {
       <App />
     </StrictMode>,
   );
+
+  /* Apres le rendu : l'installation du service worker ne doit pas retarder
+   * l'affichage. Sans effet en mode mock, ou MSW occupe deja la place. */
+  enregistrerPwa();
 }
 
 void bootstrap();
