@@ -123,15 +123,32 @@ if ! command -v node >/dev/null 2>&1; then
       "${DIM} programmes installes pendant qu'il etait deja ouvert)${Z}"
 fi
 
-NODE_VERSION="$(node -v 2>/dev/null)"          # ex. v22.13.0
+NODE_CHEMIN="$(command -v node)"
+
+# On garde la sortie d'erreur : quand node refuse de demarrer, c'est elle
+# qui explique pourquoi. La masquer ne laisserait qu'un message vide.
+NODE_SORTIE="$(node -v 2>&1)"; NODE_CODE=$?
+NODE_VERSION="$(printf '%s' "$NODE_SORTIE" | tr -d '\r' | head -1)"   # ex. v22.13.0
 NODE_MAJOR="${NODE_VERSION#v}"
 NODE_MAJOR="${NODE_MAJOR%%.*}"
 
-if ! [ "$NODE_MAJOR" -eq "$NODE_MAJOR" ] 2>/dev/null; then
-  die "Impossible de lire la version de Node.js." \
-      "La commande 'node -v' a repondu : ${NODE_VERSION:-<rien>}" \
+if [ "$NODE_CODE" -ne 0 ] || ! [ "$NODE_MAJOR" -eq "$NODE_MAJOR" ] 2>/dev/null; then
+  die "Node.js est present mais ne repond pas correctement." \
+      "Executable utilise :" \
+      "  ${NODE_CHEMIN}" \
       "" \
-      "Reinstallez Node.js depuis ${B}https://nodejs.org${Z} (version LTS)."
+      "'node -v' a renvoye (code ${NODE_CODE}) :" \
+      "  ${NODE_SORTIE:-<aucune sortie>}" \
+      "" \
+      "Pistes, de la plus probable a la moins probable :" \
+      "" \
+      "  • ${B}Relancez simplement ce script.${Z} Un premier demarrage bloque par" \
+      "    un antivirus se debloque souvent au second essai." \
+      "  • Si le chemin ci-dessus est dans un dossier ${B}Anaconda${Z}, il s'agit du" \
+      "    Node fourni par Anaconda, qui depend d'un environnement conda actif." \
+      "    Installez le Node.js officiel (LTS) depuis ${B}https://nodejs.org${Z} :" \
+      "    il ira dans C:\\Program Files\\nodejs et passera en priorite." \
+      "  • Sinon, reinstallez Node.js LTS depuis ${B}https://nodejs.org${Z}."
 fi
 
 # Vite 5 exige Node 18+ ; les versions 19 et 21 sont des paliers non maintenus.
