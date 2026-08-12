@@ -257,7 +257,49 @@ else
   printf '%s\n' "    ${DIM}pour travailler hors ligne : ./start.sh mock${Z}"
 fi
 
-# ── 5. Demarrage ──────────────────────────────────────────────────────────────
+# ── 5. Port ───────────────────────────────────────────────────────────────────
+
+step "Port"
+
+# Point de depart de la recherche. Volontairement hors de la plage 5173-5190,
+# ou se bousculent les serveurs Vite des autres projets. 8492 renvoie au
+# numero de projet UNDP-MLI-00492.
+PORT_BASE="${PASET_PORT:-8492}"
+
+# Un port fige finit toujours par entrer en collision sur un poste qui heberge
+# plusieurs projets : on cherche donc le premier libre a partir de la base.
+PORT="$(node -e '
+  const net = require("net");
+  const base = Number(process.argv[1]);
+  (function essayer(p, restant) {
+    if (!restant) { process.exit(1); }
+    const s = net.createServer();
+    s.once("error", () => essayer(p + 1, restant - 1));
+    s.once("listening", () => s.close(() => { console.log(p); }));
+    /* Sans hote : on ecoute sur toutes les interfaces, comme Vite avec
+     * host:true. Sonder seulement 127.0.0.1 donnerait un faux libre, Windows
+     * acceptant de lier une interface precise alors que 0.0.0.0 est deja pris. */
+    s.listen(p);
+  })(base, 80);
+' "$PORT_BASE" 2>/dev/null)"
+
+if [ -z "$PORT" ]; then
+  die "Aucun port libre trouve entre ${PORT_BASE} et $((PORT_BASE + 79))." \
+      "C'est tres inhabituel : il reste probablement des serveurs de" \
+      "developpement ouverts en arriere-plan." \
+      "" \
+      "Fermez les fenetres de terminal encore actives, ou imposez un port :" \
+      "  ${B}PASET_PORT=9876 ./start.sh${Z}"
+fi
+
+export PASET_PORT="$PORT"
+if [ "$PORT" = "$PORT_BASE" ]; then
+  ok "port ${PORT}"
+else
+  ok "port ${PORT} ${DIM}(${PORT_BASE} etait occupe)${Z}"
+fi
+
+# ── 6. Demarrage ──────────────────────────────────────────────────────────────
 
 ouvrir_navigateur() {
   local url="$1"

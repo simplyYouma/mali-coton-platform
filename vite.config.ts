@@ -103,15 +103,21 @@ export default defineConfig({
     },
   },
 
+  /* Aucun port n'est fige ici.
+   *
+   * Sur un poste qui heberge plusieurs projets, tout numero choisi d'avance
+   * finit par entrer en collision. start.sh cherche donc un port libre au
+   * lancement et le transmet par PASET_PORT ; a defaut, Vite retombe sur son
+   * comportement habituel (5173, puis le suivant si occupe).
+   *
+   * Pour epingler un port : PASET_PORT=1234 npm run dev
+   */
   server: {
-    /* Volontairement hors du 5173 par defaut de Vite : une PWA est identifiee
-     * par son origine, port compris. Partager 5173 avec un autre projet fait
-     * que le navigateur propose d'ouvrir PASET dans l'application voisine. */
-    port: 5180,
+    port: Number(process.env.PASET_PORT) || undefined,
     host: true,
   },
 
   preview: {
-    port: 5180,
+    port: Number(process.env.PASET_PORT) || undefined,
   },
 });

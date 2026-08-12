@@ -40,13 +40,18 @@ npm install
 npm run dev
 ```
 
-L'application est accessible sur http://localhost:5180 (Vite bascule
-automatiquement sur le port suivant s'il est déjà pris).
+Le lanceur cherche un port libre à partir de **8492** et affiche l'adresse
+retenue. Aucun port n'est figé : sur un poste qui héberge plusieurs projets,
+tout numéro choisi d'avance finit par entrer en collision.
 
-> Le port 5180 est choisi volontairement, à la place du 5173 par défaut de
-> Vite. Une application installable est identifiée par son origine, **port
-> compris** : partager le 5173 avec un autre projet installé conduit le
-> navigateur à proposer d'ouvrir PASET dans l'application voisine.
+```bash
+PASET_PORT=1234 ./start.sh   # pour épingler un port précis
+```
+
+> Le point de départ 8492 est volontairement hors de la plage 5173-5190, où se
+> bousculent les serveurs Vite des autres projets — et où d'anciennes PWA de
+> développement, installées depuis ces mêmes ports, réclament l'origine. Voir
+> [« Ouvrir dans l'appli »](#le-navigateur-propose-douvrir-dans-une-autre-application).
 
 ### Mode API
 
@@ -131,6 +136,7 @@ comme une application native.
 | Élément | Détail |
 |---|---|
 | Identifiant (`id`) | `/paset-mali` — distingue PASET de toute autre application servie sur la même origine |
+| Port de développement | Cherché libre au lancement (base 8492), jamais figé |
 | Icônes | `public/icons/`, régénérables via `node tools/generate-icons.mjs` |
 | Service worker | Généré au build (Workbox). Coque applicative précachée, lectures d'API en *network-first*, images en *cache-first* |
 | Mise à jour | Proposée par une bannière, jamais imposée : une saisie en cours n'est pas interrompue |
@@ -139,6 +145,23 @@ comme une application native.
 intercepter les requêtes de démonstration, et une page ne peut être contrôlée
 que par un seul service worker à la fois. La PWA ne s'active donc qu'en mode
 `live`, sur un build de production (`npm run build && npm run preview`).
+
+### Le navigateur propose d'ouvrir dans une autre application
+
+Si un bandeau **« Ouvrir dans l'appli »** apparaît dans la barre d'adresse alors
+que PASET s'affiche correctement, ce n'est pas un défaut de PASET : une autre
+PWA, installée depuis ce même `localhost:<port>`, réclame l'origine. Toutes les
+applications de développement partageant l'hôte `localhost`, **n'importe quel
+port peut avoir été réclamé** par une installation antérieure.
+
+Deux remèdes, cumulables :
+
+1. Laisser le lanceur choisir son port — c'est le comportement par défaut, et
+   il part de 8492 précisément pour éviter la plage encombrée.
+2. Désinstaller les PWA de développement devenues inutiles :
+   `edge://apps` (ou `chrome://apps`), puis désinstaller les entrées `localhost`.
+   Pour effacer aussi le service worker resté en place : *DevTools →
+   Application → Service Workers → Unregister*, puis *Storage → Clear site data*.
 
 ### Ce qui fonctionne hors ligne, et ce qui reste à faire
 
