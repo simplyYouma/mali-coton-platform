@@ -58,11 +58,14 @@ die() {
 
 MODE_FORCE=""
 OUVRIR_NAVIGATEUR="oui"
+APERCU="non"
 
 aide() {
-  printf '\n%s\n' "Usage : ./start.sh [mock|live] [--no-browser]"
+  printf '\n%s\n' "Usage : ./start.sh [mock|live|pwa] [--no-browser]"
   printf '%s\n'   "  mock          donnees de demonstration, aucun backend requis"
   printf '%s\n'   "  live          backend reel"
+  printf '%s\n'   "  pwa           build de production + apercu : seul mode ou"
+  printf '%s\n'   "                l'application est installable"
   printf '%s\n'   "  --no-browser  ne pas ouvrir le navigateur automatiquement"
   printf '\n'
 }
@@ -71,17 +74,31 @@ for arg in "$@"; do
   case "$arg" in
     mock|--mock) MODE_FORCE="mock" ;;
     live|--live) MODE_FORCE="live" ;;
+    pwa|--pwa)   APERCU="oui" ;;
     --no-browser|--sans-navigateur) OUVRIR_NAVIGATEUR="non" ;;
     -h|--help|--aide) aide; exit 0 ;;
     *)
       die "Option inconnue : ${arg}" \
-          "Usage : ./start.sh [mock|live] [--no-browser]" \
+          "Usage : ./start.sh [mock|live|pwa] [--no-browser]" \
           "" \
           "  mock          donnees de demonstration, aucun backend requis" \
           "  live          backend reel" \
+          "  pwa           build de production + apercu (application installable)" \
           "  --no-browser  ne pas ouvrir le navigateur automatiquement" ;;
   esac
 done
+
+# L'application installable repose sur un service worker, et MSW occupe deja
+# cette place en mode mock : les deux ne peuvent pas coexister.
+if [ "$APERCU" = "oui" ] && [ "$MODE_FORCE" = "mock" ]; then
+  die "Les modes 'pwa' et 'mock' sont incompatibles." \
+      "L'application installable repose sur un service worker." \
+      "MSW, qui sert les donnees de demonstration, en pose deja un — et une" \
+      "page ne peut etre controlee que par un seul service worker a la fois." \
+      "" \
+      "Lancez ${B}./start.sh pwa${Z} seul : l'apercu tourne alors sur le backend reel."
+fi
+if [ "$APERCU" = "oui" ]; then MODE_FORCE="live"; fi
 
 printf '\n%s\n' "${B}PASET Mali${Z} ${DIM}— environnement de developpement${Z}"
 printf '%s\n\n' "${DIM}────────────────────────────────────────────${Z}"
@@ -223,7 +240,7 @@ mode_du_fichier() {
 
 if [ -n "$MODE_FORCE" ]; then
   MODE="$MODE_FORCE"
-  MODE_SOURCE="demande au lancement"
+  MODE_SOURCE=$([ "$APERCU" = "oui" ] && echo "impose par le mode pwa" || echo "demande au lancement")
   export VITE_API_MODE="$MODE_FORCE"
 else
   _m="$(mode_du_fichier)"
@@ -251,12 +268,33 @@ ouvrir_navigateur() {
   esac
 }
 
+# L'apercu sert le resultat d'un build : il faut donc le produire d'abord.
+if [ "$APERCU" = "oui" ]; then
+  printf '\n%s\n' "${C}▸${Z} Build de production"
+  printf '%s\n\n' "    ${DIM}necessaire pour que l'application soit installable${Z}"
+  if ! npm run build; then
+    die "Le build de production a echoue." \
+        "Le message d'erreur exact est affiche juste au-dessus." \
+        "" \
+        "C'est presque toujours une erreur TypeScript : le chemin du fichier" \
+        "fautif et le numero de ligne figurent dans le message."
+  fi
+  printf '\n'
+  ok "build termine"
+  CIBLE="preview"
+else
+  CIBLE="dev"
+fi
+
 printf '\n%s\n' "${C}▸${Z} Demarrage du serveur"
+if [ "$APERCU" = "oui" ]; then
+  printf '%s\n' "    ${DIM}l'icone d'installation apparait dans la barre d'adresse${Z}"
+fi
 printf '%s\n\n' "    ${DIM}pour arreter : Ctrl+C dans cette fenetre${Z}"
 
 # On relaie la sortie de Vite telle quelle, en guettant l'URL locale pour
 # ouvrir le navigateur des que le serveur repond.
-npm run dev 2>&1 | {
+npm run "$CIBLE" 2>&1 | {
   navigateur_ouvert=""
   while IFS= read -r ligne; do
     printf '%s\n' "$ligne"

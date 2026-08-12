@@ -20,8 +20,14 @@ et ouvre le navigateur. En cas de problème, il affiche la cause et la marche à
 ./start.sh              # mode API du .env.local, sinon backend réel
 ./start.sh mock         # données de démonstration, aucun backend requis
 ./start.sh live         # backend réel
+./start.sh pwa          # build + aperçu : seul mode où l'app est installable
 ./start.sh --no-browser # sans ouverture automatique du navigateur
 ```
+
+> `pwa` construit d'abord le projet, puis sert le résultat. C'est nécessaire
+> parce que le service worker est éteint en développement (voir
+> [Application installable](#application-installable-pwa)) : sans build, aucune
+> icône d'installation n'apparaît.
 
 > Sous Windows, passez par `start.bat` : Git Bash n'est pas associé aux fichiers
 > `.sh`, donc un double-clic sur `start.sh` n'ouvre généralement qu'un éditeur.
