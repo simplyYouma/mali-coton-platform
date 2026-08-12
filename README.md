@@ -49,12 +49,18 @@ VITE_API_MODE=mock
 
 ## Comptes de démonstration
 
+Disponibles en mode `mock` uniquement (`./start.sh mock`).
+
 | Rôle | Email | Mot de passe |
 |---|---|---|
 | Administrateur PNUD | `admin@pnud.org` | `demo` |
 | Superviseur | `superviseur@sahel.com` | `demo` |
-| Agent terrain (Bamako) | `agent.bamako@sahel.com` | `demo` |
-| Agent terrain (Ségou) | `agent.segou@sahel.com` | `demo` |
+| Observateur (lecture seule) | `observateur@pnud.org` | `demo` |
+
+Les **agents terrain** (`agent.bamako@sahel.com`, `agent.segou@sahel.com`) existent
+dans le référentiel mais **ne se connectent pas** à la plateforme : ils ont
+`password: null` et saisissent via Kobo Toolbox. Leur fiche sert aux notifications
+et à la jointure `agentId` → nom dans les collectes.
 
 ## Scripts
 
