@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
+  Activity,
   FlaskConical,
   Ruler,
   BookOpen,
@@ -27,6 +29,7 @@ import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import { iriOf } from '@/lib/jsonld';
 import {
   useReferentielsSummary,
+  useIndicateurs,
   useParametreAnalyses,
   useParametreUnites,
   useNormeReferences,
@@ -49,18 +52,28 @@ import type {
   NormeReference,
   SeuilNormatif,
 } from '../api/referentiels';
+import { IndicatorsPage } from './IndicatorsPage';
 import styles from './RefDataPage.module.css';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-type Tab = 'parametres' | 'unites' | 'normes' | 'seuils';
+/** Indicateurs est un onglet a part : il delegue son rendu a IndicatorsPage
+ *  en mode embedded, les autres onglets rendent un tableau de referentiel. */
+type Tab = 'indicateurs' | 'parametres' | 'unites' | 'normes' | 'seuils';
 
 const TABS: Array<{ value: Tab; label: string; icon: React.ReactNode }> = [
+  { value: 'indicateurs', label: 'Indicateurs', icon: <Activity size={13} /> },
   { value: 'parametres', label: 'Paramètres', icon: <FlaskConical size={13} /> },
   { value: 'unites',     label: 'Unités',     icon: <Ruler size={13} /> },
   { value: 'normes',     label: 'Normes',     icon: <BookOpen size={13} /> },
   { value: 'seuils',     label: 'Seuils',     icon: <Gauge size={13} /> },
 ];
+
+const TAB_VALUES = TABS.map((t) => t.value);
+
+function isTab(value: string | null): value is Tab {
+  return value !== null && (TAB_VALUES as string[]).includes(value);
+}
 
 const CAT_LABEL: Record<string, string> = {
   chimique: 'Chimique',
@@ -82,9 +95,21 @@ const CAT_OPTIONS = [
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export function RefDataPage() {
-  const [tab, setTab] = useState<Tab>('parametres');
+  /* L'onglet actif est porte par l'URL (?tab=) : /admin/indicateurs redirige
+   *  vers /admin/referentiels?tab=indicateurs, et les onglets restent partageables. */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const tab: Tab = isTab(urlTab) ? urlTab : 'parametres';
+
+  const setTab = (next: Tab) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === 'parametres') params.delete('tab');
+    else params.set('tab', next);
+    setSearchParams(params, { replace: true });
+  };
 
   const summaryQ     = useReferentielsSummary();
+  const indicateursQ = useIndicateurs();
   const parametresQ  = useParametreAnalyses();
   const unitesQ      = useParametreUnites();
   const normesQ      = useNormeReferences();
@@ -92,6 +117,10 @@ export function RefDataPage() {
   const nonConfigQ   = useSeuilsNonConfigures();
 
   const summary = summaryQ.data ?? { parametres: 0, unites: 0, normes: 0, seuils: 0 };
+  const tabCounts: Record<Tab, number> = {
+    ...summary,
+    indicateurs: indicateursQ.data?.length ?? 0,
+  };
   const parametres = parametresQ.data ?? [];
   const unites     = unitesQ.data ?? [];
   const normes     = normesQ.data ?? [];
@@ -144,13 +173,16 @@ export function RefDataPage() {
             >
               {t.icon}
               {t.label}
-              <span className={styles.chipCount}>{summary[t.value]}</span>
+              <span className={styles.chipCount}>{tabCounts[t.value]}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Contenu */}
+      {tab === 'indicateurs' && (
+        <IndicatorsPage embedded onNavigateSeuils={() => setTab('seuils')} />
+      )}
       {tab === 'parametres' && (
         <ParametresTab
           parametres={parametres}

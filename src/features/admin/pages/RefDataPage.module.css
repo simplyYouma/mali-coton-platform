@@ -137,10 +137,9 @@
   margin-bottom: -1px;
   white-space: nowrap;
   transition:
-    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
-  margin-bottom: -1px;
 }
 .chip:hover {
   color: var(--color-text);

@@ -27,7 +27,18 @@ const FILTER_OPTIONS = [
   { value: 'non_configure', label: 'Non configurés' },
 ];
 
-export function IndicatorsPage() {
+interface IndicatorsPageProps {
+  /** Mode embarque dans un autre conteneur (ex: onglet de RefDataPage) :
+   *  on n'affiche ni le hero ni les stat cards, deja rendus par l'hote. */
+  embedded?: boolean;
+  /** En mode embarque, bascule vers l'onglet Seuils au lieu de naviguer. */
+  onNavigateSeuils?: () => void;
+}
+
+export function IndicatorsPage({
+  embedded = false,
+  onNavigateSeuils,
+}: IndicatorsPageProps = {}) {
   const { data: indicateurs = [], isLoading } = useIndicateurs();
 
   const [q, setQ]         = useState('');
@@ -55,115 +66,96 @@ export function IndicatorsPage() {
     return items;
   }, [indicateurs, filtre, q]);
 
+  const exportButton = (
+    <Button
+      variant="excel"
+      iconLeft={<FileSpreadsheet size={14} />}
+      disabled={filtered.length === 0}
+      onClick={() =>
+        exportRowsToXlsx({
+          filename: 'indicateurs',
+          sheetName: 'Indicateurs',
+          columns: [
+            { header: 'ID',              accessor: (i: Indicateur) => i.id },
+            { header: 'Code',            accessor: (i: Indicateur) => i.code },
+            { header: 'Libellé',         accessor: (i: Indicateur) => i.libelle },
+            { header: 'Domaine',         accessor: (i: Indicateur) => DOMAINE_LABEL[i.domaine] ?? i.domaine },
+            { header: 'Unité',           accessor: (i: Indicateur) => i.unite ?? '' },
+            { header: 'Seuil min',       accessor: (i: Indicateur) => i.seuilMinimal ?? '' },
+            { header: 'Seuil max',       accessor: (i: Indicateur) => i.seuilMaximal ?? '' },
+            { header: 'Source normative',accessor: (i: Indicateur) => i.sourceNormative?.code ?? '' },
+            { header: 'Configuré',       accessor: (i: Indicateur) => i.configure ? 'Oui' : 'Non' },
+          ],
+          rows: filtered,
+        })
+      }
+    >
+      Exporter XLSX
+    </Button>
+  );
+
+  /* Embarque, "Gerer les seuils" bascule d'onglet ; en page pleine il navigue. */
+  const seuilsAction = embedded ? (
+    onNavigateSeuils && (
+      <Button variant="primary" iconLeft={<ArrowRight size={14} />} onClick={onNavigateSeuils}>
+        Gérer les seuils
+      </Button>
+    )
+  ) : (
+    <Link to="/admin/referentiels">
+      <Button variant="primary" iconLeft={<ArrowRight size={14} />}>
+        Gérer les seuils
+      </Button>
+    </Link>
+  );
+
   const actionBar = (
     <div className={styles.heroRight}>
-      <div className={styles.search}>
-        <Search size={14} aria-hidden="true" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher un indicateur…"
-          aria-label="Rechercher un indicateur"
-        />
-      </div>
-      <Button
-        variant="excel"
-        iconLeft={<FileSpreadsheet size={14} />}
-        disabled={filtered.length === 0}
-        onClick={() => {
-          exportRowsToXlsx({
-            filename: 'indicateurs',
-            sheetName: 'Indicateurs',
-            columns: [
-              { header: 'ID', accessor: (i) => i.id },
-              { header: 'Libellé', accessor: (i) => i.label },
-              { header: 'Domaine', accessor: (i) => i.domain },
-              { header: 'Unité', accessor: (i) => i.unit ?? '' },
-              { header: 'Méthode', accessor: (i) => i.method ?? '' },
-              { header: 'Source', accessor: (i) => i.source ?? '' },
-              { header: 'Min OK', accessor: (i) => i.minOk ?? '' },
-              { header: 'Max OK', accessor: (i) => i.maxOk ?? '' },
-              { header: 'Labo uniquement', accessor: (i) => (i.labOnly ? 'Oui' : 'Non') },
-              { header: 'Actif', accessor: (i) => (i.isActive === false ? 'Non' : 'Oui') },
-            ],
-            rows: filtered,
-          });
-        }}
-      >
-        Exporter XLSX
-      </Button>
-      <Button variant="success" iconLeft={<Plus size={14} />} onClick={openCreate}>
-        Ajouter
-      </Button>
+      {exportButton}
+      {seuilsAction}
     </div>
   );
 
   return (
-    <div className={styles.page}>
-      {/* Hero */}
-      <header className={styles.hero} data-page-header>
-        <div className={styles.heroLeft}>
-          <span className={styles.heroEyebrow}>
-            <FlaskConical size={0} /> Administration
-          </span>
-          <h1 className={styles.heroTitle}>Indicateurs</h1>
-          <p className={styles.heroDescription}>
-            Vue consolidée des paramètres de mesure avec l'état de configuration de leurs seuils normatifs.
-          </p>
-        </div>
-        <div className={styles.heroRight}>
-          <Button
-            variant="excel"
-            iconLeft={<FileSpreadsheet size={14} />}
-            disabled={filtered.length === 0}
-            onClick={() =>
-              exportRowsToXlsx({
-                filename: 'indicateurs',
-                sheetName: 'Indicateurs',
-                columns: [
-                  { header: 'ID',              accessor: (i: Indicateur) => i.id },
-                  { header: 'Code',            accessor: (i: Indicateur) => i.code },
-                  { header: 'Libellé',         accessor: (i: Indicateur) => i.libelle },
-                  { header: 'Domaine',         accessor: (i: Indicateur) => DOMAINE_LABEL[i.domaine] ?? i.domaine },
-                  { header: 'Unité',           accessor: (i: Indicateur) => i.unite ?? '' },
-                  { header: 'Seuil min',       accessor: (i: Indicateur) => i.seuilMinimal ?? '' },
-                  { header: 'Seuil max',       accessor: (i: Indicateur) => i.seuilMaximal ?? '' },
-                  { header: 'Source normative',accessor: (i: Indicateur) => i.sourceNormative?.code ?? '' },
-                  { header: 'Configuré',       accessor: (i: Indicateur) => i.configure ? 'Oui' : 'Non' },
-                ],
-                rows: filtered,
-              })
-            }
-          >
-            Exporter XLSX
-          </Button>
-          <Link to="/admin/referentiels">
-            <Button variant="primary" iconLeft={<ArrowRight size={14} />}>
-              Gérer les seuils
-            </Button>
-          </Link>
-        </div>
-      </header>
+    <div className={embedded ? styles.embeddedRoot : styles.page}>
+      {embedded ? (
+        <div className={styles.embeddedActions}>{actionBar}</div>
+      ) : (
+        <>
+          {/* Hero */}
+          <header className={styles.hero} data-page-header>
+            <div className={styles.heroLeft}>
+              <span className={styles.heroEyebrow}>
+                <FlaskConical size={0} /> Administration
+              </span>
+              <h1 className={styles.heroTitle}>Indicateurs</h1>
+              <p className={styles.heroDescription}>
+                Vue consolidée des paramètres de mesure avec l'état de configuration de leurs seuils normatifs.
+              </p>
+            </div>
+            {actionBar}
+          </header>
 
-      {/* Stat cards */}
-      <div className={styles.statsRow}>
-        <div className={styles.statCard} data-tone="primary">
-          <span className={styles.statIcon}><FlaskConical size={18} /></span>
-          <span className={styles.statValue}>{total}</span>
-          <span className={styles.statLabel}>Indicateurs</span>
-        </div>
-        <div className={styles.statCard} data-tone="success">
-          <span className={styles.statIcon}><CheckCircle2 size={18} /></span>
-          <span className={styles.statValue}>{configures}</span>
-          <span className={styles.statLabel}>Configurés</span>
-        </div>
-        <div className={styles.statCard} data-tone={nonConfig > 0 ? 'warning' : 'neutral'}>
-          <span className={styles.statIcon}><AlertCircle size={18} /></span>
-          <span className={styles.statValue}>{nonConfig}</span>
-          <span className={styles.statLabel}>Sans seuil</span>
-        </div>
-      </div>
+          {/* Stat cards */}
+          <div className={styles.statsRow}>
+            <div className={styles.statCard} data-tone="primary">
+              <span className={styles.statIcon}><FlaskConical size={18} /></span>
+              <span className={styles.statValue}>{total}</span>
+              <span className={styles.statLabel}>Indicateurs</span>
+            </div>
+            <div className={styles.statCard} data-tone="success">
+              <span className={styles.statIcon}><CheckCircle2 size={18} /></span>
+              <span className={styles.statValue}>{configures}</span>
+              <span className={styles.statLabel}>Configurés</span>
+            </div>
+            <div className={styles.statCard} data-tone={nonConfig > 0 ? 'warning' : 'neutral'}>
+              <span className={styles.statIcon}><AlertCircle size={18} /></span>
+              <span className={styles.statValue}>{nonConfig}</span>
+              <span className={styles.statLabel}>Sans seuil</span>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Toolbar */}
       <div className={styles.toolbar}>
