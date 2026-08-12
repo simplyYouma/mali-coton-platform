@@ -115,6 +115,22 @@ export default defineConfig({
   server: {
     port: Number(process.env.PASET_PORT) || undefined,
     host: true,
+
+    /* Proxy vers le backend en developpement.
+     *
+     * La liste CORS du backend ne connait qu'une poignee d'origines locales.
+     * Y passer en direct obligerait a lui faire declarer chaque port de chaque
+     * poste — intenable des lors que le port est choisi au lancement. Les
+     * appels transitent donc par Vite : meme origine, donc pas de CORS.
+     *
+     * Prefixe distinct de /api pour ne pas recouvrir /api/v1, servi par MSW. */
+    proxy: {
+      '/backend': {
+        target: process.env.VITE_API_BASE_URL || 'https://api.back-paset.com',
+        changeOrigin: true,
+        rewrite: (chemin) => chemin.replace(/^\/backend/, ''),
+      },
+    },
   },
 
   preview: {

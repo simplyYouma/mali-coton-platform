@@ -53,6 +53,21 @@ PASET_PORT=1234 ./start.sh   # pour épingler un port précis
 > développement, installées depuis ces mêmes ports, réclament l'origine. Voir
 > [« Ouvrir dans l'appli »](#le-navigateur-propose-douvrir-dans-une-autre-application).
 
+### Proxy de développement
+
+En mode `live`, les appels au backend ne partent pas directement vers
+`api.back-paset.com` : ils passent par le serveur Vite, sous le préfixe
+`/backend`, qui les relaie. Ce sont donc des requêtes de **même origine**,
+hors du champ de CORS.
+
+Sans ce détour, la liste blanche du backend devrait déclarer le port local de
+chaque poste — impossible dès lors que le port est cherché au lancement. Elle
+ne connaît aujourd'hui que `http://localhost:5173` : toute autre origine
+recevait un `Failed to fetch` au moment de se connecter.
+
+Le préfixe est volontairement distinct de `/api`, pour ne pas recouvrir
+`/api/v1` servi par MSW en mode mock.
+
 ### Mode API
 
 Sans fichier `.env.local`, l'application interroge le **backend réel** —

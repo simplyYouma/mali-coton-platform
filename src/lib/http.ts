@@ -67,8 +67,13 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    // Token expiré ou invalide → signal global (capté par SessionExpiredModal)
-    if (response.status === 401) {
+    /* Token expiré ou invalide → signal global (capté par SessionExpiredModal).
+     *
+     * Uniquement si la requête portait effectivement un jeton : sur
+     * /login_check, un 401 signifie que les identifiants sont faux. Annoncer
+     * une « session expirée » à quelqu'un qui n'est pas encore connecté
+     * masquait le vrai message et laissait croire à une panne. */
+    if (response.status === 401 && authHeader['Authorization']) {
       window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
     // API Platform renvoie les erreurs sous forme {"hydra:description": "..."} ou {"message": "..."}

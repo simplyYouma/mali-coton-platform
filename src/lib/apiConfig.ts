@@ -15,8 +15,25 @@ const envBaseUrl =
 
 export const API_MODE: ApiMode = envMode === 'live' ? 'live' : 'mock';
 
+/**
+ * Préfixe du proxy de développement (voir `server.proxy` dans vite.config.ts).
+ *
+ * En développement, les appels au backend passent par le serveur Vite au lieu
+ * de partir directement vers l'API. Ils deviennent ainsi des requêtes de même
+ * origine, hors du champ de CORS : la liste blanche du backend n'a plus besoin
+ * de connaître le port local, qui change d'un poste et d'un lancement à l'autre.
+ *
+ * Distinct de `/api` pour ne pas recouvrir `/api/v1`, utilisé par MSW en mock.
+ */
+const DEV_PROXY = '/backend';
+
 /** Préfixe utilisé côté client pour construire les URLs. */
-export const API_BASE: string = API_MODE === 'mock' ? '/api/v1' : `${envBaseUrl}/api`;
+export const API_BASE: string =
+  API_MODE === 'mock'
+    ? '/api/v1'
+    : import.meta.env.DEV
+      ? `${DEV_PROXY}/api`
+      : `${envBaseUrl}/api`;
 
 /** Origine du serveur backend (sans chemin), pour construire des URLs médias absolues. */
 export const API_ORIGIN: string = API_MODE === 'live' ? envBaseUrl : window.location.origin;
