@@ -16,6 +16,22 @@ const envBaseUrl =
 export const API_MODE: ApiMode = envMode === 'live' ? 'live' : 'mock';
 
 /**
+ * Second rempart contre une mise en production des données de démonstration.
+ *
+ * Le build refuse déjà de se produire en mode mock (voir vite.config.ts). Ce
+ * garde-fou couvre le cas où un artefact fabriqué autrement arriverait malgré
+ * tout en production : mieux vaut une application qui refuse de démarrer
+ * qu'une application qui affiche des données fictives à de vrais utilisateurs.
+ */
+if (import.meta.env.PROD && API_MODE === 'mock') {
+  throw new Error(
+    'PASET Mali : les données de démonstration ne peuvent pas être servies en ' +
+      'production. Ce build a été produit avec VITE_API_MODE=mock et ne doit ' +
+      'pas être déployé.',
+  );
+}
+
+/**
  * Préfixe du proxy de développement (voir `server.proxy` dans vite.config.ts).
  *
  * En développement, les appels au backend passent par le serveur Vite au lieu

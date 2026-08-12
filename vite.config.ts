@@ -1,6 +1,7 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import fs from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -14,7 +15,44 @@ import path from 'node:path';
  */
 const APP_ID = '/paset-mali';
 
-export default defineConfig({
+/**
+ * Retire de dist/ le service worker de MSW.
+ *
+ * Il vit dans public/, que Vite recopie integralement : sans ce nettoyage,
+ * l'outillage de demonstration part en production. Il y serait inerte tant que
+ * personne ne l'enregistre, mais un fichier qui n'a rien a faire en production
+ * ne doit pas y etre livre.
+ */
+function retirerArtefactsMsw(): Plugin {
+  return {
+    name: 'paset-retirer-artefacts-msw',
+    apply: 'build',
+    closeBundle() {
+      const cible = path.resolve(__dirname, 'dist/mockServiceWorker.js');
+      if (fs.existsSync(cible)) {
+        fs.unlinkSync(cible);
+        this.info?.('mockServiceWorker.js retire du build de production');
+      }
+    },
+  };
+}
+
+export default defineConfig(({ command, mode }) => {
+  /* Un build de production en mode mock livrerait des donnees fictives aux
+   * utilisateurs reels. On refuse de produire l'artefact plutot que de
+   * compter sur une relecture attentive. */
+  const env = loadEnv(mode, process.cwd(), '');
+  const modeApi = process.env.VITE_API_MODE ?? env.VITE_API_MODE;
+  if (command === 'build' && modeApi === 'mock') {
+    throw new Error(
+      "\n\n  Build refuse : VITE_API_MODE vaut 'mock'.\n\n" +
+        '  Les donnees de demonstration ne doivent jamais partir en production.\n' +
+        "  Ce reglage vient d'un fichier .env local ou d'une variable d'environnement.\n\n" +
+        '  Pour produire un build : VITE_API_MODE=live npm run build\n',
+    );
+  }
+
+  return {
   plugins: [
     react(),
     VitePWA({
@@ -95,6 +133,10 @@ export default defineConfig({
        * rechargement a chaud et entrerait en concurrence avec celui de MSW. */
       devOptions: { enabled: false },
     }),
+
+    /* Place en dernier : son nettoyage doit s'executer apres que les autres
+     * plugins ont fini d'ecrire dans dist/. */
+    retirerArtefactsMsw(),
   ],
 
   resolve: {
@@ -136,4 +178,5 @@ export default defineConfig({
   preview: {
     port: Number(process.env.PASET_PORT) || undefined,
   },
+  };
 });

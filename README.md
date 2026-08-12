@@ -53,6 +53,27 @@ PASET_PORT=1234 ./start.sh   # pour épingler un port précis
 > développement, installées depuis ces mêmes ports, réclament l'origine. Voir
 > [« Ouvrir dans l'appli »](#le-navigateur-propose-douvrir-dans-une-autre-application).
 
+### Les données de démonstration ne partent jamais en production
+
+Le mode `mock` sert au développement et aux démonstrations. Deux garde-fous
+l'empêchent d'atteindre les utilisateurs réels :
+
+1. **Le build refuse de se produire** si `VITE_API_MODE` vaut `mock`
+   (`vite.config.ts`). Il n'y a donc pas d'artefact à déployer par erreur.
+2. **L'application refuse de démarrer** si un build de production se retrouve
+   malgré tout en mode mock (`apiConfig.ts`) — mieux vaut un écran d'erreur
+   qu'une donnée fictive présentée comme réelle.
+
+Le service worker de MSW (`public/mockServiceWorker.js`) est par ailleurs retiré
+du build : `public/` étant recopié intégralement par Vite, il partait sinon en
+production.
+
+> **Limite connue.** Sept pages importent encore `mockUsers` depuis les fixtures
+> pour afficher un nom d'agent à partir de son identifiant. Ces fixtures restent
+> donc dans le bundle de production, et en mode `live` les noms ne se résolvent
+> pas (l'identifiant brut s'affiche à la place). À traiter en branchant ces
+> pages sur l'API des utilisateurs.
+
 ### Proxy de développement
 
 En mode `live`, les appels au backend ne partent pas directement vers
