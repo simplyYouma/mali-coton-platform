@@ -1,5 +1,5 @@
 import { http } from '@/lib/http';
-import { API_MODE, API_BASE } from '@/lib/apiConfig';
+import { API_BASE } from '@/lib/apiConfig';
 
 export interface MediaEnvironnemental {
   id: string;
@@ -79,10 +79,6 @@ export function mediaAbsoluteUrl(path: string): string {
 }
 
 export async function fetchDonneesEnvironnementales(siteId: string): Promise<DonneesEnvResponse> {
-  if (API_MODE !== 'live') {
-    return { site: { id: 0, codeSite: '', nomSite: '', commune: '' }, total: 0, resultats: [] };
-  }
-
   const data = await http<{
     site: { id: number; codeSite: string; nomSite: string; commune: string };
     total: number;

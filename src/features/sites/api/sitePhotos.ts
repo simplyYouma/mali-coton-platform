@@ -1,6 +1,6 @@
 import { http } from '@/lib/http';
 import { unwrapPaginated } from '@/lib/jsonld';
-import { API_MODE, resourcePath } from '@/lib/apiConfig';
+import { resourcePath } from '@/lib/apiConfig';
 
 export interface CollectePhotoBackend {
   '@id'?: string;
@@ -25,7 +25,6 @@ export interface CollectePhotoBackend {
  * Filtre via le paramètre API Platform : collecteSite=/api/collecte_sites/{csId}
  */
 export async function fetchSitePhotos(collecteSiteId: number): Promise<CollectePhotoBackend[]> {
-  if (API_MODE !== 'live') return [];
   const iri = `/api/collecte_sites/${collecteSiteId}`;
   const raw = await http<unknown>(resourcePath('collectePhotos'), {
     query: { collecteSite: iri },
