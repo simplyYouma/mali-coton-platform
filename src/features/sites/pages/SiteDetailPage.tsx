@@ -138,29 +138,50 @@ function Chips({ items }: { items: KoboCodedItem[] }) {
  * etroite rendrait illisibles.
  */
 /**
- * Repartition femmes / hommes.
+ * Jauge de repartition femmes / hommes.
  *
- * Les chiffres restent en clair — la barre ne les remplace pas, elle donne
- * l'ordre de grandeur d'un coup d'oeil et occupe un espace qui, sans elle,
- * resterait vide dans la grille.
+ * Les deux parts sont representees, chacune avec sa teinte et son
+ * pourcentage : montrer la seule part des femmes obligeait a deduire l'autre.
+ * Les effectifs restent affiches en clair au-dessus — la jauge donne l'ordre
+ * de grandeur, elle ne remplace pas les chiffres.
  */
 function RatioBar({ femmes, hommes }: { femmes: number | null; hommes: number | null }) {
   const f = femmes ?? 0;
   const h = hommes ?? 0;
   const total = f + h;
   if (total === 0) return null;
+
   const partFemmes = Math.round((f / total) * 100);
+  const partHommes = 100 - partFemmes;
 
   return (
     <span className={styles.ratio}>
       <span
         className={styles.ratioTrack}
         role="img"
-        aria-label={`${partFemmes}% de femmes, ${100 - partFemmes}% d'hommes`}
+        aria-label={`${partFemmes}% de femmes, ${partHommes}% d'hommes`}
       >
-        <span className={styles.ratioFill} style={{ width: `${partFemmes}%` }} />
+        <span
+          className={styles.ratioPart}
+          data-part="femmes"
+          style={{ width: `${partFemmes}%` }}
+        />
+        <span
+          className={styles.ratioPart}
+          data-part="hommes"
+          style={{ width: `${partHommes}%` }}
+        />
       </span>
-      <span className={styles.ratioLegend}>{partFemmes}% de femmes</span>
+      <span className={styles.ratioLegend}>
+        <span className={styles.ratioKey}>
+          <span className={styles.ratioDot} data-part="femmes" aria-hidden="true" />
+          {partFemmes}% femmes
+        </span>
+        <span className={styles.ratioKey}>
+          <span className={styles.ratioDot} data-part="hommes" aria-hidden="true" />
+          {partHommes}% hommes
+        </span>
+      </span>
     </span>
   );
 }
