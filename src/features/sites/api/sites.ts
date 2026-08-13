@@ -49,7 +49,8 @@ export async function fetchSite(id: string): Promise<Site> {
 
 /** Retourne les données brutes backend enrichies (collecteSite, photos, listes codées). */
 export async function fetchSiteDetail(id: string): Promise<SiteTeintureDetailBackend | null> {
-  if (API_MODE !== 'live') return null;
+  /* En mock, MSW sert la fiche terrain sur cette meme URL : le detail y est
+   * fusionne avec la forme frontend attendue par fetchSite. */
   return http<SiteTeintureDetailBackend>(resourcePath('sites', id));
 }
 

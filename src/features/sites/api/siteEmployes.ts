@@ -1,5 +1,4 @@
 import { http } from '@/lib/http';
-import { API_MODE } from '@/lib/apiConfig';
 
 export interface EmployeCodedItem {
   id: number;
@@ -65,6 +64,5 @@ export interface SiteEmployesResponse {
 }
 
 export async function fetchSiteEmployes(id: string): Promise<SiteEmployesResponse> {
-  if (API_MODE !== 'live') return { totalEmployes: 0, employes: [] };
   return http<SiteEmployesResponse>(`/site_teintures/${id}/employes`);
 }
