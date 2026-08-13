@@ -1,0 +1,72 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldInactive {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.radioGroup,
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.fileWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fileInput {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.fileName {
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.gpsWrap {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.gpsWrap > :first-child {
+  flex: 1;
+}
+
+.gpsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.gpsBtn:hover:not(:disabled) {
+  background: var(--color-primary-soft-hover);
+}
+
+.gpsBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

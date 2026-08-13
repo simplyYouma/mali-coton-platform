@@ -1,5 +1,9 @@
 import { http, HttpResponse, delay } from 'msw';
 import { mockSites } from '../fixtures/sites';
+import { ficheTerrain } from '../fixtures/siteTerrain';
+import { employesDuSite } from '../fixtures/siteEmployes';
+import { donneesEnvDuSite } from '../fixtures/donneesEnv';
+import { photosDeCollecteSite } from '../fixtures/sitePhotos';
 import { uuid } from '@/lib/uuid';
 import type { Site } from '@/features/sites/api/site.types';
 
@@ -57,7 +61,33 @@ export const sitesHandlers = [
         { status: 404 },
       );
     }
-    return HttpResponse.json(site);
+    /* `fetchSite` et `fetchSiteDetail` interrogent la meme URL mais n'y lisent
+     * pas les memes champs : le premier attend la forme frontend `Site`, le
+     * second la fiche terrain du backend. On renvoie donc la reunion des deux —
+     * chacun y prend ce qui le concerne, et un seul endpoint suffit. */
+    return HttpResponse.json({ ...site, ...(ficheTerrain(site.id) ?? {}) });
+  }),
+
+  /* Onglet « Employes » de la fiche site. Aucun handler ne servait cette
+   * ressource : l'onglet restait vide sur les cinq sites. */
+  http.get('/api/v1/site_teintures/:id/employes', async ({ params }) => {
+    await delay(180);
+    return HttpResponse.json(employesDuSite(String(params.id)));
+  }),
+
+  /* Onglet « Donnees env. ». */
+  http.get('/api/v1/site_teintures/:id/donnees-environnementales', async ({ params }) => {
+    await delay(200);
+    return HttpResponse.json(donneesEnvDuSite(String(params.id)));
+  }),
+
+  /* Onglet « Photos ». Filtre API Platform : collecteSite=/api/collecte_sites/{id} */
+  http.get('/api/v1/collecte_photos', async ({ request }) => {
+    await delay(160);
+    const filtre = new URL(request.url).searchParams.get('collecteSite');
+    const collecteSiteId = Number(filtre?.split('/').pop() ?? 0);
+    const items = photosDeCollecteSite(collecteSiteId);
+    return HttpResponse.json({ items, total: items.length, page: 1, pageSize: items.length });
   }),
 
   http.post('/api/v1/sites', async ({ request }) => {

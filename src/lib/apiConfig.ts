@@ -9,14 +9,50 @@
 
 export type ApiMode = 'mock' | 'live';
 
-const envMode = (import.meta.env.VITE_API_MODE as ApiMode | undefined) ?? 'mock';
+const envMode = (import.meta.env.VITE_API_MODE as ApiMode | undefined) ?? 'live';
 const envBaseUrl =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://187.127.225.182';
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'https://api.back-paset.com';
 
 export const API_MODE: ApiMode = envMode === 'live' ? 'live' : 'mock';
 
+/**
+ * Second rempart contre une mise en production des données de démonstration.
+ *
+ * Le build refuse déjà de se produire en mode mock (voir vite.config.ts). Ce
+ * garde-fou couvre le cas où un artefact fabriqué autrement arriverait malgré
+ * tout en production : mieux vaut une application qui refuse de démarrer
+ * qu'une application qui affiche des données fictives à de vrais utilisateurs.
+ */
+if (import.meta.env.PROD && API_MODE === 'mock') {
+  throw new Error(
+    'PASET Mali : les données de démonstration ne peuvent pas être servies en ' +
+      'production. Ce build a été produit avec VITE_API_MODE=mock et ne doit ' +
+      'pas être déployé.',
+  );
+}
+
+/**
+ * Préfixe du proxy de développement (voir `server.proxy` dans vite.config.ts).
+ *
+ * En développement, les appels au backend passent par le serveur Vite au lieu
+ * de partir directement vers l'API. Ils deviennent ainsi des requêtes de même
+ * origine, hors du champ de CORS : la liste blanche du backend n'a plus besoin
+ * de connaître le port local, qui change d'un poste et d'un lancement à l'autre.
+ *
+ * Distinct de `/api` pour ne pas recouvrir `/api/v1`, utilisé par MSW en mock.
+ */
+const DEV_PROXY = '/backend';
+
 /** Préfixe utilisé côté client pour construire les URLs. */
-export const API_BASE: string = API_MODE === 'mock' ? '/api/v1' : `${envBaseUrl}/api`;
+export const API_BASE: string =
+  API_MODE === 'mock'
+    ? '/api/v1'
+    : import.meta.env.DEV
+      ? `${DEV_PROXY}/api`
+      : `${envBaseUrl}/api`;
+
+/** Origine du serveur backend (sans chemin), pour construire des URLs médias absolues. */
+export const API_ORIGIN: string = API_MODE === 'live' ? envBaseUrl : window.location.origin;
 
 /** True si MSW doit démarrer au bootstrap. */
 export const USE_MSW: boolean = API_MODE === 'mock';
@@ -32,7 +68,7 @@ export const USE_MSW: boolean = API_MODE === 'mock';
 export const RESOURCE_PATH: Record<string, string> = {
   // ressource frontend → segment URL effectif (sans préfixe)
   sites: API_MODE === 'live' ? 'site_teintures' : 'sites',
-  collections: API_MODE === 'live' ? 'collecte_terrains' : 'collections',
+  collections: API_MODE === 'live' ? 'import_kobos' : 'collections',
   labs: API_MODE === 'live' ? 'laboratoires' : 'labs',
   users: 'users',
   roles: 'roles',
@@ -50,6 +86,14 @@ export const RESOURCE_PATH: Record<string, string> = {
   analyses: 'analyse_laboratoires',
   resultats: 'resultat_analyses',
   validations: 'validation_superviseurs',
+  // imports Kobo
+  importKobos: 'import_kobos',
+  collectePhotos: 'collecte_photos',
+  // formulaires dynamiques (Phase C)
+  formulaires: API_MODE === 'live' ? 'formulaire_collectes' : 'formulaires',
+  champFormulaires: 'champ_formulaires',
+  soumissions: API_MODE === 'live' ? 'soumission_formulaires' : 'soumissions',
+  reponses: 'reponse_champs',
 };
 
 /** Helper pour construire un path complet à partir d'une ressource logique. */

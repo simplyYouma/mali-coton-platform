@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Circle,
@@ -19,17 +20,21 @@ import {
   Droplets,
   Flame,
   Layers,
+  Map as MapIcon,
   MapPin,
   Maximize2,
+  Satellite,
   Target,
+  ZoomIn,
 } from 'lucide-react';
-import { Badge, Button, Skeleton } from '@/components/common';
+import { Badge, Skeleton } from '@/components/common';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { formatRelativeTime } from '@/lib/format';
 import type { ConformityLevel } from '@/types/common';
 import type { Collection } from '@/features/collection/api/collection.types';
+import type { Site } from '@/features/sites/api/site.types';
 import styles from './MappingPage.module.css';
 
 /**
@@ -83,14 +88,17 @@ function buildMarkerIcon(color: string, isReference: boolean): L.DivIcon {
   const ring = isReference ? '3px' : '2px';
   return L.divIcon({
     className: 'mc-marker',
+    // Pas de transform CSS ici — iconAnchor [14,34] positionne déjà la pointe
+    // exactement sur la coordonnée. Un transform interne créerait un double décalage.
     html: `
-      <div style="position:relative;width:28px;height:34px;transform:translate(-50%,-100%);">
+      <div style="position:relative;width:28px;height:34px;">
         <div style="position:absolute;inset:0 0 6px 0;border-radius:50%;background:${color};border:${ring} solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.22);"></div>
-        <div style="position:absolute;left:50%;bottom:-1px;width:10px;height:10px;background:${color};transform:translateX(-50%) rotate(45deg);box-shadow:0 4px 10px rgba(0,0,0,0.14);"></div>
+        <div style="position:absolute;left:50%;bottom:0;width:10px;height:10px;background:${color};transform:translateX(-50%) rotate(45deg);box-shadow:0 4px 10px rgba(0,0,0,0.14);"></div>
       </div>
     `,
     iconSize: [28, 34],
     iconAnchor: [14, 34],
+    popupAnchor: [0, -34],
   });
 }
 
@@ -111,9 +119,11 @@ export function MappingPage() {
   /* Panel filtres : peut etre replie pour donner toute la place a la
    * carte. Etat persiste en memoire de session uniquement. */
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [mapMode, setMapMode] = useState<'plan' | 'satellite'>('plan');
   /* Cible courante du fly-to — declenche par le clic sur un site dans
    * le panel lateral. Le composant MapFocus se charge de centrer. */
   const [focusTarget, setFocusTarget] = useState<[number, number, number] | null>(null);
+  const [openPopupSiteId, setOpenPopupSiteId] = useState<string | null>(null);
 
   /** Conformité du site selon le filtre domaine actif. */
   const conformityFor = (siteId: string): ConformityLevel => {
@@ -325,9 +335,7 @@ export function MappingPage() {
                       key={s.id}
                       type="button"
                       className={styles.siteCard}
-                      onClick={() =>
-                        setFocusTarget([s.coordinates.lat, s.coordinates.lng, 11])
-                      }
+                      onClick={() => setOpenPopupSiteId(s.id)}
                       data-level={lvl}
                     >
                       <span
@@ -388,6 +396,15 @@ export function MappingPage() {
           >
             <Maximize2 size={12} /> Recentrer
           </button>
+          <button
+            type="button"
+            className={`${styles.mapSatelliteBtn} ${mapMode === 'satellite' ? styles.mapSatelliteBtnActive : ''}`}
+            onClick={() => setMapMode((m) => (m === 'plan' ? 'satellite' : 'plan'))}
+            title={mapMode === 'satellite' ? 'Passer en mode plan' : 'Passer en mode satellite'}
+          >
+            {mapMode === 'satellite' ? <MapIcon size={12} /> : <Satellite size={12} />}
+            {mapMode === 'satellite' ? 'Plan' : 'Satellite'}
+          </button>
           {isLoading ? (
             <Skeleton width="100%" height="100%" />
           ) : (
@@ -401,10 +418,23 @@ export function MappingPage() {
               {/* Zoom deplace en bas a gauche : libere le coin haut-gauche
                * (bouton de repli du panneau) et le coin haut-droit (Recentrer). */}
               <ZoomControl position="bottomleft" />
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
+              {mapMode === 'satellite' ? (
+                <>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  />
+                  <TileLayer
+                    attribution=""
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                  />
+                </>
+              ) : (
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+              )}
 
               {/* Surcouche cours d'eau (buffers) */}
               {showWatercourses
@@ -502,92 +532,20 @@ export function MappingPage() {
                 const hasAlert = sitesWithCriticalAlerts.has(site.id);
                 const ss = siteStats.get(site.id);
                 return (
-                  <Marker
+                  <SiteMarker
                     key={site.id}
-                    position={[site.coordinates.lat, site.coordinates.lng]}
-                    icon={buildMarkerIcon(CONFORMITY_COLOR[lvl], site.isReference)}
-                  >
-                    <Popup>
-                      <div className={styles.popup}>
-                        <header className={styles.popupHead}>
-                          <h3 className={styles.popupTitle}>
-                            {site.shortName}
-                          </h3>
-                          <Badge
-                            size="sm"
-                            variant={
-                              lvl === 'conforming'
-                                ? 'success'
-                                : lvl === 'warning'
-                                  ? 'warning'
-                                  : 'danger'
-                            }
-                          >
-                            {CONFORMITY_LABEL[lvl]}
-                          </Badge>
-                        </header>
-                        <span className={styles.popupMeta}>
-                          {site.location.commune}, {site.location.city} · {site.workforce} membres
-                        </span>
-
-                        {/* KPIs derniere collecte */}
-                        <div className={styles.popupKpiGrid}>
-                          <div className={styles.popupKpi}>
-                            <span className={styles.popupKpiLabel}>pH</span>
-                            <span className={styles.popupKpiValue}>
-                              {ss?.lastPh != null ? ss.lastPh.toFixed(2) : '—'}
-                            </span>
-                          </div>
-                          <div className={styles.popupKpi}>
-                            <span className={styles.popupKpiLabel}>Sulfates</span>
-                            <span className={styles.popupKpiValue}>
-                              {ss?.lastSulfates != null ? Math.round(ss.lastSulfates) : '—'}
-                              <span className={styles.popupKpiUnit}>mg/L</span>
-                            </span>
-                          </div>
-                          <div className={styles.popupKpi}>
-                            <span className={styles.popupKpiLabel}>EPI</span>
-                            <span className={styles.popupKpiValue}>
-                              {ss?.lastEpi != null ? `${Math.round(ss.lastEpi)}%` : '—'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Sparkline pH 90 jours */}
-                        {ss && ss.phSeries.length >= 2 ? (
-                          <div className={styles.popupSpark}>
-                            <span className={styles.popupSparkLabel}>
-                              pH · {ss.phSeries.length} mesures · 90 j
-                            </span>
-                            <PopupSparkline values={ss.phSeries} />
-                          </div>
-                        ) : null}
-
-                        {/* Derniere collecte */}
-                        {ss?.lastCollectionAt ? (
-                          <span className={styles.popupMeta}>
-                            Dernière collecte : {formatRelativeTime(ss.lastCollectionAt)}
-                          </span>
-                        ) : null}
-
-                        {hasAlert ? (
-                          <span className={styles.popupAlert}>
-                            <AlertTriangle size={11} /> {ss?.activeAlerts ?? 1} alerte
-                            {(ss?.activeAlerts ?? 1) > 1 ? 's' : ''} active
-                            {(ss?.activeAlerts ?? 1) > 1 ? 's' : ''}
-                          </span>
-                        ) : null}
-
-                        <div className={styles.popupAction}>
-                          <Link to={`/sites/${site.id}`}>
-                            <Button variant="primary" size="sm" fullWidth>
-                              Ouvrir la fiche site
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
+                    site={site}
+                    lvl={lvl}
+                    hasAlert={hasAlert}
+                    activeAlerts={ss?.activeAlerts ?? 0}
+                    lastCollectionAt={ss?.lastCollectionAt ?? null}
+                    lastPh={ss?.lastPh ?? null}
+                    lastSulfates={ss?.lastSulfates ?? null}
+                    lastEpi={ss?.lastEpi ?? null}
+                    phSeries={ss?.phSeries ?? []}
+                    shouldOpenPopup={openPopupSiteId === site.id}
+                    onPopupOpened={() => setOpenPopupSiteId(null)}
+                  />
                 );
               })}
 
@@ -598,6 +556,207 @@ export function MappingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────
+ * SiteMarker — marqueur avec popup enrichi + géocodage inversé lazy
+ * ─────────────────────────────────────*/
+interface NominatimAddress {
+  road?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  quarter?: string;
+  city_district?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  county?: string;
+  state?: string;
+  country?: string;
+}
+interface GeoInfo {
+  quartier: string;
+  commune: string;
+  ville: string;
+  region: string;
+  displayName: string;
+}
+
+interface SiteMarkerProps {
+  site: Site;
+  lvl: ConformityLevel;
+  hasAlert: boolean;
+  activeAlerts: number;
+  lastCollectionAt: string | null;
+  lastPh: number | null;
+  lastSulfates: number | null;
+  lastEpi: number | null;
+  phSeries: number[];
+  shouldOpenPopup: boolean;
+  onPopupOpened: () => void;
+}
+
+function SiteMarker({
+  site, lvl, hasAlert, activeAlerts,
+  lastCollectionAt, lastPh, lastSulfates, lastEpi, phSeries,
+  shouldOpenPopup, onPopupOpened,
+}: SiteMarkerProps) {
+  const markerRef = useRef<L.Marker>(null);
+  const map = useMap();
+  const onPopupOpenedRef = useRef(onPopupOpened);
+  onPopupOpenedRef.current = onPopupOpened;
+
+  const [popupOpen, setPopupOpen] = useState(false);
+
+  useEffect(() => {
+    if (!shouldOpenPopup) return;
+    map.flyTo([site.coordinates.lat, site.coordinates.lng], 18, { duration: 0.8 });
+    const t = setTimeout(() => {
+      markerRef.current?.openPopup();
+      onPopupOpenedRef.current();
+    }, 900);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldOpenPopup]);
+
+  /* Géocodage inversé Nominatim — déclenché uniquement à l'ouverture
+   * du popup (lazy) pour respecter la limite 1 req/s. Cache permanent. */
+  const { data: geo, isLoading: geoLoading } = useQuery<GeoInfo>({
+    queryKey: ['geocode', site.coordinates.lat.toFixed(5), site.coordinates.lng.toFixed(5)],
+    queryFn: async () => {
+      const url =
+        `https://nominatim.openstreetmap.org/reverse` +
+        `?lat=${site.coordinates.lat}&lon=${site.coordinates.lng}&format=json&accept-language=fr`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+      if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+      const data = await res.json() as { address: NominatimAddress; display_name: string };
+      const a = data.address;
+      return {
+        quartier:    a.quarter ?? a.neighbourhood ?? a.suburb ?? '',
+        commune:     a.city_district ?? a.county ?? '',
+        ville:       a.city ?? a.town ?? a.village ?? '',
+        region:      a.state ?? '',
+        displayName: data.display_name ?? '',
+      };
+    },
+    enabled: popupOpen,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  const adresseLine = geo
+    ? [geo.quartier, geo.commune, geo.ville, geo.region].filter(Boolean).join(' · ')
+    : [site.location.commune, site.location.city].filter(Boolean).join(', ');
+
+  const gmapsUrl = `https://www.google.com/maps?q=${site.coordinates.lat},${site.coordinates.lng}`;
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={[site.coordinates.lat, site.coordinates.lng]}
+      icon={buildMarkerIcon(CONFORMITY_COLOR[lvl], site.isReference)}
+      eventHandlers={{
+        popupopen:  () => setPopupOpen(true),
+        popupclose: () => setPopupOpen(false),
+      }}
+    >
+      <Popup>
+        <div className={styles.popup}>
+          <header className={styles.popupHead}>
+            <h3 className={styles.popupTitle}>{site.shortName}</h3>
+            <Badge
+              size="sm"
+              variant={lvl === 'conforming' ? 'success' : lvl === 'warning' ? 'warning' : 'danger'}
+            >
+              {CONFORMITY_LABEL[lvl]}
+            </Badge>
+          </header>
+
+          {/* Localisation géocodée (ou fallback stocké) + coordonnées */}
+          <div className={styles.popupLocation}>
+            <span className={styles.popupLocationText}>
+              {geoLoading ? 'Localisation en cours…' : adresseLine || '—'}
+            </span>
+            <span className={styles.popupCoords}>
+              {site.coordinates.lat.toFixed(6)}, {site.coordinates.lng.toFixed(6)}
+            </span>
+          </div>
+
+          {/* KPIs dernière collecte */}
+          <div className={styles.popupKpiGrid}>
+            <div className={styles.popupKpi}>
+              <span className={styles.popupKpiLabel}>pH</span>
+              <span className={styles.popupKpiValue}>
+                {lastPh != null ? lastPh.toFixed(2) : '—'}
+              </span>
+            </div>
+            <div className={styles.popupKpi}>
+              <span className={styles.popupKpiLabel}>Sulfates</span>
+              <span className={styles.popupKpiValue}>
+                {lastSulfates != null ? Math.round(lastSulfates) : '—'}
+                <span className={styles.popupKpiUnit}>mg/L</span>
+              </span>
+            </div>
+            <div className={styles.popupKpi}>
+              <span className={styles.popupKpiLabel}>EPI</span>
+              <span className={styles.popupKpiValue}>
+                {lastEpi != null ? `${Math.round(lastEpi)}%` : '—'}
+              </span>
+            </div>
+          </div>
+
+          {phSeries.length >= 2 ? (
+            <div className={styles.popupSpark}>
+              <span className={styles.popupSparkLabel}>
+                pH · {phSeries.length} mesures · 90 j
+              </span>
+              <PopupSparkline values={phSeries} />
+            </div>
+          ) : null}
+
+          {lastCollectionAt ? (
+            <span className={styles.popupMeta}>
+              Dernière collecte : {formatRelativeTime(lastCollectionAt)}
+            </span>
+          ) : null}
+
+          {hasAlert ? (
+            <span className={styles.popupAlert}>
+              <AlertTriangle size={11} /> {activeAlerts} alerte
+              {activeAlerts > 1 ? 's' : ''} active{activeAlerts > 1 ? 's' : ''}
+            </span>
+          ) : null}
+
+          {/* Barre d'actions unifiée */}
+          <div className={styles.popupActions}>
+            <button
+              type="button"
+              className={styles.popupActionBtn}
+              onClick={() => map.flyTo([site.coordinates.lat, site.coordinates.lng], 18, { duration: 0.6 })}
+              title="Zoomer au maximum sur ce point"
+            >
+              <ZoomIn size={13} />
+              Zoom
+            </button>
+            <a
+              href={gmapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.popupActionBtn}
+              onClick={(e) => e.stopPropagation()}
+              title="Ouvrir dans Google Maps"
+            >
+              <MapPin size={13} />
+              Google Maps
+            </a>
+            <Link to={`/sites/${site.id}`} className={`${styles.popupActionBtn} ${styles.popupActionBtnPrimary}`}>
+              Fiche site →
+            </Link>
+          </div>
+        </div>
+      </Popup>
+    </Marker>
   );
 }
 

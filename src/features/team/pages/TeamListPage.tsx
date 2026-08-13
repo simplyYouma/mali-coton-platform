@@ -102,8 +102,10 @@ export function TeamListPage() {
       return;
     }
     try {
+      const parts = form.fullName.trim().split(/\s+/);
       await createMut.mutateAsync({
-        fullName: form.fullName.trim(),
+        prenom: parts[0] ?? '',
+        nom: parts.slice(1).join(' ') || (parts[0] ?? ''),
         email: form.email.trim(),
         role: 'agent',
         assignedSiteIds: form.assignedSiteIds,

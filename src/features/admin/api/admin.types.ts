@@ -1,11 +1,48 @@
 import type { AuditLogEntry } from '@/mocks/fixtures/auditLogs';
 import type { Locale, UserRole } from '@/types/common';
 
+export interface BackendRole {
+  '@id'?: string;
+  id: number | string;
+  code: string;
+  libelle: string;
+  description?: string;
+  permissions?: string[]; // IRIs
+}
+
+export interface BackendPermission {
+  '@id'?: string;
+  id: number | string;
+  code: string;
+  libelle: string;
+  description?: string;
+}
+
+export interface RoleCreateInput {
+  code: string;
+  libelle: string;
+  description?: string;
+  permissions?: string[]; // IRIs
+}
+
+export type RoleUpdateInput = Partial<RoleCreateInput>;
+
+export interface PermissionCreateInput {
+  code: string;
+  libelle: string;
+  description?: string;
+}
+
+export type PermissionUpdateInput = Partial<PermissionCreateInput>;
+
 export interface ManagedUser {
   id: string;
   email: string;
   fullName: string;
+  nom: string;
+  prenom: string;
   role: UserRole;
+  roleIris: string[];
   assignedSiteIds: string[];
   locale: Locale;
   isActive: boolean;
@@ -17,19 +54,19 @@ export interface ManagedUser {
 }
 
 export interface UserCreateInput {
+  nom: string;
+  prenom: string;
   email: string;
-  fullName: string;
-  role: UserRole;
-  assignedSiteIds: string[];
-  locale: Locale;
+  actif?: boolean;
+  roles?: string[];
   phone?: string;
   koboUsername?: string;
-  labId?: string;
+  assignedSiteIds?: string[];
+  locale?: Locale;
+  role?: UserRole;
 }
 
-export interface UserUpdateInput extends Partial<UserCreateInput> {
-  isActive?: boolean;
-}
+export type UserUpdateInput = Partial<UserCreateInput> & { actif?: boolean };
 
 /**
  * Seuil configurable par l'admin — CDC §5.2 Module 4 + §8.6 (source normative).
@@ -40,13 +77,9 @@ export interface ThresholdConfig {
   indicatorLabel: string;
   domain: 'water' | 'soil' | 'air' | 'waste' | 'health' | 'socio';
   unit: string;
-  /** Borne basse de conformité (null = pas de plancher). */
   minOk: number | null;
-  /** Borne haute de conformité (null = pas de plafond). */
   maxOk: number | null;
-  /** Source normative affichée à l'utilisateur (CDC §8.6). */
   source: string;
-  /** Dernière modification — pour le journal d'audit. */
   updatedAt: string;
   updatedBy?: string;
 }

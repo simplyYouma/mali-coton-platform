@@ -1,181 +1,332 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   MapPin,
   Users,
-  Droplet,
-  Mountain,
-  Wind,
-  Trash2,
-  HeartPulse,
   ClipboardList,
   ImageOff,
-  Pencil,
+  Calendar,
+  User,
+  Droplet,
+  Wrench,
+  Shield,
+  BookOpen,
+  HandHelping,
+  ListChecks,
+  MessageSquare,
+  Zap,
+  Eye,
+  Lock,
+  AlertTriangle,
+  ChevronDown,
+  Heart,
+  Banknote,
+  UserCheck,
 } from 'lucide-react';
 import {
   Button,
   Tabs,
   Skeleton,
   EmptyState,
-  Badge,
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { useToast } from '@/app/providers/ToastProvider';
-import { useConfirm } from '@/app/providers/ConfirmProvider';
-import { useCollections } from '@/features/collection/hooks/useCollections';
-import { mockUsers } from '@/mocks/fixtures/users';
-import { findRule, computeLocalConformity } from '@/features/collection/lib/indicatorRules';
-import type {
-  Collection,
-  Measurement,
-} from '@/features/collection/api/collection.types';
-import { STATUS_LABEL, STATUS_VARIANT } from '@/features/collection/api/collection.types';
-import type { ConformityLevel } from '@/types/common';
-import { useSite, useDeleteSite } from '../hooks/useSites';
-import { ConformityBadge } from '../components/ConformityBadge';
+import { useSite, useSiteDetail, useSiteEmployes } from '../hooks/useSites';
 import { SiteForm } from '../components/SiteForm';
+import { DonneesEnvPanel } from '../components/DonneesEnvPanel';
 import { SITE_TYPE_LABEL } from '../api/site.types';
-import { formatRelativeTime, formatDateTime, formatGps } from '@/lib/format';
+import type { KoboCodedItem, KoboPhotoBackend } from '../api/sites.adapter';
+import { SitePhotoGallery } from '../components/SitePhotoGallery';
+import { formatDateTime, formatGps } from '@/lib/format';
 import styles from './SiteDetailPage.module.css';
 
-const DOMAINS: Array<{
-  key: 'water' | 'soil' | 'air' | 'waste' | 'health';
+/* ─── helpers ─── */
+
+function isOui(val: unknown): boolean {
+  if (val == null) return false;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'number') return val === 1;
+  const s = String(val).toLowerCase();
+  return s.startsWith('oui') || s === '1' || s === 'true';
+}
+
+function OuiNon({ val }: { val: unknown }) {
+  const yes = isOui(val);
+  if (val == null || val === '') return <span className={styles.fieldEmpty}>—</span>;
+  return (
+    <span className={`${styles.ouiNon} ${yes ? styles.ouiNonOui : styles.ouiNonNon}`}>
+      {yes ? 'Oui' : 'Non'}
+    </span>
+  );
+}
+
+/* ── Formatage des codes Kobo (underscores → lisible) ── */
+const CODE_LABELS: Record<string, string> = {
+  moins_1an: '< 1 an', '1_3ans': '1 à 3 ans', '3_5ans': '3 à 5 ans',
+  '5_10ans': '5 à 10 ans', plus_10ans: '+ 10 ans',
+  teinturiere: 'Teinturière', gestion: 'Gestion', journalier: 'Journalier', permanent: 'Permanent',
+  epi: 'EPI', formation_epi: 'Formation EPI', bilan_sante: 'Bilan santé',
+  medicaments: 'Médicaments', eau: 'Eau', equipements: 'Équipements',
+  formation_tech: 'Formation technique', formation_secu: 'Formation sécurité',
+  formation_gest: 'Formation gestion', protection_soc: 'Protection sociale',
+  infra_site: 'Infrastructure site', contact_peau: 'Contact peau',
+  fumees: 'Fumées', vapeurs: 'Vapeurs', brulures: 'Brûlures',
+  positions: 'Positions', soleil: 'Soleil', habitude: 'Habitude',
+  indisponible: 'Indisponible', autre: 'Autre',
+};
+
+function formatCode(val: string | null | undefined): string {
+  if (!val) return '—';
+  return CODE_LABELS[val] ?? val.replace(/_/g, ' ');
+}
+
+function formatName(val: string | null | undefined): string {
+  if (!val) return '—';
+  return val
+    .split(/[_\s]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/* ── Badge qualité coloré ── */
+const QUAL_COLORS: Record<string, 'success' | 'warning' | 'danger'> = {
+  bonne: 'success', bon: 'success', toujours: 'success', suffisant: 'success',
+  acceptable: 'warning', moyen: 'warning', moyenne: 'warning',
+  partiel: 'warning', parfois: 'warning', souvent: 'warning', rarement: 'warning',
+  mauvais: 'danger', mauvaise: 'danger', frequemment: 'danger', critique: 'danger',
+};
+
+function QualBadge({ val }: { val: string | null | undefined }) {
+  if (!val) return <span className={styles.fieldEmpty}>—</span>;
+  const key = val.toLowerCase().trim();
+  const color = QUAL_COLORS[key];
+  const label = formatCode(val);
+  if (color === 'success') return <span className={`${styles.qualBadge} ${styles.qualSuccess}`}>{label}</span>;
+  if (color === 'warning') return <span className={`${styles.qualBadge} ${styles.qualWarning}`}>{label}</span>;
+  if (color === 'danger')  return <span className={`${styles.qualBadge} ${styles.qualDanger}`}>{label}</span>;
+  return <span>{label}</span>;
+}
+
+/* Seul jeu de couleurs conserve sur cette page : il traduit une gravite. */
+const CONFORMITE_LABEL: Record<string, string> = {
+  conforming: 'Conforme',
+  warning: 'À surveiller',
+  critical: 'Critique',
+};
+
+function Chips({ items }: { items: KoboCodedItem[] }) {
+  if (!items.length) return <span className={styles.fieldEmpty}>—</span>;
+  return (
+    <div className={styles.chipRow}>
+      {items.map((it) => (
+        <span key={it.id} className={styles.chip}>
+          {formatCode(it.libelle)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Une donnee de la fiche : intitule discret au-dessus, valeur en avant.
+ *
+ * L'ancienne mise en ligne — intitule a gauche, valeur a droite — obligeait a
+ * balayer horizontalement et imposait des colonnes de largeur arbitraire. En
+ * pile, les valeurs s'alignent verticalement et se lisent d'un coup d'oeil.
+ *
+ * `large` reserve toute la largeur aux champs de texte libre, qu'une colonne
+ * etroite rendrait illisibles.
+ */
+/**
+ * Jauge de repartition femmes / hommes.
+ *
+ * Les deux parts sont representees, chacune avec sa teinte et son
+ * pourcentage : montrer la seule part des femmes obligeait a deduire l'autre.
+ * Les effectifs restent affiches en clair au-dessus — la jauge donne l'ordre
+ * de grandeur, elle ne remplace pas les chiffres.
+ */
+/** Initiales d'un employe, a defaut son numero d'ordre. */
+function initiales(emp: { prenom?: string | null; nom?: string | null; numeroEmploye: string }): string {
+  const p = (emp.prenom ?? '').trim();
+  const n = (emp.nom ?? '').trim();
+  if (p || n) return `${p.charAt(0)}${n.charAt(0)}`.toUpperCase() || '?';
+  return emp.numeroEmploye;
+}
+
+/** Genre normalise — le backend renvoie du texte libre. */
+function genreDe(valeur: string | null | undefined): 'f' | 'h' | null {
+  if (!valeur) return null;
+  const v = valeur.toLowerCase();
+  if (v.startsWith('f')) return 'f';
+  if (v.startsWith('m') || v.startsWith('h')) return 'h';
+  return null;
+}
+
+/**
+ * Posture de securite : combien de dispositifs sont en place sur ceux
+ * attendus.
+ *
+ * Les trois dispositifs etaient listes en Oui / Non, sans qu'on percoive
+ * l'etat d'ensemble. Le compte est explicite et les segments le donnent d'un
+ * coup d'oeil ; la teinte suit le resultat — une posture incomplete sur un
+ * site a risque n'est pas une information neutre.
+ */
+function PostureSecurite({ dispositifs }: { dispositifs: Array<{ nom: string; present: boolean }> }) {
+  const enPlace = dispositifs.filter((d) => d.present).length;
+  const total = dispositifs.length;
+  if (total === 0) return null;
+
+  const niveau = enPlace === total ? 'complet' : enPlace === 0 ? 'absent' : 'partiel';
+
+  return (
+    <div className={styles.posture} data-niveau={niveau}>
+      <span className={styles.postureSegments} role="img"
+        aria-label={`${enPlace} dispositif(s) de securite sur ${total} en place`}>
+        {dispositifs.map((d) => (
+          <span
+            key={d.nom}
+            className={styles.postureSegment}
+            data-present={d.present ? 'oui' : 'non'}
+            title={`${d.nom} : ${d.present ? 'en place' : 'absent'}`}
+          />
+        ))}
+      </span>
+      <span className={styles.postureTexte}>
+        <strong>{enPlace}</strong> dispositif{enPlace > 1 ? 's' : ''} sur {total} en place
+      </span>
+    </div>
+  );
+}
+
+function RatioBar({ femmes, hommes }: { femmes: number | null; hommes: number | null }) {
+  const f = femmes ?? 0;
+  const h = hommes ?? 0;
+  const total = f + h;
+  if (total === 0) return null;
+
+  const partFemmes = Math.round((f / total) * 100);
+  const partHommes = 100 - partFemmes;
+
+  return (
+    <span className={styles.ratio}>
+      <span
+        className={styles.ratioTrack}
+        role="img"
+        aria-label={`${partFemmes}% de femmes, ${partHommes}% d'hommes`}
+      >
+        <span
+          className={styles.ratioPart}
+          data-part="femmes"
+          style={{ width: `${partFemmes}%` }}
+        />
+        <span
+          className={styles.ratioPart}
+          data-part="hommes"
+          style={{ width: `${partHommes}%` }}
+        />
+      </span>
+      <span className={styles.ratioLegend}>
+        <span className={styles.ratioKey}>
+          <span className={styles.ratioDot} data-part="femmes" aria-hidden="true" />
+          {partFemmes}% femmes
+        </span>
+        <span className={styles.ratioKey}>
+          <span className={styles.ratioDot} data-part="hommes" aria-hidden="true" />
+          {partHommes}% hommes
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function FieldRow({
+  label, children, large,
+}: {
   label: string;
-  icon: ReactNode;
-}> = [
-  { key: 'water', label: 'Eaux usées', icon: <Droplet size={16} /> },
-  { key: 'soil', label: 'Sol', icon: <Mountain size={16} /> },
-  { key: 'air', label: 'Qualité de l\'air', icon: <Wind size={16} /> },
-  { key: 'waste', label: 'Déchets solides', icon: <Trash2 size={16} /> },
-  { key: 'health', label: 'Santé & sécurité', icon: <HeartPulse size={16} /> },
-];
-
-function highlightsOf(measurements: Measurement[]): string {
-  const sample = measurements
-    .slice(0, 3)
-    .map((m) => {
-      const rule = findRule(m.indicatorId);
-      const label = rule?.label ?? m.indicatorId;
-      const v = m.value === null || m.value === undefined ? '—' : m.value;
-      const unit = m.unit ?? rule?.unit ?? '';
-      return `${label}: ${v}${unit ? ' ' + unit : ''}`;
-    })
-    .join(' · ');
-  return sample || '—';
+  children: React.ReactNode;
+  large?: boolean;
+}) {
+  return (
+    <div className={`${styles.dataItem} ${large ? styles.dataItemLarge : ''}`}>
+      <span className={styles.dataLabel}>{label}</span>
+      <span className={styles.dataValue}>{children}</span>
+    </div>
+  );
 }
 
-function worstConformity(measurements: Measurement[]): ConformityLevel {
-  let worst: ConformityLevel = 'conforming';
-  for (const m of measurements) {
-    const rule = findRule(m.indicatorId);
-    if (!rule) continue;
-    const v = typeof m.value === 'number' ? m.value : Number(m.value);
-    if (!Number.isFinite(v)) continue;
-    const level = computeLocalConformity(rule, v);
-    if (level === 'critical') return 'critical';
-    if (level === 'warning' && worst === 'conforming') worst = 'warning';
-  }
-  return worst;
+/**
+ * Un groupe de la fiche.
+ *
+ * Les donnees etaient auparavant enfermees dans autant de cartes bordees,
+ * juxtaposees sans hierarchie : la page se lisait comme une mosaique de
+ * boites de tailles inegales, avec des vides la ou une carte comptait moins
+ * de lignes que sa voisine.
+ *
+ * Le groupe n'a plus de chrome propre. Il s'annonce par un intitule discret
+ * prolonge d'un filet, et pose ses donnees dans une grille fluide. Toute la
+ * fiche partage alors une seule surface, et le rythme vient de la typographie
+ * plutot que des bordures.
+ */
+function SectionCard({
+  title, icon, children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={styles.group}>
+      <header className={styles.groupHead}>
+        <span className={styles.groupIcon}>{icon}</span>
+        <h3 className={styles.groupTitle}>{title}</h3>
+        <span className={styles.groupRule} aria-hidden="true" />
+      </header>
+      <div className={styles.groupGrid}>{children}</div>
+    </section>
+  );
 }
+
+/* ─── Page ─── */
 
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useAuth();
-  const toast = useToast();
-  const confirm = useConfirm();
   const { data: site, isLoading, isError } = useSite(id);
-  const deleteMut = useDeleteSite();
+  const { data: detail, isLoading: detailLoading } = useSiteDetail(id);
 
-  const { data: collectionsPage } = useCollections({ siteId: id });
-  const siteCollections = useMemo(
-    () =>
-      [...(collectionsPage?.items ?? [])].sort(
-        (a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime(),
-      ),
-    [collectionsPage],
-  );
-
-  const [tab, setTab] = useState<'overview' | 'history' | 'photos'>('overview');
+  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'employes' | 'photos' | 'env'>('profil');
   const [editOpen, setEditOpen] = useState(false);
+  const [openEmployes, setOpenEmployes] = useState<Set<number>>(new Set());
 
+  const { data: employesData, isLoading: employesLoading } = useSiteEmployes(id);
+
+  function toggleEmploye(empId: number) {
+    setOpenEmployes((prev) => {
+      const next = new Set(prev);
+      if (next.has(empId)) next.delete(empId);
+      else next.add(empId);
+      return next;
+    });
+  }
   const isAdmin = role === 'admin';
 
-  const usersById = useMemo(() => {
-    const map = new Map<string, string>();
-    mockUsers.forEach((u) => map.set(u.id, u.fullName));
-    return map;
-  }, []);
+  const cs = detail?.collecteSite ?? null;
+  const photos: KoboPhotoBackend[] = detail?.photos ?? [];
+  const typesTeinture: KoboCodedItem[] = detail?.typesTeinture ?? [];
 
-  const siteMetrics = useMemo(() => {
-    const windowDays = 60;
-    const dayMs = 86_400_000;
-    const now = Date.now();
-    const cutoff = now - windowDays * dayMs;
-    const cutoffPrev = now - 2 * windowDays * dayMs;
+  /* Effectifs : la fiche terrain fait foi, le referentiel du site sert de
+   * repli quand la visite n'a pas encore ete importee. */
+  const effectifTotal = cs?.nbEmployesTotal ?? site?.workforce ?? null;
+  const effectifFemmes = cs?.nbFemmes ?? site?.workforceWomen ?? null;
+  const effectifHommes = cs?.nbHommes ?? site?.workforceMen ?? null;
+  const equipements: KoboCodedItem[] = detail?.equipements ?? [];
+  const epis: KoboCodedItem[] = detail?.epis ?? [];
+  const risques: KoboCodedItem[] = detail?.risquesSecurite ?? [];
+  const formations: KoboCodedItem[] = detail?.formationsRecues ?? [];
+  const appuis: KoboCodedItem[] = detail?.appuisRecus ?? [];
+  const besoins: KoboCodedItem[] = detail?.besoinsPrioritaires ?? [];
 
-    const ordered = [...siteCollections].sort(
-      (a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime(),
-    );
-
-    const phSeries: number[] = [];
-    const pm25Series: number[] = [];
-    for (const c of ordered.slice(-12)) {
-      const ph = c.measurements.find((m) => m.indicatorId === 'water.ph')?.value;
-      const pm = c.measurements.find((m) => m.indicatorId === 'air.pm25')?.value;
-      if (typeof ph === 'number') phSeries.push(ph);
-      if (typeof pm === 'number') pm25Series.push(pm);
-    }
-
-    const latestPh = phSeries.at(-1) ?? null;
-    const latestPm25 = pm25Series.at(-1) ?? null;
-
-    /* Sparkline collectes : 6 buckets sur la fenêtre */
-    const buckets = 6;
-    const bucketMs = (windowDays * dayMs) / buckets;
-    const collectionsSpark = Array(buckets).fill(0) as number[];
-    let collectionsCount = 0;
-    let collectionsPrev = 0;
-    for (const c of siteCollections) {
-      const t = new Date(c.collectedAt).getTime();
-      if (t >= cutoff) {
-        collectionsCount += 1;
-        const idx = Math.min(buckets - 1, Math.floor((t - cutoff) / bucketMs));
-        collectionsSpark[idx] = (collectionsSpark[idx] ?? 0) + 1;
-      } else if (t >= cutoffPrev) {
-        collectionsPrev += 1;
-      }
-    }
-    const collectionsTrend =
-      collectionsPrev > 0
-        ? Math.round(((collectionsCount - collectionsPrev) / collectionsPrev) * 100)
-        : 0;
-
-    return {
-      windowDays,
-      collectionsCount,
-      collectionsPrev,
-      collectionsTrend,
-      collectionsSpark,
-      phSeries,
-      pm25Series,
-      latestPh,
-      latestPm25,
-    };
-  }, [siteCollections]);
-
-  const photos = useMemo(() => {
-    /* Agrégation déduplicquée : une URL n'apparaît qu'une fois (la collecte la plus récente). */
-    const seen = new Map<string, { url: string; collectionId: string; date: string }>();
-    siteCollections.forEach((c) => {
-      c.photos.forEach((p) => {
-        if (seen.has(p.url)) return;
-        seen.set(p.url, { url: p.url, collectionId: c.id, date: c.collectedAt });
-      });
-    });
-    return Array.from(seen.values());
-  }, [siteCollections]);
-
+  /* ── loading / error ── */
   if (isLoading) {
     return (
       <div className={styles.loading}>
@@ -201,23 +352,6 @@ export function SiteDetailPage() {
     );
   }
 
-  const handleDelete = async () => {
-    const ok = await confirm({
-      title: `Supprimer ${site.shortName} ?`,
-      message: 'Suppression définitive du site et de toutes ses données associées.',
-      confirmLabel: 'Supprimer',
-      tone: 'danger',
-    });
-    if (!ok) return;
-    try {
-      await deleteMut.mutateAsync(site.id);
-      toast.success(`${site.shortName} supprimé.`);
-      window.location.href = '/sites';
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec de la suppression.');
-    }
-  };
-
   return (
     <>
       <Link to="/sites" className={styles.back}>
@@ -225,343 +359,467 @@ export function SiteDetailPage() {
         <span>Tous les sites</span>
       </Link>
 
+      {/* ── Hero ── */}
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
+            <span className={styles.heroCode}>{site.codeSite}</span>
+            {' · '}
             {SITE_TYPE_LABEL[site.type]}
           </span>
           <h1 className={styles.heroTitle}>{site.shortName}</h1>
-          {site.description ? (
-            <p className={styles.heroDescription}>{site.description}</p>
+          {site.niveauFormalisation ? (
+            <p className={styles.heroDescription}>
+              Niveau de formalisation : {site.niveauFormalisation}
+            </p>
           ) : null}
         </div>
-        <div className={styles.heroActions}>
-          {isAdmin ? (
-            <>
-              <Button
-                variant="secondary"
-                iconLeft={<Pencil size={16} />}
-                onClick={() => setEditOpen(true)}
-              >
-                Modifier
-              </Button>
-              <Button variant="ghost" onClick={handleDelete} loading={deleteMut.isPending}>
-                Supprimer
-              </Button>
-            </>
-          ) : null}
-        </div>
+        <div className={styles.heroActions} />
       </header>
 
-      {/* ── Info strip compact ── */}
-      <section className={styles.infoStrip} aria-label="Informations site">
+      {/* ── Bande d'identite ──
+       *  Remplace les deux rangees de cartes qui repetaient l'effectif a trois
+       *  endroits. Meme principe que la fiche collecte : une ligne dense, la
+       *  couleur reservee au seul indicateur qui en merite — la conformite. */}
+      <section className={styles.infoStrip} aria-label="Identité du site">
         <div className={styles.infoCell}>
-          <span className={styles.infoLabel}>Localisation</span>
+          <span className={styles.infoLabel}>Commune</span>
           <span className={styles.infoValue}>
             <MapPin size={12} aria-hidden="true" />
-            {site.location.commune}, {site.location.city}
+            {site.location.commune || cs?.ville || '—'}
           </span>
         </div>
+
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Statut foncier</span>
+          <span className={styles.infoValue}>
+            {site.legalStatus === 'formel' ? 'Formel' : 'Informel'}
+            {cs?.anneeCreation ? (
+              <span className={styles.infoAside}>depuis {cs.anneeCreation}</span>
+            ) : null}
+          </span>
+        </div>
+
+        {/* Effectif et repartition tiennent desormais sur une seule ligne. */}
         <div className={styles.infoCell}>
           <span className={styles.infoLabel}>Effectif</span>
           <span className={styles.infoValue}>
             <Users size={12} aria-hidden="true" />
-            {site.workforce} membres
+            {effectifTotal ?? '—'}
+            {effectifFemmes != null || effectifHommes != null ? (
+              <span className={styles.infoAside}>
+                {effectifFemmes ?? '—'} F · {effectifHommes ?? '—'} H
+              </span>
+            ) : null}
           </span>
         </div>
-        <div className={styles.infoCell}>
-          <span className={styles.infoLabel}>Statut</span>
-          <span className={styles.infoValue}>
-            {site.legalStatus === 'formel' ? 'Formel' : 'Informel'} · {site.createdYear}
-          </span>
-        </div>
-        <div className={styles.infoCell}>
-          <span className={styles.infoLabel}>GPS</span>
-          <span className={`${styles.infoValue} mono`}>
-            {formatGps(site.coordinates.lat, site.coordinates.lng)}
-          </span>
-        </div>
-      </section>
 
-      {/* ── Cartes metrics avec sparklines ── */}
-      <section className={styles.metricGrid} aria-label="Indicateurs clés">
-        <MetricCard
-          label="Conformité"
-          value={
-            site.conformity === 'conforming'
-              ? 'Conforme'
-              : site.conformity === 'warning'
-                ? 'À surveiller'
-                : 'Hors seuil'
-          }
-          tone={
-            site.conformity === 'conforming'
-              ? 'ok'
-              : site.conformity === 'warning'
-                ? 'warn'
-                : 'crit'
-          }
-          caption={
-            site.lastCollectionAt
-              ? `dernière · ${formatRelativeTime(site.lastCollectionAt)}`
-              : 'aucune collecte'
-          }
-        />
-        <MetricCard
-          label={`Collectes ${siteMetrics.windowDays} j`}
-          value={String(siteMetrics.collectionsCount)}
-          caption={
-            siteMetrics.collectionsTrend === 0
-              ? `précédent · ${siteMetrics.collectionsPrev}`
-              : `${siteMetrics.collectionsTrend > 0 ? '+' : ''}${siteMetrics.collectionsTrend}% vs ${siteMetrics.windowDays} j`
-          }
-          spark={siteMetrics.collectionsSpark}
-          sparkColor="var(--color-primary)"
-        />
-        <MetricCard
-          label="pH eaux usées"
-          value={
-            siteMetrics.latestPh != null ? siteMetrics.latestPh.toFixed(2) : '—'
-          }
-          tone={
-            siteMetrics.latestPh == null
-              ? undefined
-              : siteMetrics.latestPh > 8.5 || siteMetrics.latestPh < 6.5
-                ? 'crit'
-                : siteMetrics.latestPh > 8.2 || siteMetrics.latestPh < 6.8
-                  ? 'warn'
-                  : 'ok'
-          }
-          caption={`OMS 6,5 – 8,5`}
-          spark={siteMetrics.phSeries}
-          sparkColor="var(--chart-2)"
-        />
-        <MetricCard
-          label="PM2,5 air"
-          value={
-            siteMetrics.latestPm25 != null
-              ? `${siteMetrics.latestPm25.toFixed(0)}`
-              : '—'
-          }
-          unit={siteMetrics.latestPm25 != null ? 'µg/m³' : undefined}
-          tone={
-            siteMetrics.latestPm25 == null
-              ? undefined
-              : siteMetrics.latestPm25 > 25
-                ? 'crit'
-                : siteMetrics.latestPm25 > 20
-                  ? 'warn'
-                  : 'ok'
-          }
-          caption="OMS 25 µg/m³ · 24 h"
-          spark={siteMetrics.pm25Series}
-          sparkColor="var(--chart-5)"
-        />
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Teinture</span>
+          <span className={styles.infoValue}>
+            {typesTeinture.length
+              ? typesTeinture.map((t) => t.libelle).join(' · ')
+              : '—'}
+          </span>
+        </div>
+
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Dernière visite</span>
+          <span className={styles.infoValue}>
+            {cs?.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
+          </span>
+        </div>
+
+        {/* Seule cellule coloree : elle porte une information de gravite. */}
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Conformité</span>
+          <span className={styles.infoValue}>
+            <span className={styles.conformiteTag} data-level={site.conformity}>
+              {CONFORMITE_LABEL[site.conformity] ?? '—'}
+            </span>
+          </span>
+        </div>
+
+        {/* Releve de position, en bout de bande : traitement cartographique
+         *  pour qu'on le reconnaisse sans lire l'intitule. */}
+        <div className={`${styles.infoCell} ${styles.gpsCell}`}>
+          <span className={styles.infoLabel}>Position GPS</span>
+          <span className={styles.gpsValue}>
+            <MapPin size={13} aria-hidden="true" />
+            {site.coordinates.lat !== 0
+              ? formatGps(site.coordinates.lat, site.coordinates.lng)
+              : 'Non relevée'}
+          </span>
+        </div>
       </section>
 
       <Tabs
         value={tab}
         onChange={setTab}
         items={[
-          { value: 'overview', label: 'Vue d\'ensemble' },
-          { value: 'history', label: 'Historique', badge: siteCollections.length || undefined },
+          { value: 'profil', label: 'Profil du site' },
+          { value: 'conditions', label: 'Conditions de travail' },
+          { value: 'appuis', label: 'Appuis & Besoins' },
+          { value: 'employes', label: 'Employés', badge: employesData?.totalEmployes || undefined },
           { value: 'photos', label: 'Photos', badge: photos.length || undefined },
+          { value: 'env', label: 'Données env.' },
         ]}
         aria-label="Sections de la fiche site"
       />
 
       <div className={styles.body}>
-        {tab === 'overview' ? (
-          <div className={styles.split}>
-            <section className={styles.panel} aria-labelledby="domains-heading">
-              <header className={styles.panelHeader}>
-                <h2 id="domains-heading" className={styles.panelTitle}>
-                  Conformité par domaine
-                </h2>
-                <Badge variant="neutral" size="sm">
-                  Sources : OMS · Normes maliennes
-                </Badge>
-              </header>
-              <ul className={styles.domainList}>
-                {DOMAINS.map((d) => (
-                  <li key={d.key} className={styles.domainRow}>
-                    <span className={styles.domainIcon} aria-hidden="true">
-                      {d.icon}
-                    </span>
-                    <span className={styles.domainLabel}>{d.label}</span>
-                    <ConformityBadge level={site.conformityByDomain[d.key]} size="sm" />
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className={styles.panel} aria-labelledby="loc-heading">
-              <header className={styles.panelHeader}>
-                <h2 id="loc-heading" className={styles.panelTitle}>
-                  Localisation
-                </h2>
-                <Link to="/cartographie">
-                  <Button variant="ghost" size="sm">
-                    Ouvrir dans la carte
-                  </Button>
-                </Link>
-              </header>
-              <div className={styles.mapPreview}>
-                <div className={styles.mapDot} aria-hidden="true">
-                  <MapPin size={20} />
-                </div>
-                <div className={styles.mapInfo}>
-                  <p className={styles.mapTitle}>{site.shortName}</p>
-                  <p className={styles.mapSubtitle}>
-                    {site.location.address ? `${site.location.address} · ` : ''}
-                    {site.location.commune}, {site.location.city}
-                  </p>
-                  <p className={`${styles.mapCoords} mono`}>
-                    {formatGps(site.coordinates.lat, site.coordinates.lng)}
-                  </p>
-                </div>
-              </div>
-            </section>
+        {/* ── Squelette chargement (commun aux 3 onglets de collecte) ── */}
+        {detailLoading && (tab === 'profil' || tab === 'conditions' || tab === 'appuis') ? (
+          <div className={styles.sheet}>
+            <Skeleton height={220} radius={12} />
+            <Skeleton height={220} radius={12} />
+            <Skeleton height={180} radius={12} />
+            <Skeleton height={180} radius={12} />
           </div>
         ) : null}
 
-        {tab === 'history' ? (
-          <section className={styles.panel} aria-label="Historique des collectes">
-            {siteCollections.length === 0 ? (
-              <EmptyState
-                icon={<ClipboardList size={24} />}
-                title="Aucune collecte enregistrée"
-                description="Ce site n'a pas encore été visité par un agent."
-              />
-            ) : (
-              <ul className={styles.timeline}>
-                {siteCollections.slice(0, 12).map((entry: Collection, i) => {
-                  const conformity = worstConformity(entry.measurements);
-                  const isLast = i === Math.min(siteCollections.length, 12) - 1;
-                  return (
-                    <li key={entry.id} className={styles.timelineItem}>
-                      <span
-                        className={styles.timelineDot}
-                        data-conformity={conformity}
-                        aria-hidden="true"
-                      />
-                      {!isLast ? <span className={styles.timelineLine} aria-hidden="true" /> : null}
-                      <div className={styles.timelineCard}>
-                        <header className={styles.timelineHeader}>
-                          <div>
-                            <p className={styles.timelineDate}>
-                              {formatDateTime(entry.collectedAt)}
-                            </p>
-                            <p className={styles.timelineAgent}>
-                              par {usersById.get(entry.agentId) ?? entry.agentId}
-                            </p>
-                          </div>
-                          <Badge variant={STATUS_VARIANT[entry.status]} size="sm">
-                            {STATUS_LABEL[entry.status]}
-                          </Badge>
-                        </header>
-                        <p className={styles.timelineHighlights}>
-                          {highlightsOf(entry.measurements)}
-                        </p>
-                        <footer className={styles.timelineFooter}>
-                          <ConformityBadge level={conformity} size="sm" />
-                          <Link to={`/collecte/${entry.id}`}>
-                            <Button variant="ghost" size="sm">
-                              Détail de la collecte
-                            </Button>
-                          </Link>
-                        </footer>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+        {/* ── Empty state sans données (commun) ── */}
+        {!detailLoading && !cs && (tab === 'profil' || tab === 'conditions' || tab === 'appuis') ? (
+          <EmptyState
+            icon={<ClipboardList size={24} />}
+            title="Pas encore de données collectées"
+            description="La fiche terrain pour ce site n'a pas encore été importée."
+          />
         ) : null}
 
+        {/* ══ Onglet Profil du site ══ */}
+        {tab === 'profil' && cs ? (
+          <div className={styles.sheet}>
+            {/* Commune, annee, effectifs, teinture et GPS figurent deja dans la
+             *  bande d'identite : les repeter ici n'apprendrait rien. Ne restent
+             *  que les informations propres a la visite. */}
+            <SectionCard title="Visite de terrain" icon={<Calendar size={16} />}>
+              <FieldRow label="Date de visite">
+                {cs.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
+              </FieldRow>
+              <FieldRow label="Agent collecteur">{formatName(cs.agent)}</FieldRow>
+              <FieldRow label="Statut juridique">{cs.statutJuridique ?? '—'}</FieldRow>
+              <FieldRow label="Identifiant Kobo">
+                {cs.koboSubmissionId ? <code className={styles.codeInline}>{cs.koboSubmissionId}</code> : '—'}
+              </FieldRow>
+            </SectionCard>
+
+            <SectionCard title="Responsable du site" icon={<User size={16} />}>
+              <FieldRow label="Nom">{cs.nomResponsable ?? site.responsableName ?? '—'}</FieldRow>
+              <FieldRow label="Genre">{formatCode(cs.genreResponsable)}</FieldRow>
+              <FieldRow label="Répartition de l'effectif">
+                {effectifFemmes ?? '—'} femmes · {effectifHommes ?? '—'} hommes
+                <RatioBar femmes={effectifFemmes} hommes={effectifHommes} />
+              </FieldRow>
+            </SectionCard>
+
+            {cs.observationsGenerales || cs.recommandations ? (
+              <SectionCard title="Synthèse de la visite" icon={<MessageSquare size={16} />}>
+                {cs.observationsGenerales ? (
+                  <FieldRow label="Observations générales" large>{cs.observationsGenerales}</FieldRow>
+                ) : null}
+                {cs.recommandations ? (
+                  <FieldRow label="Recommandations" large>{cs.recommandations}</FieldRow>
+                ) : null}
+              </SectionCard>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* ══ Onglet Conditions de travail ══ */}
+        {tab === 'conditions' && cs ? (
+          <div className={styles.sheet}>
+            <SectionCard title="Ressource en eau" icon={<Droplet size={16} />}>
+              <FieldRow label="Source d'eau">{formatCode(cs.sourceEau)}</FieldRow>
+              <FieldRow label="État de la source"><QualBadge val={cs.etatSourcePrincipale} /></FieldRow>
+              <FieldRow label="Consommation (m³)">
+                {cs.consommationEauM3 != null ? `${cs.consommationEauM3} m³` : '—'}
+              </FieldRow>
+              {cs.observationsEau ? (
+                <FieldRow label="Observations" large>{cs.observationsEau}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="Équipements" icon={<Wrench size={16} />}>
+              <FieldRow label="Équipements disponibles">
+                <Chips items={equipements} />
+              </FieldRow>
+              <FieldRow label="État général"><QualBadge val={cs.etatGeneralEquipements} /></FieldRow>
+              {cs.observationsEquipements ? (
+                <FieldRow label="Observations" large>{cs.observationsEquipements}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />}>
+              <FieldRow label="EPI disponibles">
+                <Chips items={epis} />
+              </FieldRow>
+              <FieldRow label="Qualité des EPI"><QualBadge val={cs.qualiteEpi} /></FieldRow>
+              <FieldRow label="Formation EPI reçue">
+                <OuiNon val={cs.formationEpiRecue} />
+              </FieldRow>
+              {cs.observationsEpiSite ? (
+                <FieldRow label="Observations" large>{cs.observationsEpiSite}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />}>
+              <div className={styles.boolRow}>
+                <span className={styles.boolItem}>
+                  <Lock size={12} />
+                  Clôture
+                  <OuiNon val={cs.cloture} />
+                </span>
+                <span className={styles.boolItem}>
+                  <Zap size={12} />
+                  Éclairage
+                  <OuiNon val={cs.eclairage} />
+                </span>
+                <span className={styles.boolItem}>
+                  <Eye size={12} />
+                  Surveillance
+                  <OuiNon val={cs.surveillance} />
+                </span>
+              </div>
+              <PostureSecurite
+                dispositifs={[
+                  { nom: 'Clôture', present: isOui(cs.cloture) },
+                  { nom: 'Éclairage', present: isOui(cs.eclairage) },
+                  { nom: 'Surveillance', present: isOui(cs.surveillance) },
+                ]}
+              />
+              <FieldRow label="Risques identifiés">
+                <Chips items={risques} />
+              </FieldRow>
+              <FieldRow label="Accidents récents">
+                <OuiNon val={cs.accidentsRecents} />
+              </FieldRow>
+              {cs.descriptionAccidents ? (
+                <FieldRow label="Description" large>{cs.descriptionAccidents}</FieldRow>
+              ) : null}
+              {cs.observationsSecurite ? (
+                <FieldRow label="Observations" large>{cs.observationsSecurite}</FieldRow>
+              ) : null}
+            </SectionCard>
+          </div>
+        ) : null}
+
+        {/* ══ Onglet Appuis & Besoins ══ */}
+        {tab === 'appuis' && cs ? (
+          <div className={styles.sheet}>
+            <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />}>
+              <FieldRow label="Comptabilité">{formatCode(cs.comptabilite)}</FieldRow>
+              <FieldRow label="Couverture sociale"><QualBadge val={cs.couvertureSociale} /></FieldRow>
+            </SectionCard>
+
+            <SectionCard title="Formations reçues" icon={<BookOpen size={16} />}>
+              <Chips items={formations} />
+              {cs.formationsAutre ? (
+                <FieldRow label="Autres">{cs.formationsAutre}</FieldRow>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard title="Appuis reçus" icon={<HandHelping size={16} />}>
+              <Chips items={appuis} />
+            </SectionCard>
+
+            <SectionCard title="Besoins prioritaires" icon={<ListChecks size={16} />}>
+              <Chips items={besoins} />
+            </SectionCard>
+
+            {cs.observationsGenerales || cs.recommandations ? (
+              <div className={styles.fullWidth}>
+                <SectionCard title="Observations & Recommandations" icon={<MessageSquare size={16} />}>
+                  {cs.observationsGenerales ? (
+                    <FieldRow label="Observations générales" large>{cs.observationsGenerales}</FieldRow>
+                  ) : null}
+                  {cs.recommandations ? (
+                    <FieldRow label="Recommandations" large>{cs.recommandations}</FieldRow>
+                  ) : null}
+                </SectionCard>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* ══ Onglet Employés ══ */}
+        {tab === 'employes' ? (
+          employesLoading ? (
+            <div className={styles.empList}>
+              {[1, 2, 3].map((i) => <Skeleton key={i} height={64} radius={12} />)}
+            </div>
+          ) : !employesData || employesData.employes.length === 0 ? (
+            <EmptyState
+              icon={<Users size={24} />}
+              title="Aucun employé enregistré"
+              description="Les fiches employés apparaîtront ici une fois collectées."
+            />
+          ) : (
+            <div className={styles.empList}>
+              {employesData.employes.map((emp) => {
+                const isOpen = openEmployes.has(emp.id);
+                const dc = emp.derniereCollecte;
+                return (
+                  <div key={emp.id} className={styles.empCard}>
+                    <button
+                      className={styles.empHeader}
+                      onClick={() => toggleEmploye(emp.id)}
+                      aria-expanded={isOpen}
+                    >
+                      <div className={styles.empHeaderLeft}>
+                        {/* Vignette d'initiales, teintee selon le genre : elle
+                         *  identifie la personne avant la lecture du texte. */}
+                        <span
+                          className={styles.empAvatar}
+                          data-genre={genreDe(emp.genre) ?? 'x'}
+                          aria-hidden="true"
+                        >
+                          {initiales(emp)}
+                        </span>
+                        <span className={styles.empIdentity}>
+                          <span className={styles.empName}>
+                            {[emp.prenom, emp.nom].filter(Boolean).join(' ') || emp.codeEmploye}
+                          </span>
+                          <span className={styles.empMeta}>
+                            {[emp.fonction, emp.statut].filter(Boolean).map(formatCode).join(' · ')}
+                          </span>
+                        </span>
+                        <span className={styles.empTags}>
+                          {emp.anciennete ? (
+                            <span className={styles.chip}>{formatCode(emp.anciennete)}</span>
+                          ) : null}
+                          <span className={styles.empCode}>{emp.codeEmploye}</span>
+                        </span>
+                      </div>
+                      <ChevronDown
+                        size={16}
+                        className={`${styles.empChevron} ${isOpen ? styles.empChevronOpen : ''}`}
+                      />
+                    </button>
+
+                    {isOpen ? (
+                      <div className={styles.empBody}>
+                        {/* EPI */}
+                        <div className={styles.empSection}>
+                          <span className={styles.empSectionTitle}>
+                            <Shield size={13} /> EPI utilisés
+                          </span>
+                          {emp.equipementsProtection.length ? (
+                            <div className={styles.chipRow}>
+                              {emp.equipementsProtection.map((e) => (
+                                <span key={e.id} className={styles.chip}>{formatCode(e.libelle)}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className={styles.fieldEmpty}>—</span>
+                          )}
+                          {dc?.frequenceEpi ? (
+                            <FieldRow label="Fréquence EPI"><QualBadge val={dc.frequenceEpi} /></FieldRow>
+                          ) : null}
+                          {dc?.qualiteEpiPercue ? (
+                            <FieldRow label="Qualité perçue"><QualBadge val={dc.qualiteEpiPercue} /></FieldRow>
+                          ) : null}
+                          {dc?.obstaclesEpi ? (
+                            <FieldRow label="Obstacles">{formatCode(dc.obstaclesEpi)}</FieldRow>
+                          ) : null}
+                        </div>
+
+                        {/* Santé */}
+                        <div className={styles.empSection}>
+                          <span className={styles.empSectionTitle}>
+                            <Heart size={13} /> Santé & sécurité
+                          </span>
+                          <FieldRow label="Affections dermato"><QualBadge val={dc?.affecDermato} /></FieldRow>
+                          <FieldRow label="Affections respi"><QualBadge val={dc?.affecRespi} /></FieldRow>
+                          <FieldRow label="Affections oculaires"><QualBadge val={dc?.affecOculaire} /></FieldRow>
+                          <FieldRow label="Bilan santé reçu"><OuiNon val={dc?.bilanSanteRecu} /></FieldRow>
+                          <FieldRow label="Suivi médical"><OuiNon val={dc?.suiviMedical} /></FieldRow>
+                          {dc?.expositions ? (
+                            <FieldRow label="Expositions">
+                              {dc.expositions.split(' ').map((e) => formatCode(e)).join(', ')}
+                            </FieldRow>
+                          ) : null}
+                          <FieldRow label="Confort du poste"><QualBadge val={dc?.confortPoste} /></FieldRow>
+                          <FieldRow label="Connaissance risques"><OuiNon val={dc?.connaissanceRisques} /></FieldRow>
+                          <FieldRow label="Formation sécu reçue"><OuiNon val={dc?.formationSecuRecue} /></FieldRow>
+                          {dc?.structureSante ? (
+                            <FieldRow label="Structure santé">{dc.structureSante}</FieldRow>
+                          ) : null}
+                          {dc?.obsSante ? (
+                            <FieldRow label="Observations santé" large>{dc.obsSante}</FieldRow>
+                          ) : null}
+                        </div>
+
+                        {/* Rémunération */}
+                        <div className={styles.empSection}>
+                          <span className={styles.empSectionTitle}>
+                            <Banknote size={13} /> Rémunération
+                          </span>
+                          <FieldRow label="Mode">{formatCode(dc?.modeRemuneration)}</FieldRow>
+                          <FieldRow label="Revenu suffisant"><QualBadge val={dc?.revenuSuffisant} /></FieldRow>
+                          <FieldRow label="Revenu unique"><OuiNon val={dc?.revenuUnique} /></FieldRow>
+                          <FieldRow label="Couverture sociale"><OuiNon val={dc?.couvertureSociale} /></FieldRow>
+                        </div>
+
+                        {/* Besoins */}
+                        <div className={styles.empSection}>
+                          <span className={styles.empSectionTitle}>
+                            <UserCheck size={13} /> Besoins prioritaires
+                          </span>
+                          {emp.besoins.length ? (
+                            <div className={styles.chipRow}>
+                              {emp.besoins.map((b) => (
+                                <span key={b.id} className={styles.chip}>{formatCode(b.libelle)}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className={styles.fieldEmpty}>—</span>
+                          )}
+                        </div>
+
+                        {/* Suggestions / Observations */}
+                        {dc?.suggestionsEmploye || dc?.observations ? (
+                          <div className={styles.empSection}>
+                            <span className={styles.empSectionTitle}>
+                              <MessageSquare size={13} /> Suggestions & observations
+                            </span>
+                            {dc.suggestionsEmploye ? (
+                              <FieldRow label="Suggestions">{dc.suggestionsEmploye}</FieldRow>
+                            ) : null}
+                            {dc.observations ? (
+                              <FieldRow label="Observations" large>{dc.observations}</FieldRow>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : null}
+
+        {/* ══ Onglet Photos ══ */}
         {tab === 'photos' ? (
           photos.length === 0 ? (
             <EmptyState
               icon={<ImageOff size={24} />}
-              title="Pas encore de photos pour ce site"
-              description="Les photos sont prises horodatées par les agents lors de la collecte terrain. Elles apparaîtront ici une fois synchronisées."
+              title="Aucune photo pour ce site"
+              description="Les photos du site apparaîtront ici une fois importées."
             />
           ) : (
-            <div className={styles.photoGrid}>
-              {photos.map((p) => (
-                <Link
-                  key={`${p.collectionId}-${p.url}`}
-                  to={`/collecte/${p.collectionId}`}
-                  className={styles.photoCard}
-                >
-                  <img src={p.url} alt="Collecte terrain" />
-                  <span className={styles.photoMeta}>
-                    {formatRelativeTime(p.date)}
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <SitePhotoGallery photos={photos} />
           )
         ) : null}
+
+        {/* ══ Onglet Données environnementales ══ */}
+        {tab === 'env' ? <DonneesEnvPanel siteId={id!} /> : null}
       </div>
 
       {isAdmin ? (
         <SiteForm open={editOpen} onClose={() => setEditOpen(false)} site={site} />
       ) : null}
     </>
-  );
-}
-
-/* ─────────── Metric Card + Sparkline ─────────── */
-
-interface MetricCardProps {
-  label: string;
-  value: string;
-  unit?: string;
-  caption?: string;
-  tone?: 'ok' | 'warn' | 'crit';
-  spark?: number[];
-  sparkColor?: string;
-}
-
-function MetricCard({ label, value, unit, caption, tone, spark, sparkColor }: MetricCardProps) {
-  return (
-    <div className={styles.metricCard} data-tone={tone}>
-      <span className={styles.metricLabel}>{label}</span>
-      <div className={styles.metricValueRow}>
-        <span className={styles.metricValue}>{value}</span>
-        {unit ? <span className={styles.metricUnit}>{unit}</span> : null}
-      </div>
-      <div className={styles.metricFoot}>
-        {caption ? <span className={styles.metricCaption}>{caption}</span> : null}
-        {spark && spark.length > 1 ? (
-          <Sparkline values={spark} color={sparkColor ?? 'var(--color-primary)'} />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function Sparkline({ values, color }: { values: number[]; color: string }) {
-  if (values.length < 2) return null;
-  const w = 60;
-  const h = 22;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const step = w / (values.length - 1);
-  const pts = values.map((v, i) => {
-    const x = i * step;
-    const y = h - ((v - min) / range) * (h - 2) - 1;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const path = `M${pts.join(' L')}`;
-  const area = `${path} L${w},${h} L0,${h} Z`;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className={styles.sparkline} aria-hidden="true">
-      <path d={area} fill={color} fillOpacity="0.10" />
-      <path d={path} fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
   );
 }

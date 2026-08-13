@@ -6,7 +6,9 @@ import { login, type LoginPayload } from '../api/auth';
 const ROLE_HOME: Record<string, string> = {
   admin: '/dashboard',
   superviseur: '/dashboard',
-  agent: '/collecte',
+  agent: '/formulaires',
+  lab: '/labo/echantillons',
+  visitor: '/dashboard',
 };
 
 export function useLogin() {
@@ -16,8 +18,8 @@ export function useLogin() {
   return useMutation({
     mutationFn: (payload: LoginPayload) => login(payload),
     onSuccess: (data) => {
-      storeLogin(data.user);
-      navigate(ROLE_HOME[data.user.role] ?? '/', { replace: true });
+      storeLogin(data.user, data.token);
+      navigate(ROLE_HOME[data.user.role] ?? '/dashboard', { replace: true });
     },
   });
 }

@@ -86,7 +86,9 @@ export function CollectionsListPage() {
         return c.id.toLowerCase().includes(s) || site?.shortName.toLowerCase().includes(s);
       });
     }
-    return items;
+    return items.sort(
+      (a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime(),
+    );
   }, [data, q, dateRange, sitesById]);
 
   const counts = useMemo(() => {
@@ -240,7 +242,7 @@ export function CollectionsListPage() {
               key={c.id}
               collection={c}
               site={sitesById.get(c.siteId)}
-              agentName={usersById.get(c.agentId)}
+              agentName={usersById.get(c.agentId) ?? (c.agentId ? `${c.agentId} soumission${Number(c.agentId) > 1 ? 's' : ''}` : undefined)}
               href={`/collecte/${c.id}`}
             />
           ))

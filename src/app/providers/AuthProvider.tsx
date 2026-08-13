@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthenticatedUser, UserRole } from '@/types/common';
+import { setToken, clearToken, isTokenExpired } from '@/lib/tokenStore';
 
 interface AuthState {
   user: AuthenticatedUser | null;
   isAuthenticated: boolean;
-  login: (user: AuthenticatedUser) => void;
+  login: (user: AuthenticatedUser, token: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
 }
@@ -15,8 +16,14 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      login: (user) => set({ user, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false }),
+      login: (user, token) => {
+        setToken(token);
+        set({ user, isAuthenticated: true });
+      },
+      logout: () => {
+        clearToken();
+        set({ user: null, isAuthenticated: false });
+      },
       switchRole: (role) => {
         const current = get().user;
         if (!current) return;
@@ -25,6 +32,17 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'mc.auth',
+      // À la réhydratation, restaurer le token depuis localStorage si présent
+      onRehydrateStorage: () => (state) => {
+        if (state?.isAuthenticated) {
+          if (isTokenExpired()) {
+            // Token absent ou expiré → déconnecter immédiatement
+            clearToken();
+            state.user = null;
+            state.isAuthenticated = false;
+          }
+        }
+      },
     },
   ),
 );

@@ -1,5 +1,6 @@
 import type { Paginated } from '@/types/common';
 import { http } from '@/lib/http';
+import { API_MODE } from '@/lib/apiConfig';
 import type {
   AlertAcknowledgeInput,
   AlertEntry,
@@ -8,6 +9,9 @@ import type {
 } from './alerts.types';
 
 export function fetchAlerts(filter: AlertFilter = {}): Promise<Paginated<AlertEntry>> {
+  if (API_MODE === 'live') {
+    return Promise.resolve({ items: [], total: 0, page: 1, pageSize: 0 });
+  }
   const params = new URLSearchParams();
   if (filter.severity) params.set('severity', filter.severity);
   if (filter.status) params.set('status', filter.status);

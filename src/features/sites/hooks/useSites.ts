@@ -3,11 +3,15 @@ import {
   createSite,
   deleteSite,
   fetchSite,
+  fetchSiteDetail,
   fetchSites,
   updateSite,
   type SiteInput,
   type SitesQuery,
 } from '../api/sites';
+import { fetchSitePhotos } from '../api/sitePhotos';
+import { fetchSiteEmployes } from '../api/siteEmployes';
+import { fetchDonneesEnvironnementales } from '../api/donneesEnv';
 
 export function useSites(query: SitesQuery = {}) {
   return useQuery({
@@ -21,6 +25,33 @@ export function useSite(id: string | undefined) {
     queryKey: ['sites', id],
     queryFn: () => fetchSite(id ?? ''),
     enabled: Boolean(id),
+  });
+}
+
+export function useSiteDetail(id: string | undefined) {
+  return useQuery({
+    queryKey: ['siteDetail', id],
+    queryFn: () => fetchSiteDetail(id ?? ''),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+export function useSiteEmployes(id: string | undefined) {
+  return useQuery({
+    queryKey: ['siteEmployes', id],
+    queryFn: () => fetchSiteEmployes(id!),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+export function useSitePhotos(collecteSiteId: number | null | undefined) {
+  return useQuery({
+    queryKey: ['sitePhotos', collecteSiteId],
+    queryFn: () => fetchSitePhotos(collecteSiteId!),
+    enabled: collecteSiteId != null && collecteSiteId > 0,
+    staleTime: 60_000,
   });
 }
 
@@ -53,5 +84,14 @@ export function useDeleteSite() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sites'] });
     },
+  });
+}
+
+export function useDonneesEnvironnementales(siteId: string | undefined) {
+  return useQuery({
+    queryKey: ['donneesEnv', siteId],
+    queryFn: () => fetchDonneesEnvironnementales(siteId!),
+    enabled: Boolean(siteId),
+    staleTime: 60_000,
   });
 }

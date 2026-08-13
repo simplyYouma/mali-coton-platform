@@ -1,0 +1,15 @@
+# Normalisation des fins de ligne.
+#
+# Sans ces regles, un poste Windows configure en core.autocrlf=true recupere
+# start.sh avec des fins de ligne CRLF. Bash lit alors le shebang comme
+# "/usr/bin/env bash\r" et refuse de demarrer :
+#     bad interpreter: No such file or directory
+# Les scripts shell doivent donc rester en LF, y compris sous Windows.
+
+* text=auto
+
+*.sh text eol=lf
+
+# A l'inverse, les scripts batch veulent des CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf

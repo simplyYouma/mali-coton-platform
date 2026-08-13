@@ -490,7 +490,7 @@ export function DashboardPage() {
             <p className={styles.empty}>Aucune collecte</p>
           ) : (
             recentCollections.slice(0, 6).map((c) => {
-              const initials = c.siteName.slice(0, 2).toUpperCase();
+              const initials = (c.siteName ?? '--').slice(0, 2).toUpperCase();
               return (
                 <Link key={c.id} to={`/collecte/${c.id}`} className={styles.recentRow}>
                   <span className={styles.recentInitials} aria-hidden="true">{initials}</span>

@@ -4,15 +4,9 @@ import { Button, FormField, Input } from '@/components/common';
 import { useLogin } from '../hooks/useLogin';
 import styles from './LoginPage.module.css';
 
-const DEMO_ACCOUNTS = [
-  { role: 'Administrateur', email: 'admin@pnud.org' },
-  { role: 'Superviseur', email: 'superviseur@sahel.com' },
-  { role: 'Observateur', email: 'observateur@pnud.org' },
-];
-
 export function LoginPage() {
-  const [email, setEmail] = useState('admin@pnud.org');
-  const [password, setPassword] = useState('demo');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const login = useLogin();
 
@@ -74,7 +68,7 @@ export function LoginPage() {
             <FormField label="Adresse e-mail">
               <Input
                 type="email"
-                autoComplete="email"
+                autoComplete="off"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 prefix={<Mail size={14} />}
@@ -86,7 +80,7 @@ export function LoginPage() {
             <FormField label="Mot de passe">
               <Input
                 type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
+                autoComplete="off"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 prefix={<Lock size={14} />}
@@ -129,26 +123,7 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className={styles.demoSection}>
-            <p className={styles.demoTitle}>Comptes de démonstration</p>
-            <ul className={styles.demoList}>
-              {DEMO_ACCOUNTS.map((acc) => (
-                <li key={acc.email}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail(acc.email);
-                      setPassword('demo');
-                    }}
-                    className={styles.demoChip}
-                    title={acc.email}
-                  >
-                    {acc.role}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+
         </div>
 
         <footer className={styles.footer}>

@@ -15,11 +15,8 @@ import {
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useConfirm } from '@/app/providers/ConfirmProvider';
-import { useDeleteSite, useSites } from '../hooks/useSites';
+import { useDeleteSite, useSiteDetail, useSites } from '../hooks/useSites';
 import { SiteForm } from '../components/SiteForm';
-import { ConformityBadge } from '../components/ConformityBadge';
-import { SITE_TYPE_SHORT } from '../api/site.types';
-import { formatRelativeTime } from '@/lib/format';
 import type { Site } from '../api/site.types';
 import type { ConformityLevel } from '@/types/common';
 import styles from './SitesListPage.module.css';
@@ -46,21 +43,33 @@ export function SitesListPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Site | null>(null);
 
-  const { data, isLoading } = useSites({
-    q: q || undefined,
-    type: type === 'all' ? undefined : type,
-    conformity: conformity === 'all' ? undefined : conformity,
-  });
+  // Seule la recherche texte est envoyée à l'API (full-text).
+  // Type, conformité et commune sont filtrés côté client sur les valeurs
+  // déjà normalisées par l'adapter, ce qui évite le décalage avec les
+  // valeurs brutes Kobo renvoyées par le backend.
+  const { data, isLoading } = useSites({ q: q || undefined });
 
-  const allSites = data?.items ?? [];
+  const filteredByTypeConformity = useMemo(() => {
+    let items = data?.items ?? [];
+    if (type !== 'all') items = items.filter((s) => s.type === type);
+    if (conformity !== 'all') items = items.filter((s) => s.conformity === conformity);
+    return items;
+  }, [data, type, conformity]);
+
   const communes = useMemo(() => {
     const set = new Set<string>();
-    allSites.forEach((s) => set.add(s.location.commune));
+    filteredByTypeConformity.forEach((s) => {
+      if (s.location.commune) set.add(s.location.commune);
+    });
     return Array.from(set).sort();
-  }, [allSites]);
+  }, [filteredByTypeConformity]);
+
   const sites = useMemo(
-    () => (commune === 'all' ? allSites : allSites.filter((s) => s.location.commune === commune)),
-    [allSites, commune],
+    () =>
+      commune === 'all'
+        ? filteredByTypeConformity
+        : filteredByTypeConformity.filter((s) => s.location.commune === commune),
+    [filteredByTypeConformity, commune],
   );
 
   const handleExport = () => {
@@ -224,11 +233,11 @@ export function SitesListPage() {
             <thead>
               <tr>
                 <th>Site</th>
-                <th>Type</th>
                 <th>Localisation</th>
-                <th>Effectif</th>
-                <th>Conformité</th>
-                <th>Dernière activité</th>
+                <th>Responsable</th>
+                <th>Statut juridique</th>
+                <th>Année création</th>
+                <th>Couverture sociale</th>
                 {canManage ? <th aria-label="Actions" /> : null}
               </tr>
             </thead>
@@ -261,6 +270,8 @@ interface SiteRowProps {
 
 function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
   const navigate = useNavigate();
+  const { data: detail } = useSiteDetail(site.id);
+  const collecte = detail?.collecteSite;
   const showActions = onEdit || onDelete;
   const goToSite = () => navigate(`/sites/${site.id}`);
   const onKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
@@ -273,6 +284,11 @@ function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
     e.stopPropagation();
     handler(site);
   };
+
+  const responsable = collecte?.nomResponsable ?? site.responsableName ?? '—';
+  const statutJuridique = collecte?.statutJuridique ?? (site.legalStatus === 'formel' ? 'Formel' : 'Informel');
+  const anneeCreation = collecte?.anneeCreation ?? (site.createdYear > 0 ? site.createdYear : null);
+  const couvertureSociale = collecte?.couvertureSociale ?? null;
 
   return (
     <tr
@@ -289,21 +305,15 @@ function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
         </span>
       </td>
       <td>
-        <span className={styles.typePill}>{SITE_TYPE_SHORT[site.type]}</span>
-      </td>
-      <td>
         <span className={styles.location}>
           <MapPin size={12} aria-hidden="true" />
-          {site.location.commune}, {site.location.city}
+          {[site.location.commune, site.location.city].filter(Boolean).join(', ')}
         </span>
       </td>
-      <td className={styles.workforce}>{site.workforce}</td>
-      <td>
-        <ConformityBadge level={site.conformity} size="sm" />
-      </td>
-      <td className={styles.activity}>
-        {site.lastCollectionAt ? formatRelativeTime(site.lastCollectionAt) : '—'}
-      </td>
+      <td>{responsable}</td>
+      <td>{statutJuridique ?? '—'}</td>
+      <td>{anneeCreation ?? '—'}</td>
+      <td>{couvertureSociale ?? '—'}</td>
       {showActions ? (
         <td className={styles.actions} onClick={(e) => e.stopPropagation()}>
           {onEdit ? (

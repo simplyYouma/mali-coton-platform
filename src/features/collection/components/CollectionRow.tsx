@@ -39,7 +39,7 @@ const STATUS_ICONS: Record<CollectionStatus, typeof Inbox> = {
 };
 
 export function CollectionRow({ collection, site, agentName, href }: CollectionRowProps) {
-  const StatusIcon = STATUS_ICONS[collection.status];
+  const StatusIcon = STATUS_ICONS[collection.status] ?? Inbox;
 
   const content = (
     <>

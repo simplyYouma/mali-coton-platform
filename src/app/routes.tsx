@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import type { UserRole } from '@/types/common';
 import { useAuth } from './providers/AuthProvider';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { AppLayout } from './layouts/AppLayout';
@@ -23,11 +24,20 @@ import { TeamListPage, AgentDetailPage } from '@/features/team';
 import { MappingPage } from '@/features/mapping';
 import { AnalyticsPage } from '@/features/analytics';
 import { ReportingPage } from '@/features/reporting';
-import { LabSamplesPage } from '@/features/lab';
+import { LabSamplesPage, PrelevementsPage, AnalysesPage } from '@/features/lab';
+import {
+  FormulaireListPage,
+  FormulaireCollectePage,
+  SoumissionsListPage,
+  FormulaireAdminListPage,
+  FormulaireFormPage,
+  ChampListPage,
+} from '@/features/formulaires';
 import { RoleGuard } from '@/components/common';
 
 export function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
+  const accueil = defaultRoute(role);
 
   if (!isAuthenticated) {
     return (
@@ -40,10 +50,17 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to={defaultRoute()} replace />} />
+      <Route path="/login" element={<Navigate to={accueil} replace />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Navigate to={defaultRoute()} replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/" element={<Navigate to={accueil} replace />} />
+        <Route
+          path="/dashboard"
+          element={
+            <RoleGuard roles={['admin', 'superviseur', 'visitor']}>
+              <DashboardPage />
+            </RoleGuard>
+          }
+        />
         <Route path="/sites" element={<SitesListPage />} />
         <Route path="/sites/:id" element={<SiteDetailPage />} />
         <Route path="/collecte" element={<CollectionsListPage />} />
@@ -80,6 +97,22 @@ export function AppRoutes() {
             </RoleGuard>
           }
         />
+        <Route
+          path="/labo/prelevements"
+          element={
+            <RoleGuard roles={['admin', 'superviseur']}>
+              <PrelevementsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/labo/analyses"
+          element={
+            <RoleGuard roles={['admin', 'superviseur']}>
+              <AnalysesPage />
+            </RoleGuard>
+          }
+        />
         <Route path="/alertes" element={<AlertsPage />} />
         <Route
           path="/recommandations"
@@ -105,6 +138,16 @@ export function AppRoutes() {
             </RoleGuard>
           }
         />
+        {/* Formulaires de collecte — agent */}
+        <Route path="/formulaires" element={<FormulaireListPage />} />
+        <Route path="/formulaires/soumissions" element={<SoumissionsListPage />} />
+        <Route path="/formulaires/:id/saisir" element={<FormulaireCollectePage />} />
+        {/* Formulaires de collecte — admin */}
+        <Route path="/admin/formulaires" element={<FormulaireAdminListPage />} />
+        <Route path="/admin/formulaires/nouveau" element={<FormulaireFormPage />} />
+        <Route path="/admin/formulaires/:id/editer" element={<FormulaireFormPage />} />
+        <Route path="/admin/formulaires/:id/champs" element={<ChampListPage />} />
+
         <Route path="/cartographie" element={<MappingPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/reporting" element={<ReportingPage />} />
@@ -146,12 +189,19 @@ export function AppRoutes() {
             </RoleGuard>
           }
         />
-        <Route path="*" element={<Navigate to={defaultRoute()} replace />} />
+        <Route path="*" element={<Navigate to={accueil} replace />} />
       </Route>
     </Routes>
   );
 }
 
-function defaultRoute(): string {
-  return '/dashboard';
+/**
+ * Page d'entree selon le role.
+ *
+ * L'agent terrain n'a acces ni au tableau de bord ni aux pages de pilotage :
+ * sa navigation ne contient que les formulaires de collecte. L'envoyer sur
+ * /dashboard le deposerait sur un ecran absent de son propre menu.
+ */
+function defaultRoute(role: UserRole | null): string {
+  return role === 'agent' ? '/formulaires' : '/dashboard';
 }

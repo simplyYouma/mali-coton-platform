@@ -25,6 +25,7 @@ import {
 } from '../fixtures/geography';
 import { mockParametreUnites } from '../fixtures/parametreUnites';
 import { mockPermissions } from '../fixtures/permissions';
+import { mockRoles } from '../fixtures/roles';
 
 function paginate<T>(items: T[]) {
   return {
@@ -100,6 +101,18 @@ export const structuralsHandlers = [
   http.get('/api/v1/permissions', async () => {
     await delay(80);
     return HttpResponse.json(paginate(mockPermissions));
+  }),
+
+  /* La page « Rôles & permissions » interrogeait cette route sans qu'aucun
+   * handler ne lui reponde : l'ecran restait vide en mode demonstration. */
+  http.get('/api/v1/roles', async () => {
+    await delay(80);
+    return HttpResponse.json(paginate(mockRoles));
+  }),
+  http.get('/api/v1/roles/:id', async ({ params }) => {
+    await delay(60);
+    const item = mockRoles.find((r) => r.id === params.id);
+    return item ? HttpResponse.json(item) : new HttpResponse(null, { status: 404 });
   }),
 
   http.get('/api/v1/parametre_unites', async () => {
