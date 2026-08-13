@@ -39,9 +39,13 @@ export function Select<T extends string = string>({
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
-  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number } | null>(
-    null,
-  );
+  const [menuStyle, setMenuStyle] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
 
   /* Position du menu (portal vers body, position fixed) :
    * - calcul a partir du rect du wrapper
@@ -56,7 +60,25 @@ export function Select<T extends string = string>({
       const el = wrapperRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      setMenuStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+
+      /* Le menu s'ouvrait toujours vers le bas : pres du bas de fenetre, la
+       * liste depassait et se retrouvait rognee, les dernieres options
+       * devenant inatteignables. On mesure la place de part et d'autre, on
+       * bascule vers le haut quand elle y est plus grande, et on borne la
+       * hauteur a l'espace reellement disponible. */
+      const MARGE = 8;
+      const HAUTEUR_MAX = 280;
+      const dessous = window.innerHeight - rect.bottom - MARGE;
+      const dessus = rect.top - MARGE;
+      const versLeHaut = dessous < Math.min(HAUTEUR_MAX, 180) && dessus > dessous;
+
+      setMenuStyle({
+        top: versLeHaut ? undefined : rect.bottom + 4,
+        bottom: versLeHaut ? window.innerHeight - rect.top + 4 : undefined,
+        left: rect.left,
+        width: rect.width,
+        maxHeight: Math.max(120, Math.min(HAUTEUR_MAX, versLeHaut ? dessus : dessous)),
+      });
     };
     compute();
     const onScroll = () => compute();
@@ -126,8 +148,10 @@ export function Select<T extends string = string>({
               style={{
                 position: 'fixed',
                 top: menuStyle.top,
+                bottom: menuStyle.bottom,
                 left: menuStyle.left,
                 width: menuStyle.width,
+                maxHeight: menuStyle.maxHeight,
               }}
             >
               {options.map((opt) => {

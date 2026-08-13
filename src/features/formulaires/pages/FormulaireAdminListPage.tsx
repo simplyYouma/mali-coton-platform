@@ -40,8 +40,8 @@ const TYPE_LABEL: Record<string, string> = {
   controle_mensuel:     'Contrôle mensuel',
   signalement_incident: 'Signalement',
   suivi_socio:          'Suivi socio-économique',
-  suivi_environnemental: 'Suivi environnemental',
-  audit_labo:           'Audit laboratoire',
+  audit_annuel:         'Audit annuel',
+  prelevement:          'Prélèvement',
 };
 
 export function FormulaireAdminListPage() {
