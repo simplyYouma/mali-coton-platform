@@ -57,19 +57,24 @@
   gap: var(--space-3);
   flex-wrap: wrap;
 }
+/* Tout etait centre — icone, chiffre, intitule empiles au milieu : les
+ * cartes se lisaient comme des blocs sans axe, et l'oeil devait repartir du
+ * centre a chaque colonne. En fer a gauche, les quatre valeurs s'alignent sur
+ * une meme verticale et l'icone leur fait face. */
 .stat {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  flex: 1 1 100px;
-  min-width: 110px;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  flex: 1 1 140px;
+  min-width: 150px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
-  text-align: center;
+  padding: var(--space-4);
+  text-align: left;
   transition:
     border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
@@ -81,13 +86,14 @@
 
 /* Icône */
 .statIcon {
+  grid-row: 1 / span 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
   border-radius: var(--radius-md);
-  margin-bottom: 4px;
   background: var(--color-surface-2);
   color: var(--color-text-muted);
 }
@@ -316,4 +322,14 @@
   }
   .tableHead > span:not(:first-child),
   .tableRow > *:not(:first-child):not(:last-child) { display: none; }
+}
+
+/* Chiffre et intitule occupent la colonne de droite, l'un sous l'autre. */
+.statValue {
+  line-height: 1.05;
+  text-align: left;
+}
+.statLabel {
+  text-align: left;
+  white-space: nowrap;
 }
