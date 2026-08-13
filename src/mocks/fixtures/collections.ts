@@ -27,13 +27,46 @@ const SITES = [
 
 const MS_DAY = 86_400_000;
 
+/**
+ * Graine du générateur pseudo-aléatoire. Rappelle le numéro de projet
+ * UNDP-MLI-00492. La changer produit un autre jeu de données, tout aussi
+ * stable — utile pour éprouver l'application sur une autre configuration.
+ */
+const GRAINE = 492;
+
+/**
+ * Générateur pseudo-aléatoire déterministe (algorithme mulberry32).
+ *
+ * Ces fixtures utilisaient `alea()` : le jeu de données était donc
+ * retiré au sort à chaque chargement de page. Deux membres de l'équipe ne
+ * voyaient jamais la même chose, un même écran changeait entre deux
+ * rechargements, et vérifier qu'une correction avait pris effet devenait
+ * impossible — l'avant et l'après n'étaient pas comparables.
+ *
+ * À graine fixe, la suite tirée est toujours la même : les données restent
+ * variées et réalistes, mais identiques pour tout le monde, à chaque fois.
+ */
+function creerAlea(graine: number): () => number {
+  let etat = graine >>> 0;
+  return () => {
+    etat = (etat + 0x6d2b79f5) >>> 0;
+    let t = etat;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
+  };
+}
+
+/** Remplace `alea()` dans tout ce fichier. */
+const alea = creerAlea(GRAINE);
+
 function daysAgo(d: number): string {
   return new Date(Date.now() - d * MS_DAY).toISOString();
 }
 
 function rand<T>(arr: T[]): T {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return arr[Math.floor(Math.random() * arr.length)]!;
+  return arr[Math.floor(alea() * arr.length)]!;
 }
 
 const STATUSES_OLD: CollectionStatus[] = ['validated', 'validated', 'validated', 'rejected'];
@@ -67,20 +100,20 @@ function photoUrl(seed: string, w = 800, h = 600): string {
 type Weather = 'sunny' | 'cloudy' | 'rainy' | 'windy';
 function weatherForDate(iso: string): { weather: Weather; ambientTempC: number } {
   const m = new Date(iso).getMonth(); // 0 = janv
-  const r = Math.random();
+  const r = alea();
   if (m >= 5 && m <= 8) {
     // saison des pluies
     const w: Weather = r < 0.45 ? 'rainy' : r < 0.85 ? 'cloudy' : 'sunny';
-    return { weather: w, ambientTempC: Math.round(26 + Math.random() * 6) };
+    return { weather: w, ambientTempC: Math.round(26 + alea() * 6) };
   }
   if (m === 11 || m === 0 || m === 1) {
     // harmattan
     const w: Weather = r < 0.5 ? 'windy' : r < 0.9 ? 'sunny' : 'cloudy';
-    return { weather: w, ambientTempC: Math.round(22 + Math.random() * 8) };
+    return { weather: w, ambientTempC: Math.round(22 + alea() * 8) };
   }
   // saison sèche chaude (mars → mai, octobre)
   const w: Weather = r < 0.75 ? 'sunny' : r < 0.95 ? 'cloudy' : 'windy';
-  return { weather: w, ambientTempC: Math.round(30 + Math.random() * 8) };
+  return { weather: w, ambientTempC: Math.round(30 + alea() * 8) };
 }
 
 /** Sites qui longent un cours d'eau (Niger ou bras secondaire). */
@@ -114,7 +147,7 @@ const VALIDATION_NOTES_BANK: string[] = [
  */
 function buildExtraMeasurements(siteId: string): Collection['measurements'] {
   const isCritical = siteId === 'site-dianeguela';
-  const r = (min: number, max: number) => min + Math.random() * (max - min);
+  const r = (min: number, max: number) => min + alea() * (max - min);
   return [
     // Section B — Eaux usées in-situ (reste)
     { indicatorId: 'water.temperature', acquisition: 'in_situ', value: r(25, 32), unit: '°C' },
@@ -174,13 +207,13 @@ export const mockCollections: Collection[] = (() => {
   for (const site of SITES) {
     for (let i = 0; i < 12; i++) {
       counter += 1;
-      const days = i * 7 + Math.floor(Math.random() * 3);
+      const days = i * 7 + Math.floor(alea() * 3);
       const status = i < 2 ? rand(STATUSES_RECENT) : rand(STATUSES_OLD);
       const collectedIso = daysAgo(days);
       const weather = weatherForDate(collectedIso);
       const isValidated = status === 'validated';
       const isRejected = status === 'rejected';
-      const includeValidationNote = isValidated && Math.random() < 0.55;
+      const includeValidationNote = isValidated && alea() < 0.55;
       const rejectionReason = isRejected
         ? REJECTION_REASONS[counter % REJECTION_REASONS.length]
         : undefined;
@@ -193,7 +226,7 @@ export const mockCollections: Collection[] = (() => {
         collectedAt: collectedIso,
         status,
         syncedAt: daysAgo(days - 0.01),
-        gps: { lat: 12.6 + (Math.random() - 0.5) * 0.5, lng: -7.95 + (Math.random() - 0.5) * 0.5, accuracy: 4 + Math.random() * 6 },
+        gps: { lat: 12.6 + (alea() - 0.5) * 0.5, lng: -7.95 + (alea() - 0.5) * 0.5, accuracy: 4 + alea() * 6 },
         context: {
           weather: weather.weather,
           ambientTempC: weather.ambientTempC,
@@ -213,32 +246,32 @@ export const mockCollections: Collection[] = (() => {
             acquisition: 'in_situ',
             value:
               site.id === 'site-dianeguela'
-                ? 10.6 + Math.random() * 1.2 // chronique critique : 10.6–11.8
+                ? 10.6 + alea() * 1.2 // chronique critique : 10.6–11.8
                 : site.id === 'site-atpek'
-                  ? 9.0 + Math.random() * 0.9 // surveillance : 9.0–9.9
+                  ? 9.0 + alea() * 0.9 // surveillance : 9.0–9.9
                   : site.id === 'site-galanimassiriw'
-                    ? 8.0 + Math.random() * 1.3 // variable : 8.0–9.3
+                    ? 8.0 + alea() * 1.3 // variable : 8.0–9.3
                     : site.id === 'site-djiguiyaso'
-                      ? 7.6 + Math.random() * 1.1 // 7.6–8.7
-                      : 7.4 + Math.random() * 1.0, // NDOMO référence : 7.4–8.4
+                      ? 7.6 + alea() * 1.1 // 7.6–8.7
+                      : 7.4 + alea() * 1.0, // NDOMO référence : 7.4–8.4
             unit: '',
           },
           {
             indicatorId: 'air.pm25',
             acquisition: 'in_situ',
-            value: 18 + Math.random() * 12,
+            value: 18 + alea() * 12,
             unit: 'µg/m³',
           },
           {
             indicatorId: 'water.sulfates',
             acquisition: 'lab_received',
-            value: site.id === 'site-dianeguela' ? 4332 : 200 + Math.random() * 800,
+            value: site.id === 'site-dianeguela' ? 4332 : 200 + alea() * 800,
             unit: 'mg/L',
           },
           {
             indicatorId: 'health.epi_usage',
             acquisition: 'in_situ',
-            value: site.id === 'site-ndomo' ? 95 : site.id === 'site-djiguiyaso' ? 70 : 30 + Math.random() * 30,
+            value: site.id === 'site-ndomo' ? 95 : site.id === 'site-djiguiyaso' ? 70 : 30 + alea() * 30,
             unit: '%',
           },
           {
@@ -246,22 +279,22 @@ export const mockCollections: Collection[] = (() => {
             acquisition: 'in_situ',
             value:
               site.id === 'site-ndomo'
-                ? 6.8 + Math.random() * 0.6
+                ? 6.8 + alea() * 0.6
                 : site.id === 'site-dianeguela'
-                  ? 9.0 + Math.random() * 0.5 // hors seuil — sol contaminé
-                  : 6.0 + Math.random() * 2.0,
+                  ? 9.0 + alea() * 0.5 // hors seuil — sol contaminé
+                  : 6.0 + alea() * 2.0,
             unit: '',
           },
           {
             indicatorId: 'waste.quantity',
             acquisition: 'in_situ',
-            value: 40 + Math.random() * 80, // kg/semaine
+            value: 40 + alea() * 80, // kg/semaine
             unit: 'kg/semaine',
           },
           {
             indicatorId: 'socio.workforce_present',
             acquisition: 'in_situ',
-            value: Math.floor(15 + Math.random() * 30),
+            value: Math.floor(15 + alea() * 30),
             unit: 'pers.',
           },
           ...buildExtraMeasurements(site.id),
@@ -383,11 +416,11 @@ export const mockCollections: Collection[] = (() => {
       notifications,
       gps: c.siteId === 'site-ndomo'
         ? { lat: 12.95, lng: -7.42, accuracy: 38 } // hors site Ndomo
-        : { lat: 12.6 + (Math.random() - 0.5) * 0.4, lng: -7.95 + (Math.random() - 0.5) * 0.4, accuracy: 5 },
+        : { lat: 12.6 + (alea() - 0.5) * 0.4, lng: -7.95 + (alea() - 0.5) * 0.4, accuracy: 5 },
       measurements: [
         { indicatorId: 'water.ph', acquisition: 'in_situ', value: c.waterPh, unit: '' },
         { indicatorId: 'water.sulfates', acquisition: 'lab_received', value: c.sulfates, unit: 'mg/L' },
-        { indicatorId: 'air.pm25', acquisition: 'in_situ', value: 22 + Math.random() * 8, unit: 'µg/m³' },
+        { indicatorId: 'air.pm25', acquisition: 'in_situ', value: 22 + alea() * 8, unit: 'µg/m³' },
         { indicatorId: 'health.epi_usage', acquisition: 'in_situ', value: c.epiUsage, unit: '%' },
       ],
       photos: c.photos.map((p, idx) => ({
@@ -557,15 +590,15 @@ export const mockCollections: Collection[] = (() => {
     const labValue = (base: number, criticalMultiplier = 3): number | null => {
       if (!valuePresent) return null;
       const mult = lc.siteId === 'site-dianeguela' ? criticalMultiplier : 1;
-      return Number((base * mult * (0.85 + Math.random() * 0.3)).toFixed(2));
+      return Number((base * mult * (0.85 + alea() * 0.3)).toFixed(2));
     };
 
     const collectionStatus: CollectionStatus =
       lc.status === 'accepted' ? 'lab_complete' : 'awaiting_lab';
 
     const gpsVisite = {
-      lat: 12.6 + (Math.random() - 0.5) * 0.3,
-      lng: -7.95 + (Math.random() - 0.5) * 0.3,
+      lat: 12.6 + (alea() - 0.5) * 0.3,
+      lng: -7.95 + (alea() - 0.5) * 0.3,
       accuracy: 5,
     };
     const agentName = lc.siteId === 'site-ndomo' ? 'Issa Traoré' : 'Aïcha Touré';
@@ -626,7 +659,7 @@ export const mockCollections: Collection[] = (() => {
           codePrelevement: `PREL-${sitePrefix}-${String(counter).padStart(4, '0')}`,
           typePrelevement: milieu,
           pointPrelevement: lc.pointPrelevement,
-          gps: { ...gpsVisite, lat: gpsVisite.lat + (Math.random() - 0.5) * 0.0008 },
+          gps: { ...gpsVisite, lat: gpsVisite.lat + (alea() - 0.5) * 0.0008 },
           datePrelevement: collectedIso,
           prelevePar: agentName,
           conditionnement: milieu === 'eau'
