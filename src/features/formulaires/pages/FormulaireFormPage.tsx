@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, ClipboardList } from 'lucide-react';
 import { Button, FormField, Input, Textarea, Select } from '@/components/common';
+import { useToast } from '@/app/providers/ToastProvider';
 import {
   useFormulaire,
   useCreateFormulaire,
   useUpdateFormulaire,
+  useFormulaires,
 } from '../hooks/useFormulaires';
 import type { FormulaireInput, StatutFormulaire } from '../api/formulaires.types';
 import styles from './FormulaireFormPage.module.css';
@@ -56,6 +58,10 @@ export function FormulaireFormPage() {
 
   const [form, setForm] = useState<FormulaireInput>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof FormulaireInput, string>>>({});
+  const toast = useToast();
+  /* Liste chargee pour verifier l'unicite du code sans aller-retour serveur. */
+  const { data: listeFormulaires } = useFormulaires();
+  const formulaires = listeFormulaires?.items ?? [];
   const [codeManual, setCodeManual] = useState(false);
 
   useEffect(() => {
@@ -84,11 +90,33 @@ export function FormulaireFormPage() {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
+  /* Le code sert d'identifiant technique : il se retrouve dans les URLs, les
+   * exports et les jointures. L'aide annoncait « sans accents ni espaces »
+   * sans que rien ne le verifie, et « unique » sans qu'aucune unicite ne soit
+   * controlee. Un doublon partait donc au backend, dont le refus etait
+   * silencieux. */
+  const CODE_ATTENDU = /^[A-Za-z0-9_]+$/;
+
   const validate = (): boolean => {
     const e: typeof errors = {};
-    if (!form.titre.trim()) e.titre = 'Le titre est requis.';
-    if (!form.code.trim()) e.code = 'Le code est requis.';
+    const titre = form.titre.trim();
+    const code = form.code.trim();
+
+    if (!titre) e.titre = 'Le titre est requis.';
+    if (!code) {
+      e.code = 'Le code est requis.';
+    } else if (!CODE_ATTENDU.test(code)) {
+      e.code = 'Lettres non accentuées, chiffres et tirets bas uniquement — ni espace ni accent.';
+    } else if (
+      formulaires.some(
+        (f) => String(f.id) !== String(id) && f.code.toLowerCase() === code.toLowerCase(),
+      )
+    ) {
+      e.code = 'Ce code est déjà utilisé par un autre formulaire.';
+    }
+
     if (!form.typeFormulaire) e.typeFormulaire = 'Le type est requis.';
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -96,12 +124,27 @@ export function FormulaireFormPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    if (isEdit && id) {
-      await updateMut.mutateAsync({ id, input: form });
-      navigate(`/admin/formulaires/${id}/champs`);
-    } else {
-      const created = await createMut.mutateAsync(form);
-      navigate(`/admin/formulaires/${created.id}/champs`);
+
+    /* Sans ce filet, un refus du backend — code deja pris, champ invalide,
+     * coupure reseau — rejetait la promesse sans que rien ne s'affiche :
+     * le bouton cessait de tourner, aucun message, aucune navigation, et
+     * l'utilisateur croyait sa saisie perdue. */
+    try {
+      if (isEdit && id) {
+        await updateMut.mutateAsync({ id, input: form });
+        toast.success('Formulaire enregistré.');
+        navigate(`/admin/formulaires/${id}/champs`);
+      } else {
+        const created = await createMut.mutateAsync(form);
+        toast.success('Formulaire créé.');
+        navigate(`/admin/formulaires/${created.id}/champs`);
+      }
+    } catch (erreur) {
+      const message =
+        erreur instanceof Error && erreur.message
+          ? erreur.message
+          : "L'enregistrement a échoué. Vérifiez votre connexion et réessayez.";
+      toast.error(message);
     }
   };
 
