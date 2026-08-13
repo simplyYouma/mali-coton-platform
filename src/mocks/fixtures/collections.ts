@@ -3,6 +3,7 @@ import type {
   Collection,
   CollectionNotification,
   CollectionStatus,
+  PhotoAttachment,
 } from '@/features/collection/api/collection.types';
 
 /**
@@ -88,8 +89,54 @@ const PHOTO_SEEDS = {
   drainOutlet: 'pnud-drain-8',
 } as const;
 
-function photoUrl(seed: string, w = 800, h = 600): string {
-  return `https://picsum.photos/seed/${seed}/${w}/${h}`;
+/**
+ * Les photos pointaient vers `picsum.photos`, un service externe d'images
+ * aléatoires. Deux problèmes : les galeries restaient vides sans connexion —
+ * contradictoire pour une application censée fonctionner hors ligne sur les
+ * tablettes des agents — et les images tirées n'avaient aucun rapport avec
+ * une teinturerie.
+ *
+ * Les visuels sont désormais locaux, produits par `tools/generate-photos.mjs`
+ * et nommés d'après ces mêmes graines. Chacun porte son intitulé et la mention
+ * « visuel de démonstration » : aucun risque de le confondre avec une prise de
+ * vue réelle.
+ */
+function photoUrl(seed: string): string {
+  return `/img/collectes/${seed}.jpg`;
+}
+
+/** Prises de vue disponibles, avec la légende qui accompagne chacune. */
+const ALBUM: Array<{ seed: string; note: string }> = [
+  { seed: 'pnud-vats-1', note: 'Cuves de teinture indigo — atelier en activité' },
+  { seed: 'pnud-effluent-2', note: 'Caniveau de rejet vers l’extérieur du site' },
+  { seed: 'pnud-workshop-3', note: "Vue d'ensemble de l'atelier" },
+  { seed: 'pnud-ppe-4', note: 'Équipement de protection porté par la teinturière' },
+  { seed: 'pnud-sample-5', note: 'Étiquette échantillon — envoi LNE Bamako' },
+  { seed: 'pnud-rinse-6', note: 'Bac de rinçage en fin de cycle' },
+  { seed: 'pnud-waste-7', note: 'Stockage des déchets solides (boues de teinture)' },
+  { seed: 'pnud-drain-8', note: 'Point de rejet vers le milieu récepteur' },
+];
+
+/**
+ * Album d'une visite : deux à quatre prises de vue, tirées de façon
+ * déterministe pour que chaque collecte garde le même album d'un chargement
+ * à l'autre. Les collectes générées en masse n'en avaient aucune, ce qui
+ * laissait galeries et vignettes vides sur la plupart des écrans.
+ */
+function photosDeVisite(compteur: number, collecteIso: string): PhotoAttachment[] {
+  const nombre = 2 + Math.floor(alea() * 3);
+  const depart = Math.floor(alea() * ALBUM.length);
+
+  return Array.from({ length: nombre }, (_, idx) => {
+    const prise = ALBUM[(depart + idx) % ALBUM.length]!;
+    return {
+      id: `photo-${compteur}-${idx}`,
+      url: photoUrl(prise.seed),
+      // Prises pendant la visite, quelques dizaines de minutes avant la soumission.
+      takenAt: new Date(new Date(collecteIso).getTime() - (48 - idx * 11) * 60_000).toISOString(),
+      note: prise.note,
+    };
+  });
 }
 
 /**
@@ -299,7 +346,7 @@ export const mockCollections: Collection[] = (() => {
           },
           ...buildExtraMeasurements(site.id),
         ],
-        photos: [],
+        photos: photosDeVisite(counter, collectedIso),
         notes: i === 0 ? 'Visite régulière. RAS sur les conditions d\'accueil.' : undefined,
         validatedBy: isValidated || isRejected ? 'u-sup-1' : undefined,
         validatedAt:
@@ -754,7 +801,7 @@ export const mockCollections: Collection[] = (() => {
           sample: sharedSample,
         },
       ],
-      photos: [],
+      photos: photosDeVisite(counter, collectedIso),
       agentCertified: true,
     });
   }
