@@ -204,21 +204,6 @@
   transition: background var(--duration-fast) var(--ease-out);
   position: relative;
 }
-.tableRow::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-.tableRow[data-statut='publie']::before    { background: var(--color-success); }
-.tableRow[data-statut='brouillon']::before { background: #d97706; }
-.tableRow[data-statut='archive']::before   { background: var(--color-border-strong); }
-.tableRow:hover::before { opacity: 1; }
 .tableRow:last-child { border-bottom: none; }
 .tableRow:hover { background: var(--color-surface-2); }
 

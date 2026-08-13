@@ -22,18 +22,6 @@
 }
 
 /* ── Accent bar gauche — couleur selon statut ── */
-.accentBar {
-  position: absolute;
-  left: 0;
-  top: 16px;
-  bottom: 16px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--color-border-strong);
-}
-.card[data-statut='publie']   .accentBar { background: var(--color-success); }
-.card[data-statut='brouillon'] .accentBar { background: #d97706; }
-.card[data-statut='archive']  .accentBar { background: var(--color-text-disabled); }
 
 /* ── Icône typée ── */
 .icon {
@@ -193,4 +181,23 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* La teinte du type habille la pastille d'icone plutot qu'une barre laterale :
+ * l'information est portee par un element deja present, pas par du chrome. */
+.icon {
+  background: color-mix(in srgb, var(--type-color) 12%, transparent);
+  color: var(--type-color);
+  border: 1px solid color-mix(in srgb, var(--type-color) 22%, transparent);
+}
+.card {
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.card:hover {
+  border-color: color-mix(in srgb, var(--type-color) 40%, var(--color-border));
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
+  transform: translateY(-2px);
 }

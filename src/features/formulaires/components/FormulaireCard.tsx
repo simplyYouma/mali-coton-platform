@@ -52,9 +52,6 @@ export function FormulaireCard({ formulaire, siteId }: FormulaireCardProps) {
       data-statut={formulaire.statut}
       style={{ '--type-color': typeConfig.color } as React.CSSProperties}
     >
-      {/* Barre d'accent gauche colorée selon le statut */}
-      <span className={styles.accentBar} aria-hidden="true" />
-
       {/* Icône typée */}
       <div className={styles.icon} aria-hidden="true">
         {typeConfig.icon}

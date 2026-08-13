@@ -32,10 +32,16 @@ import {
 } from '../api/formulaires.types';
 import styles from './FormulaireAdminListPage.module.css';
 
+/* Un type absent de cette table s'affichait en code brut — « suivi_socio »
+ * au milieu de libelles rediges. La table couvre desormais tous les types
+ * definis par le referentiel. */
 const TYPE_LABEL: Record<string, string> = {
   visite_initiale:      'Visite initiale',
   controle_mensuel:     'Contrôle mensuel',
   signalement_incident: 'Signalement',
+  suivi_socio:          'Suivi socio-économique',
+  suivi_environnemental: 'Suivi environnemental',
+  audit_labo:           'Audit laboratoire',
 };
 
 export function FormulaireAdminListPage() {
@@ -171,7 +177,7 @@ export function FormulaireAdminListPage() {
           <div className={styles.tableHead}>
             <span>Formulaire</span>
             <span>Type</span>
-            <span>Statut</span>
+            <span className={styles.center}>Statut</span>
             <span className={styles.center}>Ver.</span>
             <span className={styles.center}><Layers size={13} /></span>
             <span className={styles.center}>Actif</span>
@@ -186,9 +192,11 @@ export function FormulaireAdminListPage() {
               <span className={styles.typePill}>
                 {TYPE_LABEL[f.typeFormulaire] ?? f.typeFormulaire}
               </span>
-              <Badge variant={STATUT_FORMULAIRE_VARIANT[f.statut]} size="sm">
-                {STATUT_FORMULAIRE_LABEL[f.statut]}
-              </Badge>
+              <span className={styles.center}>
+                <Badge variant={STATUT_FORMULAIRE_VARIANT[f.statut]} size="sm">
+                  {STATUT_FORMULAIRE_LABEL[f.statut]}
+                </Badge>
+              </span>
               <span className={styles.center}>
                 <span className={styles.versionBadge}>v{f.version}</span>
               </span>
