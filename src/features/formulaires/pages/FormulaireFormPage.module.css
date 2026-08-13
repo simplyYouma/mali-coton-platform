@@ -2,7 +2,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  max-width: 860px;
+  /* Colonne centree : contrainte a gauche seulement, elle laissait un
+   * vide sans raison sur toute la droite de l'ecran. La largeur reste
+   * bornee — un champ de saisie qui court sur 1400 px est illisible. */
+  max-width: 960px;
+  margin-inline: auto;
+  width: 100%;
 }
 
 .header { display: flex; flex-direction: column; gap: var(--space-3); }
