@@ -149,7 +149,12 @@ function construireEmployes(siteId: string): Employe[] {
         suiviMedical: alea() < 0.2 ? 'Oui' : 'Non',
         structureSante: alea() < 0.2 ? 'CSCOM du quartier' : '',
         obsSante: affections.length ? affections.join(' ; ') : '',
-        expositions: 'Colorants, soude caustique, eau de rinçage',
+        /* Choix multiple Kobo : codes separes par des espaces, convention que
+         * la fiche decoupe pour afficher des libelles. Une phrase a la place
+         * produisait « Colorants,, soude, caustique,, Eau, de, rincage ». */
+        expositions: ['contact_peau', 'vapeurs', 'brulures']
+          .filter(() => alea() < 0.8)
+          .join(' '),
         confortPoste: tirer(['Correct', 'Pénible', 'Très pénible'], alea),
         accidentsPersonnels: alea() < 0.15 ? 'Oui' : 'Non',
         connaissanceRisques: tirer(['Bonne', 'Partielle', 'Faible'], alea),

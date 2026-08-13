@@ -43,6 +43,10 @@ export interface Employe {
   id: number;
   codeEmploye: string;
   numeroEmploye: string;
+  /* Exposes par le backend (schema Employe.jsonld-employe.read) mais absents
+   * de cette interface : la liste n'affichait donc que le code. */
+  nom?: string | null;
+  prenom?: string | null;
   genre?: string | null;
   fonction?: string | null;
   statut?: string | null;

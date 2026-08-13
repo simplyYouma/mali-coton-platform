@@ -145,6 +145,23 @@ function Chips({ items }: { items: KoboCodedItem[] }) {
  * Les effectifs restent affiches en clair au-dessus — la jauge donne l'ordre
  * de grandeur, elle ne remplace pas les chiffres.
  */
+/** Initiales d'un employe, a defaut son numero d'ordre. */
+function initiales(emp: { prenom?: string | null; nom?: string | null; numeroEmploye: string }): string {
+  const p = (emp.prenom ?? '').trim();
+  const n = (emp.nom ?? '').trim();
+  if (p || n) return `${p.charAt(0)}${n.charAt(0)}`.toUpperCase() || '?';
+  return emp.numeroEmploye;
+}
+
+/** Genre normalise — le backend renvoie du texte libre. */
+function genreDe(valeur: string | null | undefined): 'f' | 'h' | null {
+  if (!valeur) return null;
+  const v = valeur.toLowerCase();
+  if (v.startsWith('f')) return 'f';
+  if (v.startsWith('m') || v.startsWith('h')) return 'h';
+  return null;
+}
+
 function RatioBar({ femmes, hommes }: { femmes: number | null; hommes: number | null }) {
   const f = femmes ?? 0;
   const h = hommes ?? 0;
@@ -607,13 +624,29 @@ export function SiteDetailPage() {
                       aria-expanded={isOpen}
                     >
                       <div className={styles.empHeaderLeft}>
-                        <span className={styles.empCode}>{emp.codeEmploye}</span>
-                        <span className={styles.empMeta}>
-                          {[emp.genre, emp.fonction, emp.statut].filter(Boolean).map(formatCode).join(' · ')}
+                        {/* Vignette d'initiales, teintee selon le genre : elle
+                         *  identifie la personne avant la lecture du texte. */}
+                        <span
+                          className={styles.empAvatar}
+                          data-genre={genreDe(emp.genre) ?? 'x'}
+                          aria-hidden="true"
+                        >
+                          {initiales(emp)}
                         </span>
-                        {emp.anciennete ? (
-                          <span className={styles.chip}>{formatCode(emp.anciennete)}</span>
-                        ) : null}
+                        <span className={styles.empIdentity}>
+                          <span className={styles.empName}>
+                            {[emp.prenom, emp.nom].filter(Boolean).join(' ') || emp.codeEmploye}
+                          </span>
+                          <span className={styles.empMeta}>
+                            {[emp.fonction, emp.statut].filter(Boolean).map(formatCode).join(' · ')}
+                          </span>
+                        </span>
+                        <span className={styles.empTags}>
+                          {emp.anciennete ? (
+                            <span className={styles.chip}>{formatCode(emp.anciennete)}</span>
+                          ) : null}
+                          <span className={styles.empCode}>{emp.codeEmploye}</span>
+                        </span>
                       </div>
                       <ChevronDown
                         size={16}
