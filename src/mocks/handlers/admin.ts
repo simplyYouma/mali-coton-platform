@@ -1,6 +1,7 @@
 import { http, HttpResponse, delay } from 'msw';
 import { uuid } from '@/lib/uuid';
 import { mockUsers } from '../fixtures/users';
+import { iriPourRole } from '../fixtures/roles';
 import { mockThresholds } from '../fixtures/thresholds';
 import { readAuditLogs } from '../auditTrail';
 import type {
@@ -23,7 +24,9 @@ const usersStore: ManagedUser[] = mockUsers.map((u) => ({
   nom: '',
   prenom: u.fullName,
   role: u.role,
-  roleIris: [],
+  /* Etait fige a vide : la page Utilisateurs cochant les roles par IRI,
+   * aucun role n'apparaissait jamais attribue. */
+  roleIris: iriPourRole(u.role),
   assignedSiteIds: u.assignedSiteIds,
   locale: u.locale,
   isActive: true,

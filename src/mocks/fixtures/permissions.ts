@@ -7,12 +7,27 @@
  */
 
 export interface MockPermission {
+  /**
+   * IRI JSON-LD de la ressource.
+   *
+   * API Platform l'émet sur chaque entité en mode live, et l'interface s'en
+   * sert comme clé : `RolesPage` construit sa table de correspondance sur
+   * `p['@id']` et coche ses cases en comparant les IRI du rôle à ce champ.
+   * Sans lui, les permissions d'un rôle s'affichaient en IRI brutes et
+   * aucune case n'était cochée dans le formulaire d'édition.
+   */
+  '@id': string;
   id: string;
   code: string;
   libelle: string;
 }
 
-export const mockPermissions: MockPermission[] = [
+/** Construit l'IRI d'une permission — même forme qu'en live. */
+export function permissionIri(id: string): string {
+  return `/api/v1/permissions/${id}`;
+}
+
+const DEFINITIONS: Array<Omit<MockPermission, '@id'>> = [
   // Collectes & validation
   { id: 'perm-coll-read', code: 'collections.read', libelle: 'Consulter les collectes' },
   { id: 'perm-coll-write', code: 'collections.write', libelle: 'Saisir et modifier les collectes' },
@@ -39,3 +54,8 @@ export const mockPermissions: MockPermission[] = [
   { id: 'perm-refdata-write', code: 'refdata.write', libelle: 'Modifier les vocabulaires contrôlés' },
   { id: 'perm-audit-read', code: 'audit.read', libelle: "Consulter le journal d'audit" },
 ];
+
+export const mockPermissions: MockPermission[] = DEFINITIONS.map((p) => ({
+  '@id': permissionIri(p.id),
+  ...p,
+}));
