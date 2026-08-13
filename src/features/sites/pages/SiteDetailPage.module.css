@@ -809,3 +809,37 @@
   margin-left: auto;
   flex-wrap: wrap;
 }
+
+/* ── Posture de securite ──
+ *  Synthetise les dispositifs listes juste au-dessus. La teinte suit le
+ *  resultat : une posture incomplete sur un site a risque n'est pas neutre. */
+.posture {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: -2px;
+}
+.postureSegments {
+  display: inline-flex;
+  gap: 3px;
+}
+.postureSegment {
+  width: 26px;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text-muted) 16%, transparent);
+}
+.posture[data-niveau="complet"] .postureSegment[data-present="oui"] { background: var(--color-success); box-shadow: none; }
+.posture[data-niveau="partiel"] .postureSegment[data-present="oui"] { background: var(--color-warning); box-shadow: none; }
+.posture[data-niveau="absent"]  .postureSegment[data-present="oui"] { background: var(--color-danger); box-shadow: none; }
+
+.postureTexte {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.postureTexte strong {
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}

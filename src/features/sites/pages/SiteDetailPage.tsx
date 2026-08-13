@@ -162,6 +162,42 @@ function genreDe(valeur: string | null | undefined): 'f' | 'h' | null {
   return null;
 }
 
+/**
+ * Posture de securite : combien de dispositifs sont en place sur ceux
+ * attendus.
+ *
+ * Les trois dispositifs etaient listes en Oui / Non, sans qu'on percoive
+ * l'etat d'ensemble. Le compte est explicite et les segments le donnent d'un
+ * coup d'oeil ; la teinte suit le resultat — une posture incomplete sur un
+ * site a risque n'est pas une information neutre.
+ */
+function PostureSecurite({ dispositifs }: { dispositifs: Array<{ nom: string; present: boolean }> }) {
+  const enPlace = dispositifs.filter((d) => d.present).length;
+  const total = dispositifs.length;
+  if (total === 0) return null;
+
+  const niveau = enPlace === total ? 'complet' : enPlace === 0 ? 'absent' : 'partiel';
+
+  return (
+    <div className={styles.posture} data-niveau={niveau}>
+      <span className={styles.postureSegments} role="img"
+        aria-label={`${enPlace} dispositif(s) de securite sur ${total} en place`}>
+        {dispositifs.map((d) => (
+          <span
+            key={d.nom}
+            className={styles.postureSegment}
+            data-present={d.present ? 'oui' : 'non'}
+            title={`${d.nom} : ${d.present ? 'en place' : 'absent'}`}
+          />
+        ))}
+      </span>
+      <span className={styles.postureTexte}>
+        <strong>{enPlace}</strong> dispositif{enPlace > 1 ? 's' : ''} sur {total} en place
+      </span>
+    </div>
+  );
+}
+
 function RatioBar({ femmes, hommes }: { femmes: number | null; hommes: number | null }) {
   const f = femmes ?? 0;
   const h = hommes ?? 0;
@@ -545,6 +581,13 @@ export function SiteDetailPage() {
                   <OuiNon val={cs.surveillance} />
                 </span>
               </div>
+              <PostureSecurite
+                dispositifs={[
+                  { nom: 'Clôture', present: isOui(cs.cloture) },
+                  { nom: 'Éclairage', present: isOui(cs.eclairage) },
+                  { nom: 'Surveillance', present: isOui(cs.surveillance) },
+                ]}
+              />
               <FieldRow label="Risques identifiés">
                 <Chips items={risques} />
               </FieldRow>

@@ -80,8 +80,8 @@ const SPECIFIQUES: Record<string, Specifique> = {
       "Gants et tabliers fournis par l'association, renouvellement irrégulier faute de budget dédié. "
       + 'Masques absents alors que les poudres de colorant sont manipulées à sec.',
     cloture: 'Oui — mur en banco',
-    eclairage: 'Partiel',
-    surveillance: 'Gardien de nuit',
+    eclairage: 'Oui — partiel',
+    surveillance: 'Oui — gardien de nuit',
     accidentsRecents: 'Oui',
     descriptionAccidents:
       'Deux brûlures chimiques légères aux avant-bras en mars, lors du transvasement de soude caustique.',
@@ -122,8 +122,8 @@ const SPECIFIQUES: Record<string, Specifique> = {
       "Aucun équipement de protection fourni par le site. Les teinturières utilisent des gants ménagers "
       + 'achetés à titre personnel, remplacés lorsqu’ils se percent.',
     cloture: 'Non',
-    eclairage: 'Absent',
-    surveillance: 'Aucune',
+    eclairage: 'Non',
+    surveillance: 'Non',
     accidentsRecents: 'Oui',
     descriptionAccidents:
       'Projection de bain de teinture dans les yeux d’une artisane en février, sans séquelle rapportée. '
@@ -174,9 +174,9 @@ const SPECIFIQUES: Record<string, Specifique> = {
     observationsEpiSite:
       "Absence d'EPI documentée chez la majorité des artisanes. Manipulation à mains nues observée "
       + 'lors de la visite.',
-    cloture: 'Partielle',
-    eclairage: 'Absent',
-    surveillance: 'Aucune',
+    cloture: 'Non — clôture partielle',
+    eclairage: 'Non',
+    surveillance: 'Non',
     accidentsRecents: 'Non',
     descriptionAccidents: '',
     observationsSecurite:
@@ -214,8 +214,8 @@ const SPECIFIQUES: Record<string, Specifique> = {
     observationsEpiSite:
       'Gants et tabliers fournis et renouvelés par la coopérative. Port effectif constaté lors de la visite.',
     cloture: 'Oui — grillage',
-    eclairage: 'Complet',
-    surveillance: 'Gardien permanent',
+    eclairage: 'Oui — complet',
+    surveillance: 'Oui — gardien permanent',
     accidentsRecents: 'Non',
     descriptionAccidents: '',
     observationsSecurite:
@@ -258,8 +258,8 @@ const SPECIFIQUES: Record<string, Specifique> = {
     observationsEpiSite:
       'Protection adaptée à des procédés végétaux. Risque chimique faible par nature du procédé.',
     cloture: 'Oui — mur',
-    eclairage: 'Complet',
-    surveillance: 'Gardien permanent',
+    eclairage: 'Oui — complet',
+    surveillance: 'Oui — gardien permanent',
     accidentsRecents: 'Non',
     descriptionAccidents: '',
     observationsSecurite: 'Aucun incident rapporté. Site également ouvert au public (visites).',
