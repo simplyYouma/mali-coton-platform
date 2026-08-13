@@ -18,7 +18,6 @@ import {
   Zap,
   Eye,
   Lock,
-  Flame,
   AlertTriangle,
   ChevronDown,
   Heart,
@@ -108,7 +107,12 @@ function QualBadge({ val }: { val: string | null | undefined }) {
   return <span>{label}</span>;
 }
 
-type CardColor = 'primary' | 'blue' | 'orange' | 'yellow' | 'red' | 'green' | 'purple' | 'teal' | 'amber' | 'slate';
+/* Seul jeu de couleurs conserve sur cette page : il traduit une gravite. */
+const CONFORMITE_LABEL: Record<string, string> = {
+  conforming: 'Conforme',
+  warning: 'À surveiller',
+  critical: 'Critique',
+};
 
 function Chips({ items }: { items: KoboCodedItem[] }) {
   if (!items.length) return <span className={styles.fieldEmpty}>—</span>;
@@ -123,31 +127,88 @@ function Chips({ items }: { items: KoboCodedItem[] }) {
   );
 }
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+/**
+ * Une donnee de la fiche : intitule discret au-dessus, valeur en avant.
+ *
+ * L'ancienne mise en ligne — intitule a gauche, valeur a droite — obligeait a
+ * balayer horizontalement et imposait des colonnes de largeur arbitraire. En
+ * pile, les valeurs s'alignent verticalement et se lisent d'un coup d'oeil.
+ *
+ * `large` reserve toute la largeur aux champs de texte libre, qu'une colonne
+ * etroite rendrait illisibles.
+ */
+/**
+ * Repartition femmes / hommes.
+ *
+ * Les chiffres restent en clair — la barre ne les remplace pas, elle donne
+ * l'ordre de grandeur d'un coup d'oeil et occupe un espace qui, sans elle,
+ * resterait vide dans la grille.
+ */
+function RatioBar({ femmes, hommes }: { femmes: number | null; hommes: number | null }) {
+  const f = femmes ?? 0;
+  const h = hommes ?? 0;
+  const total = f + h;
+  if (total === 0) return null;
+  const partFemmes = Math.round((f / total) * 100);
+
   return (
-    <div className={styles.fieldRow}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <span className={styles.fieldValue}>{children}</span>
+    <span className={styles.ratio}>
+      <span
+        className={styles.ratioTrack}
+        role="img"
+        aria-label={`${partFemmes}% de femmes, ${100 - partFemmes}% d'hommes`}
+      >
+        <span className={styles.ratioFill} style={{ width: `${partFemmes}%` }} />
+      </span>
+      <span className={styles.ratioLegend}>{partFemmes}% de femmes</span>
+    </span>
+  );
+}
+
+function FieldRow({
+  label, children, large,
+}: {
+  label: string;
+  children: React.ReactNode;
+  large?: boolean;
+}) {
+  return (
+    <div className={`${styles.dataItem} ${large ? styles.dataItemLarge : ''}`}>
+      <span className={styles.dataLabel}>{label}</span>
+      <span className={styles.dataValue}>{children}</span>
     </div>
   );
 }
 
+/**
+ * Un groupe de la fiche.
+ *
+ * Les donnees etaient auparavant enfermees dans autant de cartes bordees,
+ * juxtaposees sans hierarchie : la page se lisait comme une mosaique de
+ * boites de tailles inegales, avec des vides la ou une carte comptait moins
+ * de lignes que sa voisine.
+ *
+ * Le groupe n'a plus de chrome propre. Il s'annonce par un intitule discret
+ * prolonge d'un filet, et pose ses donnees dans une grille fluide. Toute la
+ * fiche partage alors une seule surface, et le rythme vient de la typographie
+ * plutot que des bordures.
+ */
 function SectionCard({
-  title, icon, children, color,
+  title, icon, children,
 }: {
   title: string;
   icon: React.ReactNode;
   children: React.ReactNode;
-  color?: CardColor;
 }) {
   return (
-    <div className={styles.sectionCard} data-color={color}>
-      <div className={styles.sectionHeader}>
-        <span className={styles.sectionIcon}>{icon}</span>
-        <h3 className={styles.sectionTitle}>{title}</h3>
-      </div>
-      <div className={styles.sectionBody}>{children}</div>
-    </div>
+    <section className={styles.group}>
+      <header className={styles.groupHead}>
+        <span className={styles.groupIcon}>{icon}</span>
+        <h3 className={styles.groupTitle}>{title}</h3>
+        <span className={styles.groupRule} aria-hidden="true" />
+      </header>
+      <div className={styles.groupGrid}>{children}</div>
+    </section>
   );
 }
 
@@ -178,6 +239,12 @@ export function SiteDetailPage() {
   const cs = detail?.collecteSite ?? null;
   const photos: KoboPhotoBackend[] = detail?.photos ?? [];
   const typesTeinture: KoboCodedItem[] = detail?.typesTeinture ?? [];
+
+  /* Effectifs : la fiche terrain fait foi, le referentiel du site sert de
+   * repli quand la visite n'a pas encore ete importee. */
+  const effectifTotal = cs?.nbEmployesTotal ?? site?.workforce ?? null;
+  const effectifFemmes = cs?.nbFemmes ?? site?.workforceWomen ?? null;
+  const effectifHommes = cs?.nbHommes ?? site?.workforceMen ?? null;
   const equipements: KoboCodedItem[] = detail?.equipements ?? [];
   const epis: KoboCodedItem[] = detail?.epis ?? [];
   const risques: KoboCodedItem[] = detail?.risquesSecurite ?? [];
@@ -236,62 +303,79 @@ export function SiteDetailPage() {
         <div className={styles.heroActions} />
       </header>
 
-      {/* ── Info strip ── */}
-      <section className={styles.infoStrip} aria-label="Informations site">
+      {/* ── Bande d'identite ──
+       *  Remplace les deux rangees de cartes qui repetaient l'effectif a trois
+       *  endroits. Meme principe que la fiche collecte : une ligne dense, la
+       *  couleur reservee au seul indicateur qui en merite — la conformite. */}
+      <section className={styles.infoStrip} aria-label="Identité du site">
         <div className={styles.infoCell}>
-          <span className={styles.infoLabel}>Localisation</span>
+          <span className={styles.infoLabel}>Commune</span>
           <span className={styles.infoValue}>
             <MapPin size={12} aria-hidden="true" />
             {site.location.commune || cs?.ville || '—'}
           </span>
         </div>
-        <div className={styles.infoCell}>
-          <span className={styles.infoLabel}>Effectif</span>
-          <span className={styles.infoValue}>
-            <Users size={12} aria-hidden="true" />
-            {site.workforce > 0 ? `${site.workforce} personnes` : (cs?.nbEmployesTotal ?? '—')}
-          </span>
-        </div>
+
         <div className={styles.infoCell}>
           <span className={styles.infoLabel}>Statut foncier</span>
           <span className={styles.infoValue}>
             {site.legalStatus === 'formel' ? 'Formel' : 'Informel'}
-            {cs?.anneeCreation ? ` · ${cs.anneeCreation}` : ''}
+            {cs?.anneeCreation ? (
+              <span className={styles.infoAside}>depuis {cs.anneeCreation}</span>
+            ) : null}
           </span>
         </div>
+
+        {/* Effectif et repartition tiennent desormais sur une seule ligne. */}
         <div className={styles.infoCell}>
-          <span className={styles.infoLabel}>GPS</span>
-          <span className={`${styles.infoValue} mono`}>
-            {site.coordinates.lat !== 0
-              ? formatGps(site.coordinates.lat, site.coordinates.lng)
+          <span className={styles.infoLabel}>Effectif</span>
+          <span className={styles.infoValue}>
+            <Users size={12} aria-hidden="true" />
+            {effectifTotal ?? '—'}
+            {effectifFemmes != null || effectifHommes != null ? (
+              <span className={styles.infoAside}>
+                {effectifFemmes ?? '—'} F · {effectifHommes ?? '—'} H
+              </span>
+            ) : null}
+          </span>
+        </div>
+
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Teinture</span>
+          <span className={styles.infoValue}>
+            {typesTeinture.length
+              ? typesTeinture.map((t) => t.libelle).join(' · ')
               : '—'}
           </span>
         </div>
-      </section>
 
-      {/* ── Stat tiles ── */}
-      <section className={styles.statGrid} aria-label="Chiffres clés">
-        <div className={styles.statTile}>
-          <span className={styles.statLabel}>Employés total</span>
-          <span className={styles.statValue}>
-            {cs?.nbEmployesTotal ?? site.workforce ?? '—'}
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Dernière visite</span>
+          <span className={styles.infoValue}>
+            {cs?.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
           </span>
         </div>
-        <div className={styles.statTile}>
-          <span className={styles.statLabel}>Femmes</span>
-          <span className={styles.statValue} data-gender="f">
-            {cs?.nbFemmes ?? site.workforceWomen ?? '—'}
+
+        {/* Seule cellule coloree : elle porte une information de gravite. */}
+        <div className={styles.infoCell}>
+          <span className={styles.infoLabel}>Conformité</span>
+          <span className={styles.infoValue}>
+            <span className={styles.conformiteTag} data-level={site.conformity}>
+              {CONFORMITE_LABEL[site.conformity] ?? '—'}
+            </span>
           </span>
         </div>
-        <div className={styles.statTile}>
-          <span className={styles.statLabel}>Hommes</span>
-          <span className={styles.statValue} data-gender="m">
-            {cs?.nbHommes ?? site.workforceMen ?? '—'}
+
+        {/* Releve de position, en bout de bande : traitement cartographique
+         *  pour qu'on le reconnaisse sans lire l'intitule. */}
+        <div className={`${styles.infoCell} ${styles.gpsCell}`}>
+          <span className={styles.infoLabel}>Position GPS</span>
+          <span className={styles.gpsValue}>
+            <MapPin size={13} aria-hidden="true" />
+            {site.coordinates.lat !== 0
+              ? formatGps(site.coordinates.lat, site.coordinates.lng)
+              : 'Non relevée'}
           </span>
-        </div>
-        <div className={styles.statTile}>
-          <span className={styles.statLabel}>Types de teinture</span>
-          <span className={styles.statValue}>{typesTeinture.length || '—'}</span>
         </div>
       </section>
 
@@ -312,7 +396,7 @@ export function SiteDetailPage() {
       <div className={styles.body}>
         {/* ── Squelette chargement (commun aux 3 onglets de collecte) ── */}
         {detailLoading && (tab === 'profil' || tab === 'conditions' || tab === 'appuis') ? (
-          <div className={styles.ficheGrid}>
+          <div className={styles.sheet}>
             <Skeleton height={220} radius={12} />
             <Skeleton height={220} radius={12} />
             <Skeleton height={180} radius={12} />
@@ -331,64 +415,68 @@ export function SiteDetailPage() {
 
         {/* ══ Onglet Profil du site ══ */}
         {tab === 'profil' && cs ? (
-          <div className={styles.ficheGrid}>
-            <SectionCard title="Identification" icon={<Calendar size={16} />} color="primary">
+          <div className={styles.sheet}>
+            {/* Commune, annee, effectifs, teinture et GPS figurent deja dans la
+             *  bande d'identite : les repeter ici n'apprendrait rien. Ne restent
+             *  que les informations propres a la visite. */}
+            <SectionCard title="Visite de terrain" icon={<Calendar size={16} />}>
               <FieldRow label="Date de visite">
                 {cs.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
               </FieldRow>
               <FieldRow label="Agent collecteur">{formatName(cs.agent)}</FieldRow>
-              <FieldRow label="Ville / Commune">{cs.ville ?? '—'}</FieldRow>
-              <FieldRow label="Année de création">{cs.anneeCreation ?? '—'}</FieldRow>
               <FieldRow label="Statut juridique">{cs.statutJuridique ?? '—'}</FieldRow>
-              <FieldRow label="GPS collecte">
-                {cs.latitude && cs.longitude
-                  ? formatGps(cs.latitude, cs.longitude)
-                  : cs.gpsSiteRaw ?? '—'}
+              <FieldRow label="Identifiant Kobo">
+                {cs.koboSubmissionId ? <code className={styles.codeInline}>{cs.koboSubmissionId}</code> : '—'}
               </FieldRow>
             </SectionCard>
 
-            <SectionCard title="Responsable du site" icon={<User size={16} />} color="purple">
+            <SectionCard title="Responsable du site" icon={<User size={16} />}>
               <FieldRow label="Nom">{cs.nomResponsable ?? site.responsableName ?? '—'}</FieldRow>
               <FieldRow label="Genre">{formatCode(cs.genreResponsable)}</FieldRow>
+              <FieldRow label="Répartition de l'effectif">
+                {effectifFemmes ?? '—'} femmes · {effectifHommes ?? '—'} hommes
+                <RatioBar femmes={effectifFemmes} hommes={effectifHommes} />
+              </FieldRow>
             </SectionCard>
 
-            <SectionCard title="Effectifs" icon={<Users size={16} />} color="teal">
-              <FieldRow label="Total">{cs.nbEmployesTotal ?? '—'}</FieldRow>
-              <FieldRow label="Femmes">{cs.nbFemmes ?? '—'}</FieldRow>
-              <FieldRow label="Hommes">{cs.nbHommes ?? '—'}</FieldRow>
-            </SectionCard>
-
-            <SectionCard title="Types de teinture" icon={<Flame size={16} />} color="amber">
-              <Chips items={typesTeinture} />
-            </SectionCard>
+            {cs.observationsGenerales || cs.recommandations ? (
+              <SectionCard title="Synthèse de la visite" icon={<MessageSquare size={16} />}>
+                {cs.observationsGenerales ? (
+                  <FieldRow label="Observations générales" large>{cs.observationsGenerales}</FieldRow>
+                ) : null}
+                {cs.recommandations ? (
+                  <FieldRow label="Recommandations" large>{cs.recommandations}</FieldRow>
+                ) : null}
+              </SectionCard>
+            ) : null}
           </div>
         ) : null}
 
         {/* ══ Onglet Conditions de travail ══ */}
         {tab === 'conditions' && cs ? (
-          <div className={styles.ficheGrid}>
-            <SectionCard title="Ressource en eau" icon={<Droplet size={16} />} color="blue">
+          <div className={styles.sheet}>
+            <SectionCard title="Ressource en eau" icon={<Droplet size={16} />}>
               <FieldRow label="Source d'eau">{formatCode(cs.sourceEau)}</FieldRow>
               <FieldRow label="État de la source"><QualBadge val={cs.etatSourcePrincipale} /></FieldRow>
               <FieldRow label="Consommation (m³)">
                 {cs.consommationEauM3 != null ? `${cs.consommationEauM3} m³` : '—'}
               </FieldRow>
               {cs.observationsEau ? (
-                <FieldRow label="Observations">{cs.observationsEau}</FieldRow>
+                <FieldRow label="Observations" large>{cs.observationsEau}</FieldRow>
               ) : null}
             </SectionCard>
 
-            <SectionCard title="Équipements" icon={<Wrench size={16} />} color="orange">
+            <SectionCard title="Équipements" icon={<Wrench size={16} />}>
               <FieldRow label="Équipements disponibles">
                 <Chips items={equipements} />
               </FieldRow>
               <FieldRow label="État général"><QualBadge val={cs.etatGeneralEquipements} /></FieldRow>
               {cs.observationsEquipements ? (
-                <FieldRow label="Observations">{cs.observationsEquipements}</FieldRow>
+                <FieldRow label="Observations" large>{cs.observationsEquipements}</FieldRow>
               ) : null}
             </SectionCard>
 
-            <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />} color="yellow">
+            <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />}>
               <FieldRow label="EPI disponibles">
                 <Chips items={epis} />
               </FieldRow>
@@ -397,11 +485,11 @@ export function SiteDetailPage() {
                 <OuiNon val={cs.formationEpiRecue} />
               </FieldRow>
               {cs.observationsEpiSite ? (
-                <FieldRow label="Observations">{cs.observationsEpiSite}</FieldRow>
+                <FieldRow label="Observations" large>{cs.observationsEpiSite}</FieldRow>
               ) : null}
             </SectionCard>
 
-            <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />} color="red">
+            <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />}>
               <div className={styles.boolRow}>
                 <span className={styles.boolItem}>
                   <Lock size={12} />
@@ -426,10 +514,10 @@ export function SiteDetailPage() {
                 <OuiNon val={cs.accidentsRecents} />
               </FieldRow>
               {cs.descriptionAccidents ? (
-                <FieldRow label="Description">{cs.descriptionAccidents}</FieldRow>
+                <FieldRow label="Description" large>{cs.descriptionAccidents}</FieldRow>
               ) : null}
               {cs.observationsSecurite ? (
-                <FieldRow label="Observations">{cs.observationsSecurite}</FieldRow>
+                <FieldRow label="Observations" large>{cs.observationsSecurite}</FieldRow>
               ) : null}
             </SectionCard>
           </div>
@@ -437,35 +525,35 @@ export function SiteDetailPage() {
 
         {/* ══ Onglet Appuis & Besoins ══ */}
         {tab === 'appuis' && cs ? (
-          <div className={styles.ficheGrid}>
-            <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />} color="purple">
+          <div className={styles.sheet}>
+            <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />}>
               <FieldRow label="Comptabilité">{formatCode(cs.comptabilite)}</FieldRow>
               <FieldRow label="Couverture sociale"><QualBadge val={cs.couvertureSociale} /></FieldRow>
             </SectionCard>
 
-            <SectionCard title="Formations reçues" icon={<BookOpen size={16} />} color="teal">
+            <SectionCard title="Formations reçues" icon={<BookOpen size={16} />}>
               <Chips items={formations} />
               {cs.formationsAutre ? (
                 <FieldRow label="Autres">{cs.formationsAutre}</FieldRow>
               ) : null}
             </SectionCard>
 
-            <SectionCard title="Appuis reçus" icon={<HandHelping size={16} />} color="green">
+            <SectionCard title="Appuis reçus" icon={<HandHelping size={16} />}>
               <Chips items={appuis} />
             </SectionCard>
 
-            <SectionCard title="Besoins prioritaires" icon={<ListChecks size={16} />} color="amber">
+            <SectionCard title="Besoins prioritaires" icon={<ListChecks size={16} />}>
               <Chips items={besoins} />
             </SectionCard>
 
             {cs.observationsGenerales || cs.recommandations ? (
               <div className={styles.fullWidth}>
-                <SectionCard title="Observations & Recommandations" icon={<MessageSquare size={16} />} color="slate">
+                <SectionCard title="Observations & Recommandations" icon={<MessageSquare size={16} />}>
                   {cs.observationsGenerales ? (
-                    <FieldRow label="Observations générales">{cs.observationsGenerales}</FieldRow>
+                    <FieldRow label="Observations générales" large>{cs.observationsGenerales}</FieldRow>
                   ) : null}
                   {cs.recommandations ? (
-                    <FieldRow label="Recommandations">{cs.recommandations}</FieldRow>
+                    <FieldRow label="Recommandations" large>{cs.recommandations}</FieldRow>
                   ) : null}
                 </SectionCard>
               </div>
@@ -515,7 +603,7 @@ export function SiteDetailPage() {
                     {isOpen ? (
                       <div className={styles.empBody}>
                         {/* EPI */}
-                        <div className={styles.empSection} data-color="yellow">
+                        <div className={styles.empSection}>
                           <span className={styles.empSectionTitle}>
                             <Shield size={13} /> EPI utilisés
                           </span>
@@ -540,7 +628,7 @@ export function SiteDetailPage() {
                         </div>
 
                         {/* Santé */}
-                        <div className={styles.empSection} data-color="red">
+                        <div className={styles.empSection}>
                           <span className={styles.empSectionTitle}>
                             <Heart size={13} /> Santé & sécurité
                           </span>
@@ -561,12 +649,12 @@ export function SiteDetailPage() {
                             <FieldRow label="Structure santé">{dc.structureSante}</FieldRow>
                           ) : null}
                           {dc?.obsSante ? (
-                            <FieldRow label="Observations santé">{dc.obsSante}</FieldRow>
+                            <FieldRow label="Observations santé" large>{dc.obsSante}</FieldRow>
                           ) : null}
                         </div>
 
                         {/* Rémunération */}
-                        <div className={styles.empSection} data-color="green">
+                        <div className={styles.empSection}>
                           <span className={styles.empSectionTitle}>
                             <Banknote size={13} /> Rémunération
                           </span>
@@ -577,7 +665,7 @@ export function SiteDetailPage() {
                         </div>
 
                         {/* Besoins */}
-                        <div className={styles.empSection} data-color="amber">
+                        <div className={styles.empSection}>
                           <span className={styles.empSectionTitle}>
                             <UserCheck size={13} /> Besoins prioritaires
                           </span>
@@ -602,7 +690,7 @@ export function SiteDetailPage() {
                               <FieldRow label="Suggestions">{dc.suggestionsEmploye}</FieldRow>
                             ) : null}
                             {dc.observations ? (
-                              <FieldRow label="Observations">{dc.observations}</FieldRow>
+                              <FieldRow label="Observations" large>{dc.observations}</FieldRow>
                             ) : null}
                           </div>
                         ) : null}
