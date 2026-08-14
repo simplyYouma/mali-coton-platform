@@ -166,3 +166,20 @@
     flex-wrap: wrap;
   }
 }
+
+/* ── Adaptation tactile ──
+ *  Cette case est un champ natif, sans passer par le composant Checkbox :
+ *  elle mesurait 13 px, la plus petite cible de l'application. Le carre
+ *  s'agrandit et l'etiquette entiere devient sensible. */
+@media (pointer: coarse) {
+  .archivedToggle {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .archivedToggle input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+  }
+}
