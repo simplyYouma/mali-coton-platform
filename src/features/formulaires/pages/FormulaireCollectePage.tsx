@@ -149,7 +149,7 @@ export function FormulaireCollectePage() {
       /* Sans consequence : le brouillon sera ecrase a la prochaine saisie. */
     }
     setSubmitted(true);
-  }, [formulaire, siteId, validate, champsActifs, values, submit, user, gpsPosition]);
+  }, [formulaire, siteId, validate, champsActifs, values, submit, user, gpsPosition, cleBrouillon]);
 
   /* ── Écran de succès ── */
   if (submitted) {
