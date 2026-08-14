@@ -61,3 +61,24 @@
 .label {
   line-height: 1.3;
 }
+
+/* ── Adaptation tactile ──
+ *  Le carre reste a 18 px : l'agrandir a 44 px alourdirait le formulaire.
+ *  C'est la zone sensible qui s'etend autour de lui, invisible, jusqu'a la
+ *  cible minimale. On gagne l'atteignabilite sans toucher au dessin. */
+@media (pointer: coarse) {
+  .boxWrapper::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .wrapper {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}

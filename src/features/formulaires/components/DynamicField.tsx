@@ -52,6 +52,15 @@ export function DynamicField({ champ, value, onChange, error, disabled }: Dynami
         return (
           <Input
             type={champ.typeChamp === 'telephone' ? 'tel' : champ.typeChamp === 'email' ? 'email' : 'text'}
+            /* Clavier adapte au contenu attendu : pave telephonique, ou
+             * clavier comportant l'arobase pour une adresse. */
+            inputMode={
+              champ.typeChamp === 'telephone'
+                ? 'tel'
+                : champ.typeChamp === 'email'
+                  ? 'email'
+                  : undefined
+            }
             value={value.valeurTexte ?? ''}
             onChange={(e) => handleText(e.target.value)}
             placeholder={champ.aide ?? ''}
@@ -74,6 +83,8 @@ export function DynamicField({ champ, value, onChange, error, disabled }: Dynami
         return (
           <Input
             type="number"
+            /* Ouvre le pave chiffre plutot que le clavier alphabetique. */
+            inputMode="decimal"
             value={value.valeurNombre ?? ''}
             onChange={(e) => handleNumber(e.target.value)}
             placeholder={champ.aide ?? ''}
@@ -140,6 +151,12 @@ export function DynamicField({ champ, value, onChange, error, disabled }: Dynami
           <div className={styles.fileWrap}>
             <input
               type="file"
+              /* Sur tablette, sans ces deux attributs, l'agente tombe sur un
+               * explorateur de fichiers : elle doit quitter l'application,
+               * photographier, puis revenir chercher le fichier. Ici, le
+               * champ ouvre directement l'appareil photo dorsal. */
+              accept="image/*"
+              capture="environment"
               className={styles.fileInput}
               disabled={disabled}
               onChange={(e) => {

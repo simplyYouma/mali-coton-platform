@@ -113,3 +113,10 @@
 .optionLabel {
   flex: 1 1 auto;
 }
+
+/* ── Adaptation tactile ──
+ *  Cible minimale de 44 px sur appareil sans pointeur fin. Le bureau garde
+ *  sa densite : la regle ne s'applique qu'au tactile. */
+@media (pointer: coarse) {
+  .trigger { min-height: 44px; }
+}

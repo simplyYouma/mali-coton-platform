@@ -58,3 +58,12 @@
 .variant-danger:hover:not(:disabled) {
   background: var(--color-danger-bg);
 }
+
+/* ── Adaptation tactile ──
+ *  Cible minimale de 44 px sur appareil sans pointeur fin. Le bureau garde
+ *  sa densite : la regle ne s'applique qu'au tactile. */
+@media (pointer: coarse) {
+  .size-sm { width: 44px; height: 44px; }
+  .size-md { width: 44px; height: 44px; }
+  .size-lg { width: 48px; height: 48px; }
+}

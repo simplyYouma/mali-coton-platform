@@ -342,3 +342,11 @@
   width: 40px;
   padding: 0;
 }
+
+/* ── Adaptation tactile ──
+ *  Cible minimale de 44 px sur appareil sans pointeur fin. Le bureau garde
+ *  sa densite : la regle ne s'applique qu'au tactile. */
+@media (pointer: coarse) {
+  .collapseToggle { width: 44px; height: 44px; }
+  .link { min-height: 44px; }
+}

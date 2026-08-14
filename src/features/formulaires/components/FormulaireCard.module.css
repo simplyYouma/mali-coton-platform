@@ -201,3 +201,11 @@
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
   transform: translateY(-2px);
 }
+
+/* ── Adaptation tactile ──
+ *  Cible minimale de 44 px sur appareil sans pointeur fin. Le bureau garde
+ *  sa densite : la regle ne s'applique qu'au tactile. */
+@media (pointer: coarse) {
+  .action,
+  .actionDisabled { min-height: 44px; }
+}
