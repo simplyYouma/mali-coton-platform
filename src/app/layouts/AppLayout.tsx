@@ -66,21 +66,27 @@ const ALL_NAV: NavSpec[] = [
     to: '/labo/analyses',
     label: 'Résultats d\'analyse',
     icon: <Microscope size={18} />,
-    roles: ['admin', 'superviseur'],
+    roles: ['admin', 'superviseur', 'lab'],
+      /* Le laboratoire agree consulte et saisit ses resultats ici : c'est
+       * la seule section qui le concerne. */
     section: 'labo',
   },
   {
     to: '/labo/prelevements',
     label: 'Prélèvements',
     icon: <Pipette size={18} />,
-    roles: ['admin', 'superviseur'],
+    roles: ['admin', 'superviseur', 'lab'],
+      /* Le laboratoire agree consulte et saisit ses resultats ici : c'est
+       * la seule section qui le concerne. */
     section: 'labo',
   },
   {
     to: '/labo/echantillons',
     label: 'Échantillons',
     icon: <Beaker size={18} />,
-    roles: ['admin', 'superviseur'],
+    roles: ['admin', 'superviseur', 'lab'],
+      /* Le laboratoire agree consulte et saisit ses resultats ici : c'est
+       * la seule section qui le concerne. */
     section: 'labo',
   },
   {

@@ -92,7 +92,7 @@ export function AppRoutes() {
         <Route
           path="/labo/echantillons"
           element={
-            <RoleGuard roles={['admin', 'superviseur']}>
+            <RoleGuard roles={['admin', 'superviseur', 'lab']}>
               <LabSamplesPage />
             </RoleGuard>
           }
@@ -100,7 +100,7 @@ export function AppRoutes() {
         <Route
           path="/labo/prelevements"
           element={
-            <RoleGuard roles={['admin', 'superviseur']}>
+            <RoleGuard roles={['admin', 'superviseur', 'lab']}>
               <PrelevementsPage />
             </RoleGuard>
           }
@@ -108,7 +108,7 @@ export function AppRoutes() {
         <Route
           path="/labo/analyses"
           element={
-            <RoleGuard roles={['admin', 'superviseur']}>
+            <RoleGuard roles={['admin', 'superviseur', 'lab']}>
               <AnalysesPage />
             </RoleGuard>
           }
@@ -202,6 +202,21 @@ export function AppRoutes() {
  * sa navigation ne contient que les formulaires de collecte. L'envoyer sur
  * /dashboard le deposerait sur un ecran absent de son propre menu.
  */
+/**
+ * Ecran d'arrivee apres connexion, selon le role.
+ *
+ * Le role `lab` existait dans le typage et dans le mapping d'authentification
+ * sans qu'aucune route ni entree de menu ne lui soit ouverte : un utilisateur
+ * laboratoire atterrissait sur /dashboard, qui lui est interdit, avec un menu
+ * vide. Il est desormais dirige vers la section qui le concerne.
+ */
 function defaultRoute(role: UserRole | null): string {
-  return role === 'agent' ? '/formulaires' : '/dashboard';
+  switch (role) {
+    case 'agent':
+      return '/formulaires';
+    case 'lab':
+      return '/labo/analyses';
+    default:
+      return '/dashboard';
+  }
 }
