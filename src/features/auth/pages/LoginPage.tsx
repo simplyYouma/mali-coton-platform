@@ -127,7 +127,7 @@ export function LoginPage() {
         </div>
 
         <footer className={styles.footer}>
-          <p>© 2026 · <strong>PASET Mali</strong> — PNUD Mali · Consortium Sahel Analytics</p>
+          <p>© 2026 · <strong>PASET Mali</strong> — PNUD Mali · Consortium Sahel Analytics & Sahel environnement</p>
         </footer>
       </section>
     </main>

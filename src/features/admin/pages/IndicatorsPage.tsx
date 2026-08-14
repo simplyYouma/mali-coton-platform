@@ -15,15 +15,14 @@ import type { Indicateur } from '../api/referentiels';
 import styles from './IndicatorsPage.module.css';
 
 const DOMAINE_LABEL: Record<string, string> = {
-  chimique: 'Chimique',
-  physique:  'Physique',
+  chimique: 'Physico-chimique',
+  physique: 'Physico-chimique',
 };
 
 const FILTER_OPTIONS = [
-  { value: 'all',         label: 'Tous' },
-  { value: 'chimique',    label: 'Chimique' },
-  { value: 'physique',    label: 'Physique' },
-  { value: 'configure',   label: 'Configurés' },
+  { value: 'all',           label: 'Tous' },
+  { value: 'chimique',      label: 'Physico-chimique' },
+  { value: 'configure',     label: 'Configurés' },
   { value: 'non_configure', label: 'Non configurés' },
 ];
 
@@ -50,8 +49,7 @@ export function IndicatorsPage({
 
   const filtered = useMemo(() => {
     let items = indicateurs;
-    if (filtre === 'chimique')      items = items.filter((i) => i.domaine === 'chimique');
-    if (filtre === 'physique')      items = items.filter((i) => i.domaine === 'physique');
+    if (filtre === 'chimique') items = items.filter((i) => i.domaine === 'chimique' || i.domaine === 'physique');
     if (filtre === 'configure')     items = items.filter((i) => i.configure);
     if (filtre === 'non_configure') items = items.filter((i) => !i.configure);
     if (q.trim()) {

@@ -76,17 +76,17 @@ function isTab(value: string | null): value is Tab {
 }
 
 const CAT_LABEL: Record<string, string> = {
-  chimique: 'Chimique',
-  physique: 'Physique',
-  AIR:      'Air',
-  WATER:    'Eau',
-  SOIL:     'Sol',
+  chimique:        'Physico-chimique',
+  physique:        'Physico-chimique',
+  PHYSICOCHIMIQUE: 'Physico-chimique',
+  AIR:             'Air',
+  WATER:           'Eau',
+  SOIL:            'Sol',
 };
 
 const CAT_OPTIONS = [
   { value: 'all',      label: 'Toutes les catégories' },
-  { value: 'chimique', label: 'Chimique' },
-  { value: 'physique', label: 'Physique' },
+  { value: 'chimique', label: 'Physico-chimique' },
   { value: 'AIR',      label: 'Air' },
   { value: 'WATER',    label: 'Eau' },
   { value: 'SOIL',     label: 'Sol' },
@@ -244,7 +244,7 @@ function ParametresTab({ parametres, unites, isLoading }: ParametresTabProps) {
     if (cat !== 'all') items = items.filter((p) => p.categorie === cat);
     if (q.trim()) {
       const s = q.toLowerCase();
-      items = items.filter((p) => p.nom.toLowerCase().includes(s) || (p.description ?? '').toLowerCase().includes(s));
+      items = items.filter((p) => p.libelle.toLowerCase().includes(s) || p.nom.toLowerCase().includes(s) || (p.description ?? '').toLowerCase().includes(s));
     }
     return items;
   }, [parametres, cat, q]);
@@ -279,7 +279,7 @@ function ParametresTab({ parametres, unites, isLoading }: ParametresTabProps) {
   }
 
   function handleDelete(p: ParametreAnalyse) {
-    if (!confirm(`Supprimer le paramètre "${p.nom}" ? Cette action est irréversible.`)) return;
+    if (!confirm(`Supprimer le paramètre "${p.libelle}" ? Cette action est irréversible.`)) return;
     deleteMut.mutate(p.id);
   }
 
@@ -314,7 +314,7 @@ function ParametresTab({ parametres, unites, isLoading }: ParametresTabProps) {
                 sheetName: 'Paramètres',
                 columns: [
                   { header: 'ID',          accessor: (p: ParametreAnalyse) => p.id },
-                  { header: 'Nom',         accessor: (p: ParametreAnalyse) => p.nom },
+                  { header: 'Nom',         accessor: (p: ParametreAnalyse) => p.libelle },
                   { header: 'Catégorie',   accessor: (p: ParametreAnalyse) => CAT_LABEL[p.categorie] ?? p.categorie },
                   { header: 'Description', accessor: (p: ParametreAnalyse) => p.description ?? '' },
                   { header: 'Actif',       accessor: (p: ParametreAnalyse) => p.actif ? 'Oui' : 'Non' },
@@ -362,7 +362,7 @@ function ParametresTab({ parametres, unites, isLoading }: ParametresTabProps) {
                 return (
                   <tr key={p.id}>
                     <td><code className={styles.code}>{p.id}</code></td>
-                    <td><span className={styles.label}>{p.nom}</span></td>
+                    <td><span className={styles.label}>{p.libelle}</span></td>
                     <td>
                       <span className={styles.catBadge} data-cat={p.categorie}>
                         {CAT_LABEL[p.categorie] ?? p.categorie}
@@ -399,7 +399,7 @@ function ParametresTab({ parametres, unites, isLoading }: ParametresTabProps) {
       <Modal
         open={modalOpen}
         onClose={() => setModal(false)}
-        title={editing ? `Modifier — ${editing.nom}` : 'Nouveau paramètre d\'analyse'}
+        title={editing ? `Modifier — ${editing.libelle}` : 'Nouveau paramètre d\'analyse'}
         width={560}
       >
         <div className={styles.modalBody}>
@@ -863,7 +863,7 @@ function SeuilsTab({ seuils, parametres, normes, nonConfigures, isLoading }: Seu
 
   const parametreOptions = [
     { value: '', label: '— Sélectionner un paramètre —' },
-    ...parametres.map((p) => ({ value: String(p.id), label: `${p.nom} (${CAT_LABEL[p.categorie] ?? p.categorie})` })),
+    ...parametres.map((p) => ({ value: String(p.id), label: `${p.libelle} (${CAT_LABEL[p.categorie] ?? p.categorie})` })),
   ];
 
   const normeOptions = [
@@ -877,7 +877,7 @@ function SeuilsTab({ seuils, parametres, normes, nonConfigures, isLoading }: Seu
     return seuils.filter((s_) => {
       const pId = s_.parametreAnalyse.split('/').pop();
       const p = parametres.find((p_) => String(p_.id) === pId);
-      return (p?.nom ?? '').toLowerCase().includes(s) || (s_.commentaire ?? '').toLowerCase().includes(s);
+      return (p?.libelle ?? '').toLowerCase().includes(s) || (s_.commentaire ?? '').toLowerCase().includes(s);
     });
   }, [seuils, q, parametres]);
 
@@ -925,7 +925,7 @@ function SeuilsTab({ seuils, parametres, normes, nonConfigures, isLoading }: Seu
   function handleDelete(s: SeuilNormatif) {
     const pId = s.parametreAnalyse.split('/').pop();
     const p = parametres.find((p_) => String(p_.id) === pId);
-    if (!confirm(`Supprimer le seuil pour "${p?.nom ?? 'ce paramètre'}" ?`)) return;
+    if (!confirm(`Supprimer le seuil pour "${p?.libelle ?? 'ce paramètre'}" ?`)) return;
     deleteMut.mutate(s.id);
   }
 
@@ -1002,7 +1002,7 @@ function SeuilsTab({ seuils, parametres, normes, nonConfigures, isLoading }: Seu
                 const milieuLabel = MILIEU_OPTIONS.find((m) => m.value === s.milieu)?.label ?? s.milieu ?? '—';
                 return (
                   <tr key={s.id}>
-                    <td><span className={styles.label}>{p?.nom ?? pId}</span></td>
+                    <td><span className={styles.label}>{p?.libelle ?? pId}</span></td>
                     <td>
                       {p && (
                         <span className={styles.catBadge} data-cat={p.categorie}>

@@ -13,7 +13,8 @@ export interface ParametreUnite {
 
 export interface ParametreAnalyse {
   id: number;
-  nom: string;
+  nom: string;     // identifiant technique ex. "water.chlorides"
+  libelle: string; // nom d'affichage ex. "Chlorures"
   categorie: string;
   description?: string | null;
   actif: boolean;
@@ -151,7 +152,8 @@ async function fetchAnalysesPage(page: number): Promise<{ items: ParametreAnalys
   return {
     items: paged.items.map((b: any) => ({
       id: b.id,
-      nom: b.nom,
+      nom: b.nom ?? '',
+      libelle: b.libelle ?? b.nom ?? '',
       categorie: b.categorie,
       description: b.description ?? null,
       actif: b.actif ?? true,
