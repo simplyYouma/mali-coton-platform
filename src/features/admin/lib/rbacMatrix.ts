@@ -34,12 +34,27 @@ export const MODULES: ModuleSpec[] = [
   { id: 'audit', label: 'Journal d\'audit', group: 'admin' },
 ];
 
-/** Rôles connectables uniquement — agents terrain et labos ne se connectent pas à l'app. */
-export type LoginableRole = Extract<UserRole, 'admin' | 'superviseur' | 'visitor'>;
+/**
+ * Rôles connectables à la plateforme.
+ *
+ * La liste excluait `agent` et `lab`, au motif que ni les agents terrain ni
+ * les laboratoires ne se connectaient : les premiers saisissaient via Kobo,
+ * les seconds n'avaient aucun écran. Les deux hypothèses ont cessé d'être
+ * vraies — la collecte native fait de l'agent l'utilisateur principal de
+ * l'application, et la section Analyse & Laboratoire est ouverte au rôle
+ * `lab`.
+ *
+ * Les cinq rôles du système figurent donc dans la matrice, faute de quoi un
+ * administrateur ne peut configurer les droits de ceux qui, en pratique,
+ * utilisent le plus la plateforme.
+ */
+export type LoginableRole = UserRole;
 
 export const ROLES: Array<{ id: LoginableRole; label: string }> = [
   { id: 'admin', label: 'Administrateur' },
   { id: 'superviseur', label: 'Superviseur' },
+  { id: 'agent', label: 'Agent terrain' },
+  { id: 'lab', label: 'Laboratoire' },
   { id: 'visitor', label: 'Observateur' },
 ];
 
@@ -86,6 +101,46 @@ export const DEFAULT_MATRIX: Record<LoginableRole, Record<string, PermissionLeve
     indicators: 'read',
     refdata: 'read',
     audit: 'read',
+  },
+  /* Agent terrain : il saisit ses collectes et consulte les sites qui lui
+   * sont affectes. Le reste de la plateforme ne le concerne pas. */
+  agent: {
+    dashboard: 'none',
+    sites: 'read',
+    collections: 'write',
+    validation: 'none',
+    lab_samples: 'none',
+    alerts: 'none',
+    recommandations: 'none',
+    agents: 'none',
+    cartography: 'none',
+    analytics: 'none',
+    reports: 'none',
+    users: 'none',
+    roles: 'none',
+    indicators: 'none',
+    refdata: 'none',
+    audit: 'none',
+  },
+  /* Laboratoire agree : il receptionne les echantillons et saisit les
+   * resultats. Il lit les collectes pour les rattacher, sans les modifier. */
+  lab: {
+    dashboard: 'none',
+    sites: 'read',
+    collections: 'read',
+    validation: 'none',
+    lab_samples: 'write',
+    alerts: 'none',
+    recommandations: 'none',
+    agents: 'none',
+    cartography: 'none',
+    analytics: 'none',
+    reports: 'none',
+    users: 'none',
+    roles: 'none',
+    indicators: 'none',
+    refdata: 'none',
+    audit: 'none',
   },
   visitor: {
     dashboard: 'read',
