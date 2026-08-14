@@ -192,3 +192,19 @@
     align-items: flex-start;
   }
 }
+
+/* ── Saisie au doigt ──
+ *  Quand un champ recoit le focus, le navigateur le fait defiler au strict
+ *  minimum : il se retrouve colle au bord bas de l'ecran, precisement la ou
+ *  le clavier virtuel apparait. L'agente tape alors sans voir ce qu'elle
+ *  saisit.
+ *
+ *  scroll-margin reserve une marge sous le champ lors de ce defilement : il
+ *  remonte assez pour rester visible au-dessus du clavier. Aucun script,
+ *  aucun calcul de hauteur de clavier — le navigateur s'en charge. */
+@media (pointer: coarse) {
+  .fields :is(input, textarea, select) {
+    scroll-margin-block-end: 45vh;
+    scroll-margin-block-start: var(--space-5);
+  }
+}
