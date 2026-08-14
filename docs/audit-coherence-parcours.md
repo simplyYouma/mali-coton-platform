@@ -3,7 +3,7 @@
 **Branche** : `audit/coherence-parcours` (depuis `main`, commit `5218840`)
 **Date** : 14 août 2026
 **Périmètre** : frontend `mali-coton-platform` — 199 fichiers TS/TSX, 69 CSS Modules,
-~49 500 lignes, 30 pages, 20 routes.
+~49 500 lignes, 30 pages, 29 routes de contenu.
 **Nature** : diagnostic. **Aucune correction n'a été appliquée.**
 
 ---
