@@ -62,7 +62,7 @@ Cinq constats structurants :
 | # | Constat | Gravité | Statut |
 |---|---|---|---|
 | A | **26 pages sur 30 n'interrogent jamais `isError`** : toute panne réseau s'affiche comme un écran vide, jamais comme une erreur | Élevée | Constaté |
-| B | **6 routes d'administration n'ont aucun `RoleGuard`** : un observateur en lecture seule déclenche réellement un `DELETE` de modèle de formulaire | Élevée | Constaté |
+| B | **15 routes de contenu sur 29 n'ont aucun `RoleGuard`**, dont les 4 routes `/admin/formulaires*` : un observateur en lecture seule déclenche réellement un `DELETE` de modèle de formulaire | Élevée | Constaté |
 | C | **Trois systèmes parallèles de « collecte »** cohabitent sans jonction : `collecte_sites` (Kobo), `collections` (campagnes), `soumissions` (formulaires) | Élevée | Constaté |
 | D | **Aucune alerte n'est créée nulle part dans le code** : les 14 alertes sont des fixtures écrites à la main, et la liste est vide en `live` | Élevée | Constaté / déduit |
 | E | **Deux implémentations concurrentes** pour laboratoire, seuils et indicateurs — l'une câblée sur `mock`, l'autre sur `live`, aucune ne marche dans les deux | Moyenne | Constaté |
@@ -179,9 +179,13 @@ est perdue.** — *Constaté.*
 
 Voir l'inventaire complet en **annexe A**. Les incohérences structurelles :
 
-**a) La navigation filtre par rôle, les routes non.** Sur 20 routes, **6 ne sont
-protégées par aucun `RoleGuard`** alors que le menu les réserve à certains rôles.
-Résultat mesuré (19 combinaisons rôle × route atteintes hors menu) :
+**a) La navigation filtre par rôle, les routes non.** Sur 29 routes de contenu,
+**15 ne sont protégées par aucun `RoleGuard`** — `/sites`, `/sites/:id`,
+`/collecte`, `/collecte/:id`, `/alertes`, `/formulaires`,
+`/formulaires/soumissions`, `/formulaires/:id/saisir`, les 4 routes
+`/admin/formulaires*`, `/cartographie`, `/analytics`, `/reporting` — alors que le
+menu les réserve à certains rôles. Résultat mesuré (19 combinaisons rôle × route
+atteintes hors menu) :
 
 | Rôle | Atteint sans y avoir droit selon le menu |
 |---|---|
@@ -308,8 +312,10 @@ partagé n'existe pour cela), et les 50 erreurs de lint sont majoritairement des
 
 ### 4.1 — Élevée · Routes d'administration ouvertes à tous les rôles
 
-**Constaté.** Six routes sans `RoleGuard` ; en particulier les trois
-`/admin/formulaires*`, seules routes `/admin/*` non protégées.
+**Constaté.** 15 routes de contenu sur 29 sans `RoleGuard` ; en particulier les
+**4 routes `/admin/formulaires*`**, seules routes `/admin/*` non protégées
+(3 d'entre elles parcourues au runtime ; `/admin/formulaires/:id/editer` déduite,
+non testée).
 
 Test exécuté — observateur **et** agent, sur `/admin/formulaires` :
 
