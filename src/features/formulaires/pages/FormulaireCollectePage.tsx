@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, AlertCircle, MapPin } from 'lucide-react';
 import {
@@ -29,11 +29,42 @@ export function FormulaireCollectePage() {
   const { data: sitesData } = useSites();
   const submit = useSubmitFormulaire();
 
+  /* ── Brouillon local ──
+   *  Une collecte se remplit debout, sur le terrain, parfois en plusieurs
+   *  fois. Rien ne la sauvegardait : une expiration de session, un onglet
+   *  ferme par megarde ou une tablette qui se verrouille suffisaient a tout
+   *  perdre. La saisie est desormais conservee sur l'appareil, et proposee au
+   *  retour sur le meme formulaire.
+   *
+   *  Volontairement local : aucun aller-retour serveur, donc cela fonctionne
+   *  aussi hors couverture reseau. */
+  const cleBrouillon = `paset:brouillon:${id ?? 'inconnu'}`;
+
   const [siteId, setSiteId] = useState(searchParams.get('siteId') ?? '');
-  const [values, setValues] = useState<FormState>({});
+  const [values, setValues] = useState<FormState>(() => {
+    try {
+      const brut = localStorage.getItem(cleBrouillon);
+      return brut ? (JSON.parse(brut) as FormState) : {};
+    } catch {
+      /* Stockage indisponible ou brouillon illisible : on repart a vide
+       * plutot que d'empecher la saisie. */
+      return {};
+    }
+  });
   const [errors, setErrors] = useState<ErrorState>({});
   const [gpsPosition, setGpsPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (submitted) return;
+    try {
+      if (Object.keys(values).length > 0) {
+        localStorage.setItem(cleBrouillon, JSON.stringify(values));
+      }
+    } catch {
+      /* Quota depasse ou mode prive : la saisie continue sans filet. */
+    }
+  }, [values, submitted, cleBrouillon]);
 
   /* ── Acquisition GPS de la visite ── */
   const acquireGps = useCallback(() => {
@@ -111,6 +142,12 @@ export function FormulaireCollectePage() {
       reponses,
     });
 
+    /* Envoi accepte : le brouillon n'a plus lieu d'etre. */
+    try {
+      localStorage.removeItem(cleBrouillon);
+    } catch {
+      /* Sans consequence : le brouillon sera ecrase a la prochaine saisie. */
+    }
     setSubmitted(true);
   }, [formulaire, siteId, validate, champsActifs, values, submit, user, gpsPosition]);
 
