@@ -561,6 +561,11 @@
   border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
   color: var(--color-danger);
 }
+.conformiteTag[data-level="nd"] {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
 
 /* ── Position GPS ──
  *  Poussee en bout de bande et traitee comme un fragment de carte : quadrillage

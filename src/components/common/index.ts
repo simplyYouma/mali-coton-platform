@@ -62,5 +62,8 @@ export type { KpiCardProps } from './KpiCard/KpiCard';
 export { Placeholder } from './Placeholder/Placeholder';
 export type { PlaceholderProps } from './Placeholder/Placeholder';
 
+export { StructuredText } from './StructuredText/StructuredText';
+export type { StructuredTextProps } from './StructuredText/StructuredText';
+
 export { AppShell } from './AppShell';
 export type { AppShellProps, NavItem, NavSection } from './AppShell';

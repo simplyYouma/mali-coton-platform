@@ -152,7 +152,6 @@ export function LabSamplesPage() {
                 <th>Statut</th>
                 <th>Date réception labo</th>
                 <th>Laboratoire</th>
-                <th>Prélèvement</th>
                 <th className={styles.thCenter}>Analyses</th>
               </tr>
             </thead>
@@ -177,7 +176,6 @@ export function LabSamplesPage() {
                       : '—'}
                   </td>
                   <td>{(labsById.get(e.laboratoireId) ?? e.laboratoireId) || '—'}</td>
-                  <td className={styles.muted}>#{e.prelevementId}</td>
                   <td className={styles.thCenter}>
                     <span
                       className={styles.pill}

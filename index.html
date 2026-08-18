@@ -13,10 +13,13 @@
     <meta name="apple-mobile-web-app-title" content="PASET Mali" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <!-- Servies depuis /img/ (et non /icons/) : ce chemin est bloque en
+         production par une couche de securite de l'hebergeur (404 sur tout
+         /icons/* malgre des fichiers presents et des permissions correctes). -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png" />
     <!-- iOS ignore le manifeste pour l'icone d'accueil. -->
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
 
     <title>PASET Mali — Plateforme de suivi socio-environnemental</title>
   </head>

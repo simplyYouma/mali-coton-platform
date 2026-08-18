@@ -1,592 +1,542 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
-  ArrowRight,
-  Beaker,
-  CloudOff,
+  Clock,
   Download,
   Eye,
-  FlaskConical,
   Gauge,
-  Siren,
   ShieldAlert,
   ShieldCheck,
   UsersRound,
 } from 'lucide-react';
-import type { AlertCategory } from '@/features/alerts/api/alerts.types';
-import { Badge, Button, Select, Skeleton, Tabs } from '@/components/common';
-import { LineChart } from '@/components/common/charts';
+import { Button, EmptyState, Select, Skeleton } from '@/components/common';
+import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import { useSites } from '@/features/sites/hooks/useSites';
-import { useAlerts } from '@/features/alerts/hooks/useAlerts';
-import { useCollections } from '@/features/collection/hooks/useCollections';
-import { mockUsers } from '@/mocks/fixtures/users';
-import { formatRelativeTime } from '@/lib/format';
-import { ConformityHeatmap } from '../components/ConformityHeatmap';
-import { useDashboardData } from '../hooks/useDashboardData';
-import { computeExecutiveSummary, RISK_LABEL, RISK_TONE } from '../lib/executiveSummary';
-import { STATUS_LABEL, STATUS_VARIANT } from '@/features/collection/api/collection.types';
+import { ConformiteSitePanel } from '@/features/sites/components/ConformiteSitePanel';
+import {
+  useConformiteDetails,
+  useConformiteGlobale,
+  useConformiteSite,
+} from '@/features/conformite/hooks/useConformite';
+import type {
+  ConformiteGlobale,
+  ConformiteSiteDetail,
+  ConformiteSiteSummary,
+  StatutConformite,
+} from '@/features/conformite/api/conformite';
 import styles from './DashboardPage.module.css';
 
-const PERIODS = [
-  { value: '7', label: '7 jours' },
-  { value: '30', label: '30 jours' },
-  { value: '90', label: '90 jours' },
-];
-
-const PM25_OMS_24H = 25;
-const PH_LIMIT_HIGH = 8.5;
-
-const CATEGORY_ICON: Record<AlertCategory, typeof ShieldAlert> = {
-  threshold_exceeded: ShieldAlert,
-  lab_overdue: Beaker,
-  site_silence: CloudOff,
-  data_quality: Eye,
+const RISQUE_LABEL: Record<string, string> = {
+  FAIBLE: 'Faible', MODERE: 'Modéré', ELEVE: 'Élevé', CRITIQUE: 'Critique',
 };
+const RISQUE_TEXT: Record<string, string> = {
+  FAIBLE: 'Risque maîtrisé',
+  MODERE: 'Surveillance renforcée',
+  ELEVE: 'Action corrective requise',
+  CRITIQUE: 'Intervention urgente',
+};
+const STATUT_SHORT: Record<string, string> = {
+  CONFORME: 'Conforme',
+  A_SURVEILLER: 'À surveiller',
+  CRITIQUE: 'Critique',
+  NON_CONFORME: 'Non conforme',
+  NON_EVALUE: '—',
+};
+const COMP_LABEL: Record<string, string> = { AIR: 'AIR', EAU: 'EAU', SOL: 'SOL' };
+const COMP_ORDER = ['AIR', 'EAU', 'SOL'];
 
-interface Pm25RankingProps {
-  labels: string[];
-  values: number[];
-  threshold: number;
-}
-
-function Pm25Ranking({ labels, values, threshold }: Pm25RankingProps) {
-  const visualMax = threshold * 1.25;
-  const thresholdPct = (threshold / visualMax) * 100;
-  const items = labels.map((label, i) => ({ label, value: values[i] ?? 0 }));
-  const sorted = [...items].sort((a, b) => b.value - a.value);
-
-  return (
-    <div className={styles.rankingList}>
-      {sorted.map(({ label, value }) => {
-        const pct = Math.min(100, (value / visualMax) * 100);
-        const tone =
-          value > threshold ? 'crit' : value > threshold * 0.8 ? 'warn' : 'ok';
-        const fillClass =
-          tone === 'crit'
-            ? styles.rankingFillCrit
-            : tone === 'warn'
-              ? styles.rankingFillWarn
-              : styles.rankingFillOk;
-        return (
-          <div key={label} className={styles.rankingRow}>
-            <div className={styles.rankingHead}>
-              <span className={styles.rankingLabel}>{label}</span>
-              <span className={styles.rankingValue} data-tone={tone}>
-                {value.toFixed(1)} <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>µg/m³</span>
-              </span>
-            </div>
-            <div className={styles.rankingTrack}>
-              <div className={fillClass} style={{ width: `${pct}%` }} />
-              <span
-                className={styles.rankingThreshold}
-                style={{ left: `${thresholdPct}%` }}
-                aria-hidden="true"
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+/* ═══════════════════════════════════════════════════════════
+   Page
+═══════════════════════════════════════════════════════════ */
 
 export function DashboardPage() {
-  const [period, setPeriod] = useState<string>('30');
   const [siteFilter, setSiteFilter] = useState<string>('all');
-  const days = Number(period);
   const filterSiteId = siteFilter === 'all' ? null : siteFilter;
 
-  const { isLoading, sites, phTimeseries, pm25, heatmap, kpis, recentCollections } =
-    useDashboardData(days, filterSiteId);
-
   const { data: sitesPage } = useSites();
-  const { data: alertsPage } = useAlerts({ status: 'active' });
-  const { data: alertsAllPage } = useAlerts();
-  const { data: collectionsAllPage } = useCollections();
+  const allSites = useMemo(() => sitesPage?.items ?? [], [sitesPage]);
 
-  /* ── Sparklines + comparaisons période précédente ── */
-  const periodInsights = useMemo(() => {
-    const now = Date.now();
-    const dayMs = 86_400_000;
-    const cutoffCurrent = now - days * dayMs;
-    const cutoffPrev = now - 2 * days * dayMs;
+  const { data: conformiteGlobale, isLoading: loadingGlobale } = useConformiteGlobale();
+  const { data: conformiteSite, isLoading: loadingSite } = useConformiteSite(filterSiteId ?? undefined);
 
-    const allColl = (collectionsAllPage?.items ?? []).filter(
-      (c) => !filterSiteId || c.siteId === filterSiteId,
-    );
-    const allAlerts = (alertsAllPage?.items ?? []).filter(
-      (a) => !filterSiteId || a.siteId === filterSiteId,
-    );
-
-    /* Sparkline = N buckets sur la période courante */
-    const buckets = Math.min(8, days);
-    const bucketMs = (days * dayMs) / buckets;
-    const collectionsSpark = Array(buckets).fill(0) as number[];
-    const alertsSpark = Array(buckets).fill(0) as number[];
-
-    for (const c of allColl) {
-      const t = new Date(c.collectedAt).getTime();
-      if (t < cutoffCurrent) continue;
-      const idx = Math.min(buckets - 1, Math.floor((t - cutoffCurrent) / bucketMs));
-      collectionsSpark[idx] = (collectionsSpark[idx] ?? 0) + 1;
-    }
-    for (const a of allAlerts) {
-      if (a.severity !== 'critical') continue;
-      const t = new Date(a.raisedAt).getTime();
-      if (t < cutoffCurrent) continue;
-      const idx = Math.min(buckets - 1, Math.floor((t - cutoffCurrent) / bucketMs));
-      alertsSpark[idx] = (alertsSpark[idx] ?? 0) + 1;
-    }
-
-    const collectionsCurrent = allColl.filter(
-      (c) => new Date(c.collectedAt).getTime() >= cutoffCurrent,
-    ).length;
-    const collectionsPrev = allColl.filter((c) => {
-      const t = new Date(c.collectedAt).getTime();
-      return t >= cutoffPrev && t < cutoffCurrent;
-    }).length;
-
-    const alertsCurrent = allAlerts.filter(
-      (a) => a.severity === 'critical' && new Date(a.raisedAt).getTime() >= cutoffCurrent,
-    ).length;
-    const alertsPrev = allAlerts.filter((a) => {
-      if (a.severity !== 'critical') return false;
-      const t = new Date(a.raisedAt).getTime();
-      return t >= cutoffPrev && t < cutoffCurrent;
-    }).length;
-
-    const collectionsTrend =
-      collectionsPrev > 0
-        ? Math.round(((collectionsCurrent - collectionsPrev) / collectionsPrev) * 100)
-        : 0;
-
-    return {
-      collectionsSpark,
-      alertsSpark,
-      collectionsPrev,
-      collectionsTrend,
-      alertsPrev,
-      alertsDelta: alertsCurrent - alertsPrev,
-    };
-  }, [collectionsAllPage, alertsAllPage, days, filterSiteId]);
-
-  const activeAlerts = useMemo(
-    () =>
-      (alertsPage?.items ?? [])
-        .filter((a) => !filterSiteId || a.siteId === filterSiteId)
-        .slice(0, 5),
-    [alertsPage, filterSiteId],
+  const confSiteIds = useMemo(
+    () => (conformiteGlobale?.sites ?? []).map((s) => String(s.id)),
+    [conformiteGlobale],
   );
+  const detailQueries = useConformiteDetails(filterSiteId ? [] : confSiteIds);
+  const loadingParams = !filterSiteId && detailQueries.some((q) => q.isLoading);
+  const paramsHorsNorme = aggregateParametresHorsNorme(detailQueries.map((q) => q.data));
 
-  const execSummary = useMemo(() => {
-    const filteredSites =
-      filterSiteId
-        ? (sitesPage?.items ?? []).filter((s) => s.id === filterSiteId)
-        : (sitesPage?.items ?? []);
-    const filteredAlerts = (alertsPage?.items ?? []).filter(
-      (a) => !filterSiteId || a.siteId === filterSiteId,
-    );
-    return computeExecutiveSummary(filteredSites, filteredAlerts);
-  }, [sitesPage, alertsPage, filterSiteId]);
-
-  const usersById = useMemo(() => {
+  const siteNameById = useMemo(() => {
     const map = new Map<string, string>();
-    mockUsers.forEach((u) => map.set(u.id, u.fullName));
+    allSites.forEach((s) => map.set(s.id, s.shortName));
     return map;
-  }, []);
+  }, [allSites]);
+
+  const locBySiteId = useMemo(() => {
+    const map = new Map<number, string>();
+    allSites.forEach((s) => {
+      map.set(Number(s.id), [s.location.commune, s.location.city].filter(Boolean).join(', '));
+    });
+    return map;
+  }, [allSites]);
 
   const today = new Date().toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
-
+  const selectedSiteName = filterSiteId ? (siteNameById.get(filterSiteId) ?? null) : null;
   const siteOptions = [
     { value: 'all', label: 'Tous les sites' },
-    ...(sitesPage?.items.map((s) => ({ value: s.id, label: s.shortName })) ?? []),
+    ...allSites.map((s) => ({ value: s.id, label: s.shortName })),
   ];
+
+  const handleExport = () => {
+    if (filterSiteId && conformiteSite) {
+      const rows = conformiteSite.composantes.flatMap((c) =>
+        c.parametres.map((p) => ({ composante: c.code, ...p })),
+      );
+      exportRowsToXlsx({
+        filename: `conformite_${selectedSiteName ?? filterSiteId}`,
+        sheetName: 'Conformité',
+        columns: [
+          { header: 'Composante', accessor: (r) => COMP_LABEL[r.composante] ?? r.composante },
+          { header: 'Paramètre', accessor: (r) => r.libelle },
+          { header: 'Valeur', accessor: (r) => r.valeurBrute },
+          { header: 'Unité', accessor: (r) => r.unite ?? '' },
+          { header: 'Statut', accessor: (r) => STATUT_SHORT[r.statut] ?? r.statut },
+          { header: 'Seuil min', accessor: (r) => r.seuil?.valeurMin ?? '' },
+          { header: 'Seuil max', accessor: (r) => r.seuil?.valeurMax ?? '' },
+        ],
+        rows,
+      });
+    } else if (conformiteGlobale) {
+      exportRowsToXlsx({
+        filename: 'conformite_sites',
+        sheetName: 'Conformité',
+        columns: [
+          { header: 'Site', accessor: (s) => s.nom },
+          { header: 'Localisation', accessor: (s) => locBySiteId.get(s.id) ?? '' },
+          { header: 'Global', accessor: (s) => STATUT_SHORT[s.statut] ?? s.statut },
+          ...COMP_ORDER.map((code) => ({
+            header: code,
+            accessor: (s: ConformiteSiteSummary) =>
+              s.composantes[code] ? (STATUT_SHORT[s.composantes[code]!] ?? s.composantes[code]) : '—',
+          })),
+        ],
+        rows: conformiteGlobale.sites,
+      });
+    }
+  };
+
+  const exportDisabled = filterSiteId ? !conformiteSite : !conformiteGlobale?.sites.length;
 
   return (
     <div className={styles.page}>
-      {/* ─── Hero + barre de contrôle (période, site, export) ─── */}
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
-          <span className={styles.heroEyebrow}>{sites.length} sites · {today}</span>
-          <h1 className={styles.heroTitle}>Tableau de bord</h1>
+          <span className={styles.heroEyebrow}>{allSites.length} sites suivis · {today}</span>
+          <h1 className={styles.heroTitle}>Tableau de bord environnemental</h1>
           <p className={styles.heroDescription}>
-            Vue stratégique consolidée — score environnemental, conformité, alertes et activité récente.
+            Suivi de la conformité environnementale des sites de teinture.
           </p>
         </div>
         <div className={styles.heroControls}>
-          <Tabs
-            value={period}
-            onChange={setPeriod}
-            items={PERIODS}
-            variant="pill"
-            aria-label="Période"
-          />
           <Select<string>
             value={siteFilter}
             onChange={setSiteFilter}
             options={siteOptions}
             aria-label="Filtrer par site"
           />
-          <Button variant="secondary" iconLeft={<Download size={14} />}>
+          <Button variant="secondary" iconLeft={<Download size={14} />} onClick={handleExport} disabled={exportDisabled}>
             Exporter
           </Button>
         </div>
       </header>
 
-      {/* ─── Vue stratégique (4 tiles : Score · Risque · Conformité · Alertes) ─── */}
-      <section className={styles.execGrid} aria-label="Vue stratégique">
-        <article
-          className={styles.execTile}
-          data-tone={
-            execSummary.envScore >= 75
-              ? 'success'
-              : execSummary.envScore >= 50
-                ? 'info'
-                : execSummary.envScore >= 25
-                  ? 'warning'
-                  : 'danger'
-          }
-        >
-          <header className={styles.execTileHead}>
-            <Gauge size={14} aria-hidden="true" />
-            <span className={styles.execLabel}>Score environnemental</span>
-          </header>
-          <div className={styles.execMain}>
-            <span className={styles.execValue}>
-              {isLoading ? '—' : execSummary.envScore}
-            </span>
-            <span className={styles.execUnit}>/ 100</span>
-          </div>
-          <span className={styles.execCaption}>
-            {execSummary.envScore >= 75
-              ? 'Performance globale satisfaisante'
-              : execSummary.envScore >= 50
-                ? 'À surveiller, plusieurs points d\'attention'
-                : execSummary.envScore >= 25
-                  ? 'Situation préoccupante, actions requises'
-                  : 'Crise environnementale, intervention urgente'}
-          </span>
-        </article>
-
-        <article className={styles.execTile} data-tone={RISK_TONE[execSummary.riskLevel]}>
-          <header className={styles.execTileHead}>
-            <Siren size={14} aria-hidden="true" />
-            <span className={styles.execLabel}>Niveau de risque</span>
-          </header>
-          <div className={styles.execMain}>
-            <span className={styles.execLevel}>
-              {RISK_LABEL[execSummary.riskLevel]}
-            </span>
-          </div>
-          <span className={styles.execCaption}>
-            {execSummary.criticalAlerts === 0
-              ? 'Aucune alerte critique active'
-              : `${execSummary.criticalAlerts} alerte${execSummary.criticalAlerts > 1 ? 's' : ''} critique${execSummary.criticalAlerts > 1 ? 's' : ''} en cours`}
-          </span>
-        </article>
-
-        <article
-          className={styles.execTile}
-          data-tone={execSummary.conformityRate >= 80 ? 'success' : 'warning'}
-        >
-          <header className={styles.execTileHead}>
-            <ShieldCheck size={14} aria-hidden="true" />
-            <span className={styles.execLabel}>Conformité globale</span>
-          </header>
-          <div className={styles.execMain}>
-            <span className={styles.execValue}>
-              {isLoading ? '—' : execSummary.conformityRate}
-            </span>
-            <span className={styles.execUnit}>%</span>
-          </div>
-          <span className={styles.execCaption}>
-            {execSummary.conformityRate >= 80
-              ? 'Cible 80 % atteinte'
-              : `${80 - execSummary.conformityRate} pts sous la cible 80 %`}
-          </span>
-          <ConformityBar value={execSummary.conformityRate} />
-        </article>
-
-        <article
-          className={styles.execTile}
-          data-tone={execSummary.criticalAlerts === 0 ? 'success' : 'danger'}
-        >
-          <header className={styles.execTileHead}>
-            <ShieldAlert size={14} aria-hidden="true" />
-            <span className={styles.execLabel}>Alertes critiques</span>
-          </header>
-          <div className={styles.execMain}>
-            <span className={styles.execValue}>{execSummary.criticalAlerts}</span>
-          </div>
-          <span className={styles.execCaption}>
-            {execSummary.sitesAtRisk === 0
-              ? 'Aucun site en alerte'
-              : `${execSummary.sitesAtRisk} site${execSummary.sitesAtRisk > 1 ? 's' : ''} sur ${execSummary.sitesTotal} concerné${execSummary.sitesAtRisk > 1 ? 's' : ''}`}
-          </span>
-        </article>
-      </section>
-
-      {/* ─── Activité opérationnelle (collectes · agents · bordereaux) ─── */}
-      <section className={styles.activityCard} aria-label="Activité opérationnelle">
-        <header className={styles.activityHead}>
-          <h2 className={styles.activityTitle}>Activité sur la période</h2>
-          <span className={styles.activityMeta}>
-            {kpis.totalCollections30d} collecte{kpis.totalCollections30d > 1 ? 's' : ''} · {days} derniers jours
-          </span>
-        </header>
-        <div className={styles.activityGrid}>
-          <div className={styles.activityItem}>
-            <header className={styles.activityItemHead}>
-              <FlaskConical size={14} aria-hidden="true" />
-              <span>Collectes {days} j</span>
-              {periodInsights.collectionsTrend !== 0 ? (
-                <span
-                  className={styles.activityTrend}
-                  data-tone={periodInsights.collectionsTrend >= 0 ? 'positive' : 'warning'}
-                >
-                  {periodInsights.collectionsTrend > 0 ? '+' : ''}
-                  {periodInsights.collectionsTrend}%
-                </span>
-              ) : null}
-            </header>
-            <span className={styles.activityValue}>
-              {isLoading ? '—' : kpis.totalCollections30d}
-            </span>
-            <footer className={styles.activityFoot}>
-              <span>précédent · {periodInsights.collectionsPrev}</span>
-              {periodInsights.collectionsSpark.length > 1 ? (
-                <Sparkline values={periodInsights.collectionsSpark} color="var(--color-primary)" />
-              ) : null}
-            </footer>
-          </div>
-
-          <div className={styles.activityItem}>
-            <header className={styles.activityItemHead}>
-              <UsersRound size={14} aria-hidden="true" />
-              <span>Agents actifs</span>
-            </header>
-            <span className={styles.activityValue}>
-              {isLoading ? '—' : kpis.activeAgents}
-            </span>
-            <footer className={styles.activityFoot}>
-              <span>sur {sites.length} sites couverts</span>
-            </footer>
-          </div>
-
-          <div className={styles.activityItem}>
-            <header className={styles.activityItemHead}>
-              <Beaker size={14} aria-hidden="true" />
-              <span>Bordereaux en attente</span>
-              {(kpis.pendingLab ?? 0) > 5 ? (
-                <span className={styles.activityTrend} data-tone="warning">
-                  élevé
-                </span>
-              ) : null}
-            </header>
-            <span className={styles.activityValue}>
-              {isLoading ? '—' : (kpis.pendingLab ?? 0)}
-            </span>
-            <footer className={styles.activityFoot}>
-              <span>à transmettre au laboratoire</span>
-            </footer>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Charts ─── */}
-      <div className={styles.split}>
-        <section className={styles.panel} aria-labelledby="ph-trend-heading">
-          <header className={styles.panelHeader}>
-            <h2 id="ph-trend-heading" className={styles.panelTitle}>
-              Évolution du pH
-            </h2>
-            <span className={styles.panelTag}>OMS 6,5–8,5</span>
-          </header>
-          <div className={styles.panelBody}>
-            {isLoading ? (
-              <Skeleton height={260} />
-            ) : (
-              <LineChart
-                labels={phTimeseries.labels}
-                series={phTimeseries.series}
-                height={260}
-                threshold={{ value: PH_LIMIT_HIGH, label: 'Seuil OMS 8,5' }}
-                fillArea
-              />
-            )}
-          </div>
-        </section>
-
-        <section className={styles.panel} aria-labelledby="pm25-heading">
-          <header className={styles.panelHeader}>
-            <h2 id="pm25-heading" className={styles.panelTitle}>
-              PM2,5 air par site
-            </h2>
-            <span className={styles.panelTag}>OMS 25 µg/m³</span>
-          </header>
-          <div className={styles.panelBody}>
-            {isLoading ? (
-              <Skeleton height={260} />
-            ) : pm25.values.length === 0 ? (
-              <p className={styles.empty}>Aucune mesure</p>
-            ) : (
-              <Pm25Ranking
-                labels={pm25.labels}
-                values={pm25.values}
-                threshold={PM25_OMS_24H}
-              />
-            )}
-          </div>
-        </section>
-      </div>
-
-      {/* ─── Heatmap ─── */}
-      <section className={styles.panel} aria-labelledby="heatmap-heading">
-        <header className={styles.panelHeader}>
-          <h2 id="heatmap-heading" className={styles.panelTitle}>
-            Conformité par site × domaine
-          </h2>
-          <div className={styles.heatmapLegend}>
-            <span className={styles.legendDot} data-tone="ok" /> Conforme
-            <span className={styles.legendDot} data-tone="warn" /> À surveiller
-            <span className={styles.legendDot} data-tone="crit" /> Critique
-          </div>
-        </header>
-        <div className={styles.panelBody}>
-          {isLoading ? (
-            <Skeleton height={280} />
-          ) : (
-            <ConformityHeatmap
-              sites={heatmap.sites}
-              domains={heatmap.domains}
-              cells={heatmap.cells}
-              domainLabels={heatmap.domainLabels}
-            />
-          )}
-        </div>
-      </section>
-
-      {/* ─── Collectes + Alertes ─── */}
-      <div className={styles.bottomSplit}>
-        <section className={styles.panel} aria-labelledby="recent-heading">
-          <header className={styles.panelHeader}>
-            <h2 id="recent-heading" className={styles.panelTitle}>
-              Dernières collectes
-            </h2>
-            <Link to="/collecte" className={styles.panelLink}>
-              Tout voir <ArrowRight size={12} />
-            </Link>
-          </header>
-          {isLoading ? (
-            <div style={{ padding: 'var(--space-4)' }}>
-              <Skeleton height={220} />
-            </div>
-          ) : recentCollections.length === 0 ? (
-            <p className={styles.empty}>Aucune collecte</p>
-          ) : (
-            recentCollections.slice(0, 6).map((c) => {
-              const initials = (c.siteName ?? '--').slice(0, 2).toUpperCase();
-              return (
-                <Link key={c.id} to={`/collecte/${c.id}`} className={styles.recentRow}>
-                  <span className={styles.recentInitials} aria-hidden="true">{initials}</span>
-                  <div className={styles.recentMain}>
-                    <span className={styles.recentSite}>{c.siteName}</span>
-                    <span className={styles.recentMeta}>
-                      {usersById.get(c.agentId) ?? c.agentId} · {c.measurementsCount} mesures
-                    </span>
-                  </div>
-                  <div className={styles.recentTrailing}>
-                    <Badge size="sm" variant={STATUS_VARIANT[c.status]}>
-                      {STATUS_LABEL[c.status]}
-                    </Badge>
-                    <span className={styles.recentTime}>
-                      {formatRelativeTime(c.collectedAt)}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })
-          )}
-        </section>
-
-        <section className={styles.panel} aria-labelledby="alerts-heading">
-          <header className={styles.panelHeader}>
-            <h2 id="alerts-heading" className={styles.panelTitle}>
-              Alertes actives
-              <span className={styles.panelCount}>{activeAlerts.length}</span>
-            </h2>
-            <Link to="/alertes" className={styles.panelLink}>
-              Tout voir <ArrowRight size={12} />
-            </Link>
-          </header>
-          {activeAlerts.length === 0 ? (
-            <p className={styles.empty}>Aucune alerte active</p>
-          ) : (
-            activeAlerts.map((a) => {
-              const site = sitesPage?.items.find((s) => s.id === a.siteId);
-              const Icon = CATEGORY_ICON[a.category];
-              return (
-                <Link key={a.id} to="/alertes" className={styles.alertRow} data-severity={a.severity}>
-                  <span className={styles.alertIcon} aria-hidden="true">
-                    <Icon size={14} />
-                  </span>
-                  <div className={styles.alertContent}>
-                    <span className={styles.alertTitle}>{a.title}</span>
-                    <span className={styles.alertMeta}>
-                      {site?.shortName ?? '—'} · {formatRelativeTime(a.raisedAt)}
-                    </span>
-                  </div>
-                  <span className={styles.alertSeverityDot} data-severity={a.severity} aria-hidden="true" />
-                </Link>
-              );
-            })
-          )}
-        </section>
-      </div>
+      {filterSiteId ? (
+        <SiteEnvSection
+          siteId={filterSiteId}
+          siteName={selectedSiteName}
+          data={conformiteSite}
+          isLoading={loadingSite}
+        />
+      ) : (
+        <GlobalEnvSection
+          data={conformiteGlobale}
+          isLoading={loadingGlobale}
+          locBySiteId={locBySiteId}
+          paramsHorsNorme={paramsHorsNorme}
+          loadingParams={loadingParams}
+        />
+      )}
     </div>
   );
 }
 
-/* ─────────── Headline composants ─────────── */
+/* ═══════════════════════════════════════════════════════════
+   Vue agrégée — tous les sites (conformité labo)
+═══════════════════════════════════════════════════════════ */
 
-function ConformityBar({ value }: { value: number }) {
-  return (
-    <div className={styles.confBar} aria-hidden="true">
-      <div className={styles.confBarFill} style={{ width: `${Math.max(2, Math.min(100, value))}%` }} />
-    </div>
-  );
+interface ComposanteAgg {
+  code: string;
+  conformes: number;
+  surveiller: number;
+  critiques: number;
+  total: number;
+  statut: StatutConformite;
+  tauxDominant: number;
 }
 
-function Sparkline({ values, color }: { values: number[]; color: string }) {
-  if (values.length < 2) return null;
-  const w = 56;
-  const h = 18;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const step = w / (values.length - 1);
-  const pts = values.map((v, i) => {
-    const x = i * step;
-    const y = h - ((v - min) / range) * (h - 2) - 1;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const path = `M${pts.join(' L')}`;
-  const area = `${path} L${w},${h} L0,${h} Z`;
+function computeComposantes(sites: ConformiteSiteSummary[]): ComposanteAgg[] {
+  const codes = Array.from(new Set(sites.flatMap((s) => Object.keys(s.composantes))));
+  return codes
+    .map((code) => {
+      const rel = sites.filter((s) => code in s.composantes);
+      const total = rel.length;
+      const conformes = rel.filter((s) => s.composantes[code] === 'CONFORME').length;
+      const surveiller = rel.filter((s) => s.composantes[code] === 'A_SURVEILLER').length;
+      const critiques = rel.filter((s) => s.composantes[code] === 'CRITIQUE').length;
+      const statut: StatutConformite =
+        critiques > 0 ? 'CRITIQUE' : surveiller > conformes ? 'A_SURVEILLER' : 'CONFORME';
+      const dominant =
+        statut === 'CRITIQUE' ? critiques : statut === 'A_SURVEILLER' ? surveiller : conformes;
+      return { code, conformes, surveiller, critiques, total, statut, tauxDominant: total > 0 ? (dominant / total) * 100 : 0 };
+    })
+    .sort((a, b) => COMP_ORDER.indexOf(a.code) - COMP_ORDER.indexOf(b.code));
+}
+
+interface ParametreHorsNorme {
+  key: string;
+  libelle: string;
+  unite: string | null;
+  exempleValeur: string;
+  seuilTxt: string;
+  sitesCount: number;
+  siteNames: string[];
+}
+
+function aggregateParametresHorsNorme(
+  details: Array<ConformiteSiteDetail | undefined>,
+): ParametreHorsNorme[] {
+  const map = new Map<string, ParametreHorsNorme>();
+  for (const d of details) {
+    if (!d) continue;
+    for (const comp of d.composantes) {
+      for (const p of comp.parametres) {
+        if (p.statut !== 'NON_CONFORME' && p.statut !== 'CRITIQUE') continue;
+        const key = p.code || p.libelle;
+        const seuilTxt = p.seuil
+          ? `${p.seuil.valeurMin ?? '—'}–${p.seuil.valeurMax ?? '—'} ${p.seuil.unite ?? ''}`.trim()
+          : '—';
+        const existing = map.get(key);
+        if (existing) {
+          existing.sitesCount += 1;
+          existing.siteNames.push(d.site.nom);
+        } else {
+          map.set(key, {
+            key,
+            libelle: p.libelle || p.code,
+            unite: p.unite,
+            exempleValeur: `${p.valeurBrute}${p.unite ? ` ${p.unite}` : ''}`,
+            seuilTxt,
+            sitesCount: 1,
+            siteNames: [d.site.nom],
+          });
+        }
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.sitesCount - a.sitesCount);
+}
+
+function StatutPill({ statut }: { statut: string }) {
+  const cls =
+    statut === 'CONFORME' ? styles.pillOk
+    : statut === 'CRITIQUE' || statut === 'NON_CONFORME' ? styles.pillCrit
+    : statut === 'A_SURVEILLER' ? styles.pillWarn
+    : styles.pillNd;
+  return <span className={`${styles.envPill} ${cls}`}>{STATUT_SHORT[statut] ?? statut}</span>;
+}
+
+function DonutChart({ conformes, surveiller, critiques, total }: {
+  conformes: number; surveiller: number; critiques: number; total: number;
+}) {
+  const SIZE = 190; const C = SIZE / 2; const R = 68; const SW = 26;
+  const circ = 2 * Math.PI * R;
+  const segs = [
+    { n: critiques, color: 'var(--color-danger)' },
+    { n: surveiller, color: 'var(--color-amber)' },
+    { n: conformes, color: 'var(--color-success)' },
+  ].filter((s) => s.n > 0 && total > 0);
+  let cum = 0;
   return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      width={w}
-      height={h}
-      className={styles.sparkline}
-      aria-hidden="true"
-    >
-      <path d={area} fill={color} fillOpacity="0.10" />
-      <path d={path} fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" className={styles.donutSvg}>
+      <circle cx={C} cy={C} r={R} fill="none" stroke="var(--color-border)" strokeWidth={SW} />
+      {segs.map((seg, i) => {
+        const dash = (seg.n / total) * circ;
+        const offset = circ * 0.25 - cum;
+        cum += dash;
+        return (
+          <circle key={i} cx={C} cy={C} r={R} fill="none" stroke={seg.color} strokeWidth={SW}
+            strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={offset} />
+        );
+      })}
+      <text x={C} y={C - 6} textAnchor="middle" className={styles.donutBig}>{total}</text>
+      <text x={C} y={C + 13} textAnchor="middle" className={styles.donutSub}>Sites suivis</text>
     </svg>
+  );
+}
+
+function EnvKpi({ icon, label, value, sub, tone, progress }: {
+  icon: ReactNode; label: string; value: string; sub: string;
+  tone: 'neutral' | 'success' | 'warning' | 'danger'; progress?: number;
+}) {
+  return (
+    <div className={styles.envKpi} data-tone={tone}>
+      <header className={styles.envKpiTop}>
+        <span className={styles.envKpiIcon} data-tone={tone}>{icon}</span>
+        <span className={styles.envKpiLabel}>{label}</span>
+      </header>
+      <span className={styles.envKpiValue}>{value}</span>
+      <span className={styles.envKpiSub}>{sub}</span>
+      {progress !== undefined ? (
+        <div className={styles.envKpiTrack}>
+          <div className={styles.envKpiBar} data-tone={tone} style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+interface GlobalEnvSectionProps {
+  data: ConformiteGlobale | undefined;
+  isLoading: boolean;
+  locBySiteId: Map<number, string>;
+  paramsHorsNorme: ParametreHorsNorme[];
+  loadingParams: boolean;
+}
+
+function GlobalEnvSection({ data, isLoading, locBySiteId, paramsHorsNorme, loadingParams }: GlobalEnvSectionProps) {
+  if (isLoading) {
+    return (
+      <div className={styles.envCard}>
+        <div style={{ padding: 'var(--space-5)' }}><Skeleton height={400} /></div>
+      </div>
+    );
+  }
+  if (!data || data.sites.length === 0) {
+    return (
+      <div className={styles.envCard}>
+        <EmptyState
+          icon={<ShieldCheck size={24} />}
+          title="Aucune donnée de conformité"
+          description="Aucun résultat d'analyse laboratoire n'est encore disponible pour les sites suivis."
+        />
+      </div>
+    );
+  }
+
+  const { resume, sites } = data;
+  const composantes = computeComposantes(sites);
+  const total = resume.nombreSites;
+
+  const risqueTone =
+    resume.niveauRisqueGlobal === 'FAIBLE' ? 'success'
+    : resume.niveauRisqueGlobal === 'MODERE' ? 'warning'
+    : 'danger';
+
+  const pct = (n: number) => (total > 0 ? `${((n / total) * 100).toFixed(1)} %` : '0 %');
+
+  return (
+    <section className={styles.envGroup} aria-label="Conformité environnementale — tous les sites">
+      <div className={styles.envCard}>
+        <header className={styles.envHead}>
+          <div>
+            <h2 className={styles.envTitle}>Conformité environnementale</h2>
+            <p className={styles.envMeta}>État actuel — résultats d'analyses laboratoire, tous sites confondus</p>
+          </div>
+          <span className={`${styles.risqueBadge} ${styles[`risque_${risqueTone}`]}`}>
+            Risque {RISQUE_LABEL[resume.niveauRisqueGlobal] ?? resume.niveauRisqueGlobal}
+          </span>
+        </header>
+
+        <div className={styles.envKpiGrid}>
+          <EnvKpi icon={<ShieldCheck size={18} />} label="Taux de conformité global"
+            value={`${resume.tauxConformiteGlobal.toFixed(1)} %`} sub="Objectif : ≥ 85 %"
+            tone={resume.tauxConformiteGlobal >= 85 ? 'success' : resume.tauxConformiteGlobal >= 60 ? 'warning' : 'danger'}
+            progress={resume.tauxConformiteGlobal} />
+          <EnvKpi icon={<ShieldAlert size={18} />} label="Sites critiques"
+            value={String(resume.sitesCritiques)} sub={`${pct(resume.sitesCritiques)} des sites`}
+            tone={resume.sitesCritiques > 0 ? 'danger' : 'success'} />
+          <EnvKpi icon={<Eye size={18} />} label="Sites à surveiller"
+            value={String(resume.sitesASurveiller)} sub={`${pct(resume.sitesASurveiller)} des sites`}
+            tone={resume.sitesASurveiller > 0 ? 'warning' : 'success'} />
+          <EnvKpi icon={<Gauge size={18} />} label="Niveau de risque global"
+            value={RISQUE_LABEL[resume.niveauRisqueGlobal] ?? resume.niveauRisqueGlobal}
+            sub={RISQUE_TEXT[resume.niveauRisqueGlobal] ?? ''} tone={risqueTone} />
+          <EnvKpi icon={<UsersRound size={18} />} label="Sites suivis"
+            value={String(resume.nombreSites)} sub="Résultats labo disponibles" tone="neutral" />
+        </div>
+      </div>
+
+      <div className={styles.envRow}>
+        <div className={`${styles.envCard} ${styles.envComposanteCol}`}>
+          <h3 className={styles.envSubTitle}>Conformité par composante</h3>
+          <div className={styles.envCompGrid}>
+            {composantes.map((c) => (
+              <div key={c.code} className={styles.envCompTile}>
+                <div className={styles.envCompHead}>
+                  <span className={styles.envCompCode}>{COMP_LABEL[c.code] ?? c.code}</span>
+                  <StatutPill statut={c.statut} />
+                </div>
+                <span className={styles.envCompTaux}>{c.tauxDominant.toFixed(1)} %</span>
+                <div className={styles.envCompTrack}>
+                  <div className={styles.envCompFill}
+                    style={{ width: `${Math.min(100, c.tauxDominant)}%` }} />
+                </div>
+                <div className={styles.envCompCounters}>
+                  <span className={styles.ccConf}>{c.conformes} conformes</span>
+                  <span className={styles.ccDot}>·</span>
+                  <span className={styles.ccWarn}>{c.surveiller} à surveiller</span>
+                  <span className={styles.ccDot}>·</span>
+                  <span className={styles.ccCrit}>{c.critiques} critiques</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={`${styles.envCard} ${styles.envDonutCol}`}>
+          <h3 className={styles.envSubTitle}>Répartition des sites par statut</h3>
+          <div className={styles.envDonutInner}>
+            <DonutChart conformes={resume.sitesConformes} surveiller={resume.sitesASurveiller}
+              critiques={resume.sitesCritiques} total={total} />
+            <ul className={styles.donutLegend}>
+              <li className={styles.donutLegendRow}>
+                <span className={styles.ldCrit} aria-hidden="true" />
+                <span className={styles.ldLabel}>Critiques</span>
+                <span className={styles.ldCount}>{resume.sitesCritiques} ({pct(resume.sitesCritiques)})</span>
+              </li>
+              <li className={styles.donutLegendRow}>
+                <span className={styles.ldWarn} aria-hidden="true" />
+                <span className={styles.ldLabel}>À surveiller</span>
+                <span className={styles.ldCount}>{resume.sitesASurveiller} ({pct(resume.sitesASurveiller)})</span>
+              </li>
+              <li className={styles.donutLegendRow}>
+                <span className={styles.ldOk} aria-hidden="true" />
+                <span className={styles.ldLabel}>Conformes</span>
+                <span className={styles.ldCount}>{resume.sitesConformes} ({pct(resume.sitesConformes)})</span>
+              </li>
+            </ul>
+          </div>
+          <p className={styles.donutTimestamp}><Clock size={11} />Snapshot labo — non daté par période</p>
+        </div>
+      </div>
+
+      <div className={styles.envRow}>
+        <div className={`${styles.envCard} ${styles.envTableWrap}`}>
+          <header className={styles.envTableHead}>
+            <h3 className={styles.envSubTitle}>Conformité par site</h3>
+            <span className={styles.envTableCount}>{sites.length} site{sites.length > 1 ? 's' : ''}</span>
+          </header>
+          <div className={styles.envTableScroll}>
+            <table className={styles.envTable}>
+              <thead>
+                <tr>
+                  <th>Site</th>
+                  <th>Localisation</th>
+                  <th>Global</th>
+                  {composantes.map((c) => <th key={c.code}>{c.code}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {sites.map((s) => (
+                  <tr key={s.id}>
+                    <td className={styles.envTdSite}>{s.nom}</td>
+                    <td className={styles.envTdLoc}>{locBySiteId.get(s.id) ?? '—'}</td>
+                    <td><StatutPill statut={s.statut} /></td>
+                    {composantes.map((c) => (
+                      <td key={c.code}>
+                        {s.composantes[c.code]
+                          ? <StatutPill statut={s.composantes[c.code] as StatutConformite} />
+                          : <span className={styles.envTdNd}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className={`${styles.envCard} ${styles.paramPanel}`}>
+          <header className={styles.paramPanelHead}>
+            <h3 className={styles.envSubTitle}>Paramètres hors norme</h3>
+          </header>
+          {loadingParams ? (
+            <div style={{ padding: 'var(--space-4)' }}><Skeleton height={220} /></div>
+          ) : paramsHorsNorme.length === 0 ? (
+            <p className={styles.empty}>Aucun paramètre hors norme actuellement.</p>
+          ) : (
+            <ul className={styles.paramList}>
+              {paramsHorsNorme.slice(0, 6).map((p) => (
+                <li key={p.key} className={styles.paramRow}>
+                  <div className={styles.paramContent}>
+                    <span className={styles.paramName}>{p.libelle}</span>
+                    <span className={styles.paramMeta}>ex. {p.exempleValeur} · seuil {p.seuilTxt}</span>
+                  </div>
+                  <span className={styles.paramCount}>
+                    {p.sitesCount} site{p.sitesCount > 1 ? 's' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {paramsHorsNorme.length > 6 ? (
+            <p className={styles.paramFoot}>+ {paramsHorsNorme.length - 6} autre{paramsHorsNorme.length - 6 > 1 ? 's' : ''} paramètre{paramsHorsNorme.length - 6 > 1 ? 's' : ''} hors norme</p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Vue détaillée — un seul site sélectionné
+═══════════════════════════════════════════════════════════ */
+
+interface SiteEnvSectionProps {
+  siteId: string;
+  siteName: string | null;
+  data: ConformiteSiteDetail | undefined;
+  isLoading: boolean;
+}
+
+function SiteEnvSection({ siteId, siteName, data, isLoading }: SiteEnvSectionProps) {
+  const risqueTone =
+    data?.resume.niveauRisque === 'FAIBLE' ? 'success'
+    : data?.resume.niveauRisque === 'MODERE' ? 'warning'
+    : data ? 'danger' : undefined;
+
+  return (
+    <section className={styles.envGroup} aria-label={`Conformité environnementale — ${siteName ?? siteId}`}>
+      <header className={styles.envPlainHead}>
+        <div>
+          <h2 className={styles.envTitle}>Conformité environnementale — {siteName ?? '…'}</h2>
+          <p className={styles.envMeta}>État actuel — résultats d'analyses laboratoire pour ce site</p>
+        </div>
+        {risqueTone ? (
+          <span className={`${styles.risqueBadge} ${styles[`risque_${risqueTone}`]}`}>
+            Risque {RISQUE_LABEL[data!.resume.niveauRisque] ?? data!.resume.niveauRisque}
+          </span>
+        ) : null}
+      </header>
+      {isLoading ? (
+        <div className={styles.envCard}>
+          <div style={{ padding: 'var(--space-5)' }}><Skeleton height={360} /></div>
+        </div>
+      ) : (
+        <ConformiteSitePanel siteId={siteId} />
+      )}
+    </section>
   );
 }

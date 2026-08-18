@@ -5,7 +5,9 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  ExternalLink,
   FileSpreadsheet,
+  FileText,
   ListChecks,
   MapPin,
   Plus,
@@ -24,6 +26,7 @@ import {
   Modal,
   Select,
   Skeleton,
+  StructuredText,
   Textarea,
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -32,6 +35,8 @@ import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { INDICATOR_RULES } from '@/features/collection/lib/indicatorRules';
+import { useRapportsRecommandations } from '@/features/reporting/hooks/useRapportsRecommandations';
+import type { RapportRecommandation } from '@/features/reporting/hooks/useRapportsRecommandations';
 import { mockUsers } from '@/mocks/fixtures/users';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import {
@@ -56,6 +61,16 @@ import styles from './RecommandationsPage.module.css';
 
 type StatutFilter = 'all' | RecommandationStatut;
 type PrioriteFilter = 'all' | RecommandationPriorite;
+
+/** Boîte de réception unifiée : suivi actionnable (CRUD) + texte brut issu
+ * des rapports labo (lecture seule, non persisté). */
+type MergedItem =
+  | { kind: 'reco'; reco: Recommandation }
+  | { kind: 'rapport'; item: RapportRecommandation };
+
+function mergedId(m: MergedItem): string {
+  return m.kind === 'reco' ? m.reco.id : m.item.id;
+}
 
 interface FormState {
   titre: string;
@@ -86,6 +101,7 @@ export function RecommandationsPage() {
   const { data: page, isLoading } = useRecommandations();
   const { data: sitesPage } = useSites();
   const { data: collectionsPage } = useCollections({});
+  const { items: rapportRecos } = useRapportsRecommandations();
   const createMut = useCreateRecommandation();
   const updateMut = useUpdateRecommandation();
   const deleteMut = useDeleteRecommandation();
@@ -98,21 +114,23 @@ export function RecommandationsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
-  const items = useMemo(() => {
+  const q = query.trim().toLowerCase();
+
+  /* Tri secondaire : on pousse les recos terminees (resolue, annulee)
+   * en bas de la boite de reception — les actives restent visibles en
+   * priorite. On preserve l'ordre serveur (createdAt desc) au sein
+   * de chaque groupe. */
+  const statutOrder: Record<RecommandationStatut, number> = {
+    proposee: 0,
+    en_cours: 0,
+    suivie: 0,
+    resolue: 1,
+    non_appliquee: 1,
+    annulee: 2,
+  };
+
+  const recoItems = useMemo(() => {
     const all = page?.items ?? [];
-    const q = query.trim().toLowerCase();
-    /* Tri secondaire : on pousse les recos terminees (resolue, annulee)
-     * en bas de la boite de reception — les actives restent visibles en
-     * priorite. On preserve l'ordre serveur (createdAt desc) au sein
-     * de chaque groupe. */
-    const statutOrder: Record<RecommandationStatut, number> = {
-      proposee: 0,
-      en_cours: 0,
-      suivie: 0,
-      resolue: 1,
-      non_appliquee: 1,
-      annulee: 2,
-    };
     return all
       .filter((r) => {
         if (statutFilter !== 'all' && r.statut !== statutFilter) return false;
@@ -122,13 +140,45 @@ export function RecommandationsPage() {
         return true;
       })
       .sort((a, b) => statutOrder[a.statut] - statutOrder[b.statut]);
-  }, [page, statutFilter, prioriteFilter, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, statutFilter, prioriteFilter, q]);
 
-  const selected = items.find((r) => r.id === selectedId) ?? items[0] ?? null;
+  /* Recommandations texte brut issues des rapports labo confirmés : elles
+   * n'ont ni statut ni priorité, donc un filtre Statut/Priorité actif les
+   * exclut (elles ne peuvent pas y correspondre). */
+  const rapportItems = useMemo(() => {
+    if (statutFilter !== 'all' || prioriteFilter !== 'all') return [];
+    return rapportRecos.filter((r) => {
+      if (!q) return true;
+      return r.texte.toLowerCase().includes(q) || r.siteNom.toLowerCase().includes(q);
+    });
+  }, [rapportRecos, statutFilter, prioriteFilter, q]);
+
+  const mergedItems = useMemo<MergedItem[]>(() => {
+    const fromReco: MergedItem[] = recoItems.map((reco) => ({ kind: 'reco', reco }));
+    const fromRapport: MergedItem[] = rapportItems.map((item) => ({ kind: 'rapport', item }));
+    /* Les recommandations de rapport rejoignent le groupe "actif" (bucket 0),
+     * au même titre qu'une reco proposée/en cours — elles ne sont jamais
+     * "terminées" au sens du workflow de suivi. */
+    return [...fromRapport, ...fromReco].sort((a, b) => {
+      const bucketA = a.kind === 'rapport' ? 0 : statutOrder[a.reco.statut];
+      const bucketB = b.kind === 'rapport' ? 0 : statutOrder[b.reco.statut];
+      return bucketA - bucketB;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recoItems, rapportItems]);
+
+  const selected = mergedItems.find((m) => mergedId(m) === selectedId) ?? mergedItems[0] ?? null;
 
   const sitesById = useMemo(() => {
     const map = new Map<string, string>();
     (sitesPage?.items ?? []).forEach((s) => map.set(s.id, s.shortName));
+    return map;
+  }, [sitesPage]);
+
+  const sitesByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    (sitesPage?.items ?? []).forEach((s) => map.set(s.codeSite, s.id));
     return map;
   }, [sitesPage]);
 
@@ -232,23 +282,27 @@ export function RecommandationsPage() {
           <Button
             variant="excel"
             iconLeft={<FileSpreadsheet size={16} />}
-            disabled={items.length === 0}
+            disabled={recoItems.length === 0}
             onClick={() => {
               exportRowsToXlsx({
                 filename: 'recommandations',
                 sheetName: 'Recommandations',
                 columns: [
-                  { header: 'ID', accessor: (r) => r.id },
-                  { header: 'Titre', accessor: (r) => r.titre },
-                  { header: 'Priorité', accessor: (r) => PRIORITE_LABEL[r.niveauPriorite] },
-                  { header: 'Statut', accessor: (r) => STATUT_LABEL[r.statut] },
-                  { header: 'Site', accessor: (r) => (r.siteId ? sitesById.get(r.siteId) ?? '' : 'Transversal') },
-                  { header: 'Créée le', accessor: (r) => r.createdAt },
-                  { header: 'Échéance', accessor: (r) => r.dateEcheance ?? '' },
-                  { header: 'En retard', accessor: (r) => (isOverdue(r) ? 'Oui' : 'Non') },
-                  { header: 'Description', accessor: (r) => r.description },
+                  { header: 'ID', accessor: (r: Recommandation) => r.id },
+                  { header: 'Titre', accessor: (r: Recommandation) => r.titre },
+                  { header: 'Priorité', accessor: (r: Recommandation) => PRIORITE_LABEL[r.niveauPriorite] },
+                  { header: 'Statut', accessor: (r: Recommandation) => STATUT_LABEL[r.statut] },
+                  {
+                    header: 'Site',
+                    accessor: (r: Recommandation) =>
+                      r.siteId ? sitesById.get(r.siteId) ?? '' : 'Transversal',
+                  },
+                  { header: 'Créée le', accessor: (r: Recommandation) => r.createdAt },
+                  { header: 'Échéance', accessor: (r: Recommandation) => r.dateEcheance ?? '' },
+                  { header: 'En retard', accessor: (r: Recommandation) => (isOverdue(r) ? 'Oui' : 'Non') },
+                  { header: 'Description', accessor: (r: Recommandation) => r.description },
                 ],
-                rows: items,
+                rows: recoItems,
               });
             }}
           >
@@ -301,7 +355,7 @@ export function RecommandationsPage() {
 
       {isLoading ? (
         <Skeleton height={420} />
-      ) : items.length === 0 ? (
+      ) : mergedItems.length === 0 ? (
         <EmptyState
           icon={<ListChecks size={28} />}
           title="Aucune recommandation"
@@ -316,11 +370,45 @@ export function RecommandationsPage() {
           <aside className={styles.list} aria-label="Boîte de réception des recommandations">
             <header className={styles.listHead}>
               <span className={styles.listTitle}>Boîte de réception</span>
-              <span className={styles.listCount}>{items.length}</span>
+              <span className={styles.listCount}>{mergedItems.length}</span>
             </header>
             <div className={styles.listScroll}>
-              {items.map((r) => {
-                const active = (selected?.id ?? items[0]?.id) === r.id;
+              {mergedItems.map((m) => {
+                const active = selected !== null && mergedId(selected) === mergedId(m);
+
+                if (m.kind === 'rapport') {
+                  const r = m.item;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      className={`${styles.row} ${active ? styles.rowActive : ''}`}
+                      onClick={() => setSelectedId(r.id)}
+                      data-statut="proposee"
+                    >
+                      <span className={styles.rowMain}>
+                        <span className={styles.rowTitle}>{r.texte}</span>
+                        <span className={styles.rowMeta}>
+                          <MapPin size={11} aria-hidden="true" /> {r.siteCode || r.siteNom}
+                          {r.dateEmission ? (
+                            <>
+                              <span className={styles.rowDot} aria-hidden="true" />
+                              <Calendar size={11} aria-hidden="true" />
+                              {formatDateTime(r.dateEmission, 'dd MMM yyyy')}
+                            </>
+                          ) : null}
+                        </span>
+                      </span>
+                      <span className={styles.rowRight}>
+                        <Badge size="sm" variant="neutral">
+                          <FileText size={11} /> Rapport
+                        </Badge>
+                      </span>
+                    </button>
+                  );
+                }
+
+                const r = m.reco;
                 const siteLabel = r.siteId ? sitesById.get(r.siteId) ?? r.siteId : 'Transversal';
                 return (
                   <button
@@ -362,12 +450,17 @@ export function RecommandationsPage() {
           </aside>
 
           <section className={styles.detail} aria-label="Lecture de la recommandation">
-            {selected ? (
+            {selected && selected.kind === 'rapport' ? (
+              <RapportRecommandationDetail
+                item={selected.item}
+                siteId={sitesByCode.get(selected.item.siteCode)}
+              />
+            ) : selected && selected.kind === 'reco' ? (
               <RecommandationDetail
-                reco={selected}
-                siteName={selected.siteId ? sitesById.get(selected.siteId) : undefined}
-                onStatut={(s) => updateStatut(selected, s)}
-                onDelete={() => handleDelete(selected)}
+                reco={selected.reco}
+                siteName={selected.reco.siteId ? sitesById.get(selected.reco.siteId) : undefined}
+                onStatut={(s) => updateStatut(selected.reco, s)}
+                onDelete={() => handleDelete(selected.reco)}
                 isUpdating={updateMut.isPending}
               />
             ) : (
@@ -497,6 +590,75 @@ export function RecommandationsPage() {
   );
 }
 
+/** Lecture seule : recommandation texte issue d'un rapport labo confirmé.
+ * Pas de statut ni de responsable — juste un renvoi vers le rapport et le site. */
+function RapportRecommandationDetail({
+  item,
+  siteId,
+}: {
+  item: RapportRecommandation;
+  siteId?: string;
+}) {
+  return (
+    <>
+      <header className={styles.detailHead}>
+        <div className={styles.detailHeadMain}>
+          <div className={styles.detailEyebrow}>
+            <Badge size="sm" variant="neutral">
+              <FileText size={11} /> Issue d'un rapport labo
+            </Badge>
+          </div>
+          <h2 className={styles.detailTitle}>Recommandation — {item.siteCode || item.siteNom}</h2>
+          <div className={styles.detailMeta}>
+            {siteId ? (
+              <Link to={`/sites/${siteId}`} className={styles.detailMetaLink}>
+                <MapPin size={12} aria-hidden="true" /> {item.siteNom}
+              </Link>
+            ) : (
+              <span className={styles.detailMetaItem}>
+                <MapPin size={12} aria-hidden="true" /> {item.siteNom}
+              </span>
+            )}
+            <Link to={`/reporting?rapport=${item.rapportId}`} className={styles.detailMetaLink}>
+              <ExternalLink size={12} aria-hidden="true" /> Voir le rapport
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <article className={styles.detailBody}>
+        <section className={styles.descriptionBlock} aria-label="Description">
+          <StructuredText text={item.texte} className={styles.detailDescription} />
+        </section>
+
+        <section className={styles.detailStrip} aria-label="Contexte">
+          <div className={styles.detailStripItem}>
+            <span className={styles.detailStripLabel}>
+              <ListChecks size={11} aria-hidden="true" /> Mission
+            </span>
+            <span className={styles.detailStripValue}>{item.mission || '—'}</span>
+          </div>
+          <div className={styles.detailStripItem}>
+            <span className={styles.detailStripLabel}>
+              <Calendar size={11} aria-hidden="true" /> Émission
+            </span>
+            <span className={styles.detailStripValue}>
+              {item.dateEmission ? formatDateTime(item.dateEmission, 'dd MMM yyyy') : '—'}
+            </span>
+          </div>
+        </section>
+      </article>
+
+      <footer className={styles.detailActions}>
+        <span className={styles.muted}>
+          Recommandation en lecture seule, extraite du rapport d'analyse — aucun suivi de statut
+          n'est possible ici.
+        </span>
+      </footer>
+    </>
+  );
+}
+
 interface DetailProps {
   reco: Recommandation;
   siteName?: string;
@@ -575,7 +737,7 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
 
       <article className={styles.detailBody}>
         <section className={styles.descriptionBlock} aria-label="Description">
-          <p className={styles.detailDescription}>{reco.description}</p>
+          <StructuredText text={reco.description} className={styles.detailDescription} />
         </section>
 
         <section className={styles.detailStrip} aria-label="Suivi">

@@ -18,7 +18,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SORTIE = resolve(RACINE, 'public/icons');
+/* Ecrit dans public/img/, pas public/icons/ : ce chemin est bloque en
+ * production par une couche de securite de l'hebergeur (404 sur tout
+ * /icons/* malgre des fichiers presents et des permissions correctes). */
+const SORTIE = resolve(RACINE, 'public/img');
 
 /* ── Charte (src/styles/tokens.css + LoginPage.module.css) ─────────────────── */
 
@@ -168,4 +171,4 @@ for (const v of VARIANTES) {
 }
 
 await navigateur.close();
-console.log(`\nIcones ecrites dans public/icons/`);
+console.log(`\nIcones ecrites dans public/img/`);

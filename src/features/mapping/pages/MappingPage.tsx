@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
-  Circle,
-  CircleMarker,
   MapContainer,
   Marker,
   Popup,
@@ -17,13 +15,11 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Droplets,
-  Flame,
-  Layers,
   Map as MapIcon,
   MapPin,
   Maximize2,
   Satellite,
+  ShieldCheck,
   Target,
   ZoomIn,
 } from 'lucide-react';
@@ -31,8 +27,9 @@ import { Badge, Skeleton } from '@/components/common';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
+import { useConformiteGlobale } from '@/features/conformite/hooks/useConformite';
+import type { StatutConformite } from '@/features/conformite/api/conformite';
 import { formatRelativeTime } from '@/lib/format';
-import type { ConformityLevel } from '@/types/common';
 import type { Collection } from '@/features/collection/api/collection.types';
 import type { Site } from '@/features/sites/api/site.types';
 import styles from './MappingPage.module.css';
@@ -40,49 +37,39 @@ import styles from './MappingPage.module.css';
 /**
  * Cartographie des sites pilotes — vue géospatiale opérationnelle.
  *
- * Les filtres et surcouches ci-dessous sont fonctionnels et reposent
- * uniquement sur des données déjà calculées côté serveur (mockées) :
- *  - `site.conformityByDomain` pour la coloration des marqueurs
- *  - `useCollections` pour la couche « Collectes récentes (30 j) »
- *  - `useAlerts` pour la couche « Alertes actives critiques »
- *  - `SITES_WITH_WATERCOURSE` (issu du Diagnostic) pour la couche cours d'eau
+ * La conformité affichée (couleur des marqueurs, filtre, légende) vient de
+ * `useConformiteGlobale` — le même calcul serveur (résultats labo réels) que
+ * le tableau de bord, pas du champ `Site.conformity` qui n'est pas alimenté
+ * en live. `useCollections`/`useAlerts` alimentent uniquement les stats et
+ * l'indicateur d'alerte affichés dans la popup de chaque site.
  *
  * Le fond de plan est OpenStreetMap. L'ajout de couches OGC (WMS/WFS)
  * publiées par un serveur GeoServer dédié reste une évolution backend.
  */
 
-type DomainFilter = 'all' | 'water' | 'soil' | 'air' | 'waste' | 'health';
+type ConformiteFilter = 'all' | StatutConformite;
 
-const DOMAIN_OPTIONS: Array<{ value: DomainFilter; label: string; hint: string }> = [
-  { value: 'all', label: 'Toutes', hint: 'Conformité globale du site' },
-  { value: 'water', label: 'Eaux usées', hint: 'pH, sulfates, DCO, métaux' },
-  { value: 'soil', label: 'Sol', hint: 'pH, métaux lourds' },
-  { value: 'air', label: 'Air', hint: 'PM2,5, PM10, CO₂' },
-  { value: 'waste', label: 'Déchets', hint: 'Quantités, gestion' },
-  { value: 'health', label: 'Santé / SST', hint: 'EPI, incidents' },
+const CONFORMITE_OPTIONS: Array<{ value: ConformiteFilter; label: string }> = [
+  { value: 'all', label: 'Toutes' },
+  { value: 'CRITIQUE', label: 'Critiques' },
+  { value: 'A_SURVEILLER', label: 'À surveiller' },
+  { value: 'CONFORME', label: 'Conformes' },
 ];
 
-const CONFORMITY_COLOR: Record<ConformityLevel, string> = {
-  conforming: '#16a34a',
-  warning: '#d97706',
-  critical: '#dc2626',
+/** Couleurs alignées sur src/styles/tokens.css (--color-success/-warning/-danger)
+ * — les mêmes que le tableau de bord (StatutPill, légende du donut). */
+const STATUT_COLOR: Record<StatutConformite, string> = {
+  CONFORME: '#157f4a',
+  A_SURVEILLER: '#a85b00',
+  CRITIQUE: '#b21f1f',
+  NON_EVALUE: '#6b7280',
 };
-const CONFORMITY_LABEL: Record<ConformityLevel, string> = {
-  conforming: 'Conforme',
-  warning: 'À surveiller',
-  critical: 'Hors seuil',
+const STATUT_LABEL: Record<StatutConformite, string> = {
+  CONFORME: 'Conforme',
+  A_SURVEILLER: 'À surveiller',
+  CRITIQUE: 'Critique',
+  NON_EVALUE: 'Non évalué',
 };
-
-/**
- * Sites longeant un cours d'eau (Niger ou bras secondaire) — repris du
- * Diagnostic Environnemental décembre 2025 §3.2. Utilisé pour la couche
- * « Cours d'eau proche » (buffer 300 m autour du site).
- */
-const SITES_WITH_WATERCOURSE = new Set([
-  'site-dianeguela',
-  'site-galanimassiriw',
-  'site-djiguiyaso',
-]);
 
 function buildMarkerIcon(color: string, isReference: boolean): L.DivIcon {
   const ring = isReference ? '3px' : '2px';
@@ -111,11 +98,10 @@ export function MappingPage() {
   const { data: collectionsPage } = useCollections({});
   const { data: alertsPage } = useAlerts();
 
-  const [domain, setDomain] = useState<DomainFilter>('all');
-  const [showCollections, setShowCollections] = useState(false);
-  const [showAlerts, setShowAlerts] = useState(true);
-  const [showWatercourses, setShowWatercourses] = useState(false);
-  const [showRiskZones, setShowRiskZones] = useState(true);
+  const { data: conformiteGlobale } = useConformiteGlobale();
+
+  const [zoneFilter, setZoneFilter] = useState<string>('all');
+  const [conformiteFilter, setConformiteFilter] = useState<ConformiteFilter>('all');
   /* Panel filtres : peut etre replie pour donner toute la place a la
    * carte. Etat persiste en memoire de session uniquement. */
   const [panelCollapsed, setPanelCollapsed] = useState(false);
@@ -125,39 +111,39 @@ export function MappingPage() {
   const [focusTarget, setFocusTarget] = useState<[number, number, number] | null>(null);
   const [openPopupSiteId, setOpenPopupSiteId] = useState<string | null>(null);
 
-  /** Conformité du site selon le filtre domaine actif. */
-  const conformityFor = (siteId: string): ConformityLevel => {
-    const site = sites.find((s) => s.id === siteId);
-    if (!site) return 'conforming';
-    if (domain === 'all') return site.conformity;
-    return site.conformityByDomain[domain];
-  };
+  /** Conformité réelle du site (résultats labo) — même source que le tableau de bord. */
+  const statutBySiteId = useMemo(() => {
+    const map = new Map<string, StatutConformite>();
+    (conformiteGlobale?.sites ?? []).forEach((s) => map.set(String(s.id), s.statut));
+    return map;
+  }, [conformiteGlobale]);
+  const conformityFor = (siteId: string): StatutConformite =>
+    statutBySiteId.get(siteId) ?? 'NON_EVALUE';
 
-  /** Collectes des 30 derniers jours avec coordonnées GPS valides. */
-  const recentCollections = useMemo(() => {
-    if (!showCollections) return [];
-    const cutoff = Date.now() - 30 * 86_400_000;
-    return (collectionsPage?.items ?? []).filter(
-      (c) => c.gps && new Date(c.collectedAt).getTime() >= cutoff,
-    );
-  }, [collectionsPage, showCollections]);
-
-  /** Sites avec ≥1 alerte critique active — pour la couche pulse rouge. */
-  const sitesWithCriticalAlerts = useMemo(() => {
-    if (!showAlerts) return new Set<string>();
+  /** Zones (communes) disponibles, pour le filtre. */
+  const zones = useMemo(() => {
     const set = new Set<string>();
-    (alertsPage?.items ?? [])
-      .filter((a) => a.status === 'active' && a.severity === 'critical' && a.siteId)
-      .forEach((a) => a.siteId && set.add(a.siteId));
-    return set;
-  }, [alertsPage, showAlerts]);
+    sites.forEach((s) => {
+      if (s.location.commune) set.add(s.location.commune);
+    });
+    return Array.from(set).sort();
+  }, [sites]);
+
+  const filteredSites = useMemo(() => {
+    return sites.filter((s) => {
+      if (zoneFilter !== 'all' && s.location.commune !== zoneFilter) return false;
+      if (conformiteFilter !== 'all' && conformityFor(s.id) !== conformiteFilter) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sites, zoneFilter, conformiteFilter, statutBySiteId]);
 
   const center = useMemo<[number, number]>(() => {
-    if (sites.length === 0) return DEFAULT_CENTER;
-    const lat = sites.reduce((s, x) => s + x.coordinates.lat, 0) / sites.length;
-    const lng = sites.reduce((s, x) => s + x.coordinates.lng, 0) / sites.length;
+    if (filteredSites.length === 0) return DEFAULT_CENTER;
+    const lat = filteredSites.reduce((s, x) => s + x.coordinates.lat, 0) / filteredSites.length;
+    const lng = filteredSites.reduce((s, x) => s + x.coordinates.lng, 0) / filteredSites.length;
     return [lat, lng];
-  }, [sites]);
+  }, [filteredSites]);
 
   /* Stats par site agreges des collectes — dernieres valeurs cle +
    * sparkline pH 90 jours pour afficher dans la popup. */
@@ -240,20 +226,27 @@ export function MappingPage() {
         <aside className={styles.sidePanel} aria-label="Filtres et couches">
           <section className={styles.panelSection}>
             <header className={styles.panelHead}>
-              <Layers size={14} aria-hidden="true" />
-              <span>Filtre par domaine</span>
+              <MapPin size={14} aria-hidden="true" />
+              <span>Filtre par zone</span>
             </header>
             <div className={styles.chips}>
-              {DOMAIN_OPTIONS.map((opt) => (
+              <button
+                type="button"
+                onClick={() => setZoneFilter('all')}
+                className={`${styles.chip} ${zoneFilter === 'all' ? styles.chipActive : ''}`}
+                aria-pressed={zoneFilter === 'all'}
+              >
+                Toutes
+              </button>
+              {zones.map((z) => (
                 <button
-                  key={opt.value}
+                  key={z}
                   type="button"
-                  onClick={() => setDomain(opt.value)}
-                  className={`${styles.chip} ${domain === opt.value ? styles.chipActive : ''}`}
-                  title={opt.hint}
-                  aria-pressed={domain === opt.value}
+                  onClick={() => setZoneFilter(z)}
+                  className={`${styles.chip} ${zoneFilter === z ? styles.chipActive : ''}`}
+                  aria-pressed={zoneFilter === z}
                 >
-                  {opt.label}
+                  {z}
                 </button>
               ))}
             </div>
@@ -261,57 +254,22 @@ export function MappingPage() {
 
           <section className={styles.panelSection}>
             <header className={styles.panelHead}>
-              <MapPin size={14} aria-hidden="true" />
-              <span>Surcouches</span>
+              <ShieldCheck size={14} aria-hidden="true" />
+              <span>Filtre par conformité</span>
             </header>
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={showAlerts}
-                onChange={(e) => setShowAlerts(e.target.checked)}
-              />
-              <span className={styles.toggleBody}>
-                <span className={styles.toggleLabel}>
-                  Alertes actives
-                </span>
-              </span>
-            </label>
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={showCollections}
-                onChange={(e) => setShowCollections(e.target.checked)}
-              />
-              <span className={styles.toggleBody}>
-                <span className={styles.toggleLabel}>Collectes récentes (30 j)</span>
-              </span>
-            </label>
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={showWatercourses}
-                onChange={(e) => setShowWatercourses(e.target.checked)}
-              />
-              <span className={styles.toggleBody}>
-                <span className={styles.toggleLabel}>
-                  Cours d'eau proche
-                  <Droplets size={11} aria-hidden="true" style={{ marginLeft: 4 }} />
-                </span>
-              </span>
-            </label>
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={showRiskZones}
-                onChange={(e) => setShowRiskZones(e.target.checked)}
-              />
-              <span className={styles.toggleBody}>
-                <span className={styles.toggleLabel}>
-                  Zones de risque
-                  <Flame size={11} aria-hidden="true" style={{ marginLeft: 4 }} />
-                </span>
-              </span>
-            </label>
+            <div className={styles.chips}>
+              {CONFORMITE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setConformiteFilter(opt.value)}
+                  className={`${styles.chip} ${conformiteFilter === opt.value ? styles.chipActive : ''}`}
+                  aria-pressed={conformiteFilter === opt.value}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </section>
 
           {/* Sites visibles — click pour zoomer */}
@@ -321,10 +279,10 @@ export function MappingPage() {
               <span>Sites surveillés</span>
             </header>
             <div className={styles.sitesList}>
-              {[...sites]
+              {[...filteredSites]
                 .sort((a, b) => {
-                  /* Tri par criticite : critical > warning > conforming */
-                  const order = { critical: 0, warning: 1, conforming: 2 } as const;
+                  /* Tri par criticite : CRITIQUE > A_SURVEILLER > CONFORME > NON_EVALUE */
+                  const order = { CRITIQUE: 0, A_SURVEILLER: 1, CONFORME: 2, NON_EVALUE: 3 } as const;
                   return order[conformityFor(a.id)] - order[conformityFor(b.id)];
                 })
                 .map((s) => {
@@ -340,7 +298,7 @@ export function MappingPage() {
                     >
                       <span
                         className={styles.siteCardDot}
-                        style={{ background: CONFORMITY_COLOR[lvl] }}
+                        style={{ background: STATUT_COLOR[lvl] }}
                         aria-hidden="true"
                       />
                       <span className={styles.siteCardBody}>
@@ -369,16 +327,16 @@ export function MappingPage() {
             </header>
             <ul className={styles.legend}>
               <li>
-                <span className={styles.legendDot} style={{ background: CONFORMITY_COLOR.conforming }} />
-                Conforme
+                <span className={styles.legendDot} style={{ background: STATUT_COLOR.CRITIQUE }} />
+                Critiques
               </li>
               <li>
-                <span className={styles.legendDot} style={{ background: CONFORMITY_COLOR.warning }} />
+                <span className={styles.legendDot} style={{ background: STATUT_COLOR.A_SURVEILLER }} />
                 À surveiller
               </li>
               <li>
-                <span className={styles.legendDot} style={{ background: CONFORMITY_COLOR.critical }} />
-                Hors seuil
+                <span className={styles.legendDot} style={{ background: STATUT_COLOR.CONFORME }} />
+                Conformes
               </li>
             </ul>
           </section>
@@ -436,107 +394,17 @@ export function MappingPage() {
                 />
               )}
 
-              {/* Surcouche cours d'eau (buffers) */}
-              {showWatercourses
-                ? sites
-                    .filter((s) => SITES_WITH_WATERCOURSE.has(s.id))
-                    .map((s) => (
-                      <Circle
-                        key={`wc-${s.id}`}
-                        center={[s.coordinates.lat, s.coordinates.lng]}
-                        radius={300}
-                        pathOptions={{
-                          color: '#0ea5e9',
-                          weight: 1,
-                          fillColor: '#38bdf8',
-                          fillOpacity: 0.18,
-                          dashArray: '4 4',
-                        }}
-                      />
-                    ))
-                : null}
-
-              {/* Surcouche alertes critiques */}
-              {showAlerts
-                ? sites
-                    .filter((s) => sitesWithCriticalAlerts.has(s.id))
-                    .map((s) => (
-                      <Circle
-                        key={`al-${s.id}`}
-                        center={[s.coordinates.lat, s.coordinates.lng]}
-                        radius={650}
-                        pathOptions={{
-                          color: CONFORMITY_COLOR.critical,
-                          weight: 1.5,
-                          fillColor: CONFORMITY_COLOR.critical,
-                          fillOpacity: 0.12,
-                        }}
-                      />
-                    ))
-                : null}
-
-              {/* Surcouche collectes récentes */}
-              {recentCollections.map((c) => (
-                <CircleMarker
-                  key={`col-${c.id}`}
-                  center={[c.gps!.lat, c.gps!.lng]}
-                  radius={4}
-                  pathOptions={{
-                    color: '#418FDE',
-                    weight: 1,
-                    fillColor: '#418FDE',
-                    fillOpacity: 0.65,
-                  }}
-                >
-                  <Popup>
-                    <div className={styles.popup}>
-                      <span className={styles.popupMeta}>Collecte {c.id.slice(-6).toUpperCase()}</span>
-                      <span className={styles.popupMeta}>
-                        {formatRelativeTime(c.collectedAt)}
-                      </span>
-                      <Link to={`/collecte/${c.id}`} className={styles.popupAction}>
-                        Voir détail
-                      </Link>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              ))}
-
-              {/* Heatmap risque : cercles concentriques sur les sites
-               * critiques pour simuler une intensite de risque. Le rayon
-               * varie selon la severite : critical=1200m, warning=800m. */}
-              {showRiskZones
-                ? sites.map((site) => {
-                    const lvl = conformityFor(site.id);
-                    if (lvl === 'conforming') return null;
-                    const isCritical = lvl === 'critical';
-                    return (
-                      <Circle
-                        key={`risk-${site.id}`}
-                        center={[site.coordinates.lat, site.coordinates.lng]}
-                        radius={isCritical ? 1200 : 800}
-                        pathOptions={{
-                          color: CONFORMITY_COLOR[lvl],
-                          weight: 0,
-                          fillColor: CONFORMITY_COLOR[lvl],
-                          fillOpacity: isCritical ? 0.14 : 0.08,
-                        }}
-                      />
-                    );
-                  })
-                : null}
-
-              {/* Marqueurs sites */}
-              {sites.map((site) => {
+              {/* Marqueurs sites — couleur alignée sur la conformité réelle
+               * (labo), filtrés par zone et statut via le panneau lateral. */}
+              {filteredSites.map((site) => {
                 const lvl = conformityFor(site.id);
-                const hasAlert = sitesWithCriticalAlerts.has(site.id);
                 const ss = siteStats.get(site.id);
                 return (
                   <SiteMarker
                     key={site.id}
                     site={site}
                     lvl={lvl}
-                    hasAlert={hasAlert}
+                    hasAlert={(ss?.activeAlerts ?? 0) > 0}
                     activeAlerts={ss?.activeAlerts ?? 0}
                     lastCollectionAt={ss?.lastCollectionAt ?? null}
                     lastPh={ss?.lastPh ?? null}
@@ -585,7 +453,7 @@ interface GeoInfo {
 
 interface SiteMarkerProps {
   site: Site;
-  lvl: ConformityLevel;
+  lvl: StatutConformite;
   hasAlert: boolean;
   activeAlerts: number;
   lastCollectionAt: string | null;
@@ -655,7 +523,7 @@ function SiteMarker({
     <Marker
       ref={markerRef}
       position={[site.coordinates.lat, site.coordinates.lng]}
-      icon={buildMarkerIcon(CONFORMITY_COLOR[lvl], site.isReference)}
+      icon={buildMarkerIcon(STATUT_COLOR[lvl], site.isReference)}
       eventHandlers={{
         popupopen:  () => setPopupOpen(true),
         popupclose: () => setPopupOpen(false),
@@ -667,9 +535,14 @@ function SiteMarker({
             <h3 className={styles.popupTitle}>{site.shortName}</h3>
             <Badge
               size="sm"
-              variant={lvl === 'conforming' ? 'success' : lvl === 'warning' ? 'warning' : 'danger'}
+              variant={
+                lvl === 'CONFORME' ? 'success'
+                : lvl === 'A_SURVEILLER' ? 'warning'
+                : lvl === 'CRITIQUE' ? 'danger'
+                : 'neutral'
+              }
             >
-              {CONFORMITY_LABEL[lvl]}
+              {STATUT_LABEL[lvl]}
             </Badge>
           </header>
 

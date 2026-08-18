@@ -173,7 +173,7 @@ comme une application native.
 |---|---|
 | Identifiant (`id`) | `/paset-mali` — distingue PASET de toute autre application servie sur la même origine |
 | Port de développement | Cherché libre au lancement (base 8492), jamais figé |
-| Icônes | `public/icons/`, régénérables via `node tools/generate-icons.mjs` |
+| Icônes | `public/img/`, régénérables via `node tools/generate-icons.mjs` (servies hors de `public/icons/` : ce chemin est bloqué par une couche de sécurité de l'hébergeur en production) |
 | Service worker | Généré au build (Workbox). Coque applicative précachée, lectures d'API en *network-first*, images en *cache-first* |
 | Mise à jour | Proposée par une bannière, jamais imposée : une saisie en cours n'est pas interrompue |
 

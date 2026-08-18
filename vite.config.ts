@@ -62,8 +62,11 @@ export default defineConfig(({ command, mode }) => {
       registerType: 'prompt',
 
       /* mockServiceWorker.js appartient a MSW : le precacher reviendrait a
-       * figer l'outillage de demonstration dans l'application installee. */
-      includeAssets: ['icons/*.png'],
+       * figer l'outillage de demonstration dans l'application installee.
+       *
+       * Servies depuis img/ (et non icons/) : ce chemin est bloque en
+       * production par une couche de securite de l'hebergeur. */
+      includeAssets: ['img/favicon-*.png', 'img/apple-touch-icon.png'],
 
       manifest: {
         id: APP_ID,
@@ -80,10 +83,10 @@ export default defineConfig(({ command, mode }) => {
         theme_color: '#0468b1',
         categories: ['productivity', 'utilities'],
         icons: [
-          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/img/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/img/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           {
-            src: '/icons/icon-maskable-512.png',
+            src: '/img/icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

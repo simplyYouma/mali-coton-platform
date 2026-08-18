@@ -1,0 +1,27 @@
+.root p {
+  margin: 0 0 var(--space-2) 0;
+}
+.root p:last-child {
+  margin-bottom: 0;
+}
+
+.root ul {
+  padding-left: var(--space-5);
+  margin: var(--space-2) 0;
+  list-style: disc;
+}
+.root li {
+  margin-bottom: var(--space-2);
+  line-height: 1.6;
+}
+.root li:last-child {
+  margin-bottom: 0;
+}
+
+/* Sous-paramètres (physico-chimiques, métaux lourds, bactériologiques…) :
+ * puce distincte et retrait réduit pour marquer la hiérarchie. */
+.root ul ul {
+  list-style: circle;
+  padding-left: var(--space-4);
+  margin: var(--space-2) 0 0;
+}

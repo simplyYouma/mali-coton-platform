@@ -37,6 +37,9 @@ import { DonneesEnvPanel } from '../components/DonneesEnvPanel';
 import { SITE_TYPE_LABEL } from '../api/site.types';
 import type { KoboCodedItem, KoboPhotoBackend } from '../api/sites.adapter';
 import { SitePhotoGallery } from '../components/SitePhotoGallery';
+import { ConformiteSitePanel } from '../components/ConformiteSitePanel';
+import { useConformiteSite } from '@/features/conformite/hooks/useConformite';
+import type { StatutConformite } from '@/features/conformite/api/conformite';
 import { formatDateTime, formatGps } from '@/lib/format';
 import styles from './SiteDetailPage.module.css';
 
@@ -107,11 +110,20 @@ function QualBadge({ val }: { val: string | null | undefined }) {
   return <span>{label}</span>;
 }
 
-/* Seul jeu de couleurs conserve sur cette page : il traduit une gravite. */
-const CONFORMITE_LABEL: Record<string, string> = {
-  conforming: 'Conforme',
-  warning: 'À surveiller',
-  critical: 'Critique',
+/* Seul jeu de couleurs conserve sur cette page : il traduit une gravite.
+ * Statuts réels issus du backend labo (`/site_teintures/:id/conformite-environnementale`),
+ * pas du champ `Site.conformity` qui n'est pas alimenté en live. */
+const CONFORMITE_STATUT_LABEL: Record<StatutConformite, string> = {
+  CONFORME: 'Conforme',
+  A_SURVEILLER: 'À surveiller',
+  CRITIQUE: 'Critique',
+  NON_EVALUE: 'Non évalué',
+};
+const CONFORMITE_STATUT_LEVEL: Record<StatutConformite, string> = {
+  CONFORME: 'conforming',
+  A_SURVEILLER: 'warning',
+  CRITIQUE: 'critical',
+  NON_EVALUE: 'nd',
 };
 
 function Chips({ items }: { items: KoboCodedItem[] }) {
@@ -294,11 +306,13 @@ export function SiteDetailPage() {
   const { data: site, isLoading, isError } = useSite(id);
   const { data: detail, isLoading: detailLoading } = useSiteDetail(id);
 
-  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'employes' | 'photos' | 'env'>('profil');
+  const [tab, setTab] = useState<'profil' | 'conditions' | 'appuis' | 'employes' | 'photos' | 'env' | 'conformite'>('profil');
   const [editOpen, setEditOpen] = useState(false);
   const [openEmployes, setOpenEmployes] = useState<Set<number>>(new Set());
 
   const { data: employesData, isLoading: employesLoading } = useSiteEmployes(id);
+  const { data: conformiteSite } = useConformiteSite(id);
+  const statutConformite = conformiteSite?.resume.statut;
 
   function toggleEmploye(empId: number) {
     setOpenEmployes((prev) => {
@@ -408,7 +422,7 @@ export function SiteDetailPage() {
             {effectifTotal ?? '—'}
             {effectifFemmes != null || effectifHommes != null ? (
               <span className={styles.infoAside}>
-                {effectifFemmes ?? '—'} F · {effectifHommes ?? '—'} H
+                {effectifFemmes ?? '—'} Femmes - {effectifHommes ?? '—'} Hommes
               </span>
             ) : null}
           </span>
@@ -434,8 +448,11 @@ export function SiteDetailPage() {
         <div className={styles.infoCell}>
           <span className={styles.infoLabel}>Conformité</span>
           <span className={styles.infoValue}>
-            <span className={styles.conformiteTag} data-level={site.conformity}>
-              {CONFORMITE_LABEL[site.conformity] ?? '—'}
+            <span
+              className={styles.conformiteTag}
+              data-level={statutConformite ? CONFORMITE_STATUT_LEVEL[statutConformite] : 'nd'}
+            >
+              {statutConformite ? CONFORMITE_STATUT_LABEL[statutConformite] : 'Non évalué'}
             </span>
           </span>
         </div>
@@ -458,11 +475,12 @@ export function SiteDetailPage() {
         onChange={setTab}
         items={[
           { value: 'profil', label: 'Profil du site' },
-          { value: 'conditions', label: 'Conditions de travail' },
+          { value: 'conditions', label: 'Infrastructure & Sécurité' },
           { value: 'appuis', label: 'Appuis & Besoins' },
-          { value: 'employes', label: 'Employés', badge: employesData?.totalEmployes || undefined },
+          { value: 'employes', label: 'Personnel & Conditions de travail', badge: employesData?.totalEmployes || undefined },
           { value: 'photos', label: 'Photos', badge: photos.length || undefined },
           { value: 'env', label: 'Données env.' },
+          { value: 'conformite', label: 'Conformité' },
         ]}
         aria-label="Sections de la fiche site"
       />
@@ -815,6 +833,7 @@ export function SiteDetailPage() {
 
         {/* ══ Onglet Données environnementales ══ */}
         {tab === 'env' ? <DonneesEnvPanel siteId={id!} /> : null}
+        {tab === 'conformite' ? <ConformiteSitePanel siteId={id} /> : null}
       </div>
 
       {isAdmin ? (

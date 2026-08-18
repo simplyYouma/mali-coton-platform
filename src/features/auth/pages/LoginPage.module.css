@@ -178,6 +178,13 @@
   letter-spacing: -0.02em;
   margin-bottom: var(--space-1);
 }
+.metaList li small {
+  font-size: var(--text-2xs);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: none;
+}
 
 
 /* ───── Right form pane — card centree, soft & elegante ───── */

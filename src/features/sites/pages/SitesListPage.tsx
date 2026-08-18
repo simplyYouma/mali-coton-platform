@@ -1,60 +1,80 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, MapPin, Pencil, Plus, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Search, Filter, MapPin, FileSpreadsheet } from 'lucide-react';
 import { exportRowsToXlsx } from '@/lib/xlsxExport';
 import {
   PageHeader,
   Button,
-  IconButton,
   Input,
   Select,
   Tabs,
   EmptyState,
   Skeleton,
 } from '@/components/common';
-import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
-import { useConfirm } from '@/app/providers/ConfirmProvider';
-import { useDeleteSite, useSiteDetail, useSites } from '../hooks/useSites';
-import { SiteForm } from '../components/SiteForm';
+import { useSiteDetail, useSites } from '../hooks/useSites';
+import { useConformiteGlobale } from '@/features/conformite/hooks/useConformite';
+import type { ConformiteSiteSummary, StatutConformite } from '@/features/conformite/api/conformite';
 import type { Site } from '../api/site.types';
-import type { ConformityLevel } from '@/types/common';
 import styles from './SitesListPage.module.css';
 
-const CONFORMITY_TABS: Array<{ value: 'all' | ConformityLevel; label: string }> = [
+const STATUT_CONFORMITE_LABEL: Record<string, string> = {
+  CONFORME: 'Conforme',
+  A_SURVEILLER: 'À surveiller',
+  CRITIQUE: 'Critique',
+  NON_EVALUE: '—',
+};
+
+const CONFORMITY_TABS: Array<{ value: 'all' | StatutConformite; label: string }> = [
   { value: 'all', label: 'Tous' },
-  { value: 'conforming', label: 'Conformes' },
-  { value: 'warning', label: 'À surveiller' },
-  { value: 'critical', label: 'Non conformes' },
+  { value: 'CONFORME', label: 'Conformes' },
+  { value: 'A_SURVEILLER', label: 'À surveiller' },
+  { value: 'CRITIQUE', label: 'Non conformes' },
 ];
 
 export function SitesListPage() {
-  const { role } = useAuth();
   const toast = useToast();
-  const confirm = useConfirm();
-  const canManage = role === 'admin';
-  const deleteMut = useDeleteSite();
 
   const [q, setQ] = useState('');
   const [type, setType] = useState<string>('all');
   const [commune, setCommune] = useState<string>('all');
-  const [conformity, setConformity] = useState<'all' | ConformityLevel>('all');
+  const [conformity, setConformity] = useState<'all' | StatutConformite>('all');
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Site | null>(null);
+  // GET /api/site_teintures ne supporte aucun paramètre de filtre côté
+  // backend (voir docs/openapi-backend.json — seul `page` est documenté) :
+  // recherche, type et commune sont donc tous filtrés côté client sur la
+  // liste complète.
+  const { data, isLoading } = useSites();
 
-  // Seule la recherche texte est envoyée à l'API (full-text).
-  // Type, conformité et commune sont filtrés côté client sur les valeurs
-  // déjà normalisées par l'adapter, ce qui évite le décalage avec les
-  // valeurs brutes Kobo renvoyées par le backend.
-  const { data, isLoading } = useSites({ q: q || undefined });
+  // La conformité réelle vient du backend labo (`/donnees-environnementales/conformite`),
+  // pas du champ `Site.conformity` qui n'est pas alimenté en live.
+  const { data: conformiteData } = useConformiteGlobale();
+  const conformiteMap = useMemo(
+    () => new Map<number, ConformiteSiteSummary>((conformiteData?.sites ?? []).map((c) => [c.id, c])),
+    [conformiteData],
+  );
+
+  const searched = useMemo(() => {
+    const items = data?.items ?? [];
+    const query = q.trim().toLowerCase();
+    if (!query) return items;
+    return items.filter((s) => {
+      const haystack = [s.name, s.shortName, s.codeSite, s.location.commune, s.location.city, s.location.quartier]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [data, q]);
 
   const filteredByTypeConformity = useMemo(() => {
-    let items = data?.items ?? [];
+    let items = searched;
     if (type !== 'all') items = items.filter((s) => s.type === type);
-    if (conformity !== 'all') items = items.filter((s) => s.conformity === conformity);
+    if (conformity !== 'all') {
+      items = items.filter((s) => conformiteMap.get(Number(s.id))?.statut === conformity);
+    }
     return items;
-  }, [data, type, conformity]);
+  }, [searched, type, conformity, conformiteMap]);
 
   const communes = useMemo(() => {
     const set = new Set<string>();
@@ -88,37 +108,17 @@ export function SitesListPage() {
         { header: 'Quartier', accessor: (s) => s.location.quartier ?? '' },
         { header: 'Latitude', accessor: (s) => s.coordinates.lat },
         { header: 'Longitude', accessor: (s) => s.coordinates.lng },
-        { header: 'Conformité', accessor: (s) => s.conformity },
+        {
+          header: 'Conformité',
+          accessor: (s) => {
+            const statut = conformiteMap.get(Number(s.id))?.statut;
+            return statut ? (STATUT_CONFORMITE_LABEL[statut] ?? statut) : '—';
+          },
+        },
       ],
       rows: sites,
     });
     toast.success(`Export XLSX — ${sites.length} sites.`);
-  };
-
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-
-  const openEdit = (site: Site) => {
-    setEditing(site);
-    setFormOpen(true);
-  };
-
-  const handleDelete = async (site: Site) => {
-    const ok = await confirm({
-      title: `Supprimer "${site.shortName}" ?`,
-      message: 'Suppression définitive du site. Les collectes associées resteront archivées.',
-      confirmLabel: 'Supprimer',
-      tone: 'danger',
-    });
-    if (!ok) return;
-    try {
-      await deleteMut.mutateAsync(site.id);
-      toast.success(`Site ${site.shortName} supprimé.`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Échec de la suppression.');
-    }
   };
 
   return (
@@ -142,11 +142,6 @@ export function SitesListPage() {
                 Voir sur la carte
               </Button>
             </Link>
-            {canManage ? (
-              <Button variant="success" iconLeft={<Plus size={16} />} onClick={openCreate}>
-                Nouveau site
-              </Button>
-            ) : null}
           </>
         }
       />
@@ -208,71 +203,80 @@ export function SitesListPage() {
           title="Aucun site ne correspond à votre recherche"
           description="Essayez d'ajuster les filtres ou de vider la recherche."
           action={
-            canManage ? (
-              <Button variant="success" iconLeft={<Plus size={16} />} onClick={openCreate}>
-                Créer le premier site
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setQ('');
-                  setType('all');
-                  setCommune('all');
-                  setConformity('all');
-                }}
-              >
-                Réinitialiser les filtres
-              </Button>
-            )
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setQ('');
+                setType('all');
+                setCommune('all');
+                setConformity('all');
+              }}
+            >
+              Réinitialiser les filtres
+            </Button>
           }
         />
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Site</th>
-                <th>Localisation</th>
-                <th>Responsable</th>
-                <th>Statut juridique</th>
-                <th>Année création</th>
-                <th>Couverture sociale</th>
-                {canManage ? <th aria-label="Actions" /> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {sites.map((site) => (
-                <SiteRow
-                  key={site.id}
-                  site={site}
-                  onEdit={canManage ? openEdit : undefined}
-                  onDelete={canManage ? handleDelete : undefined}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ConformiteTable sites={sites} conformiteMap={conformiteMap} />
       )}
-
-      {canManage ? (
-        <SiteForm open={formOpen} onClose={() => setFormOpen(false)} site={editing} />
-      ) : null}
     </>
   );
 }
 
-interface SiteRowProps {
-  site: Site;
-  onEdit?: (site: Site) => void;
-  onDelete?: (site: Site) => void;
+// ── ConformiteTable ────────────────────────────────────────────────────────
+
+function ConformiteBadge({ statut }: { statut: string }) {
+  const cls =
+    statut === 'CONFORME'
+      ? styles.confBadgeOk
+      : statut === 'CRITIQUE'
+        ? styles.confBadgeCrit
+        : statut === 'A_SURVEILLER'
+          ? styles.confBadgeWarn
+          : styles.confBadgeNd;
+  return <span className={`${styles.confBadge} ${cls}`}>{STATUT_CONFORMITE_LABEL[statut] ?? statut}</span>;
 }
 
-function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
+interface ConformiteTableProps {
+  sites: Site[];
+  conformiteMap: Map<number, ConformiteSiteSummary>;
+}
+
+function ConformiteTable({ sites, conformiteMap }: ConformiteTableProps) {
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Site</th>
+            <th>Localisation</th>
+            <th>Responsable</th>
+            <th>Statut juridique</th>
+            <th>Année création</th>
+            <th>Conformité</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sites.map((site) => (
+            <SiteRow key={site.id} site={site} conformite={conformiteMap.get(Number(site.id))} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── SiteRow ───────────────────────────────────────────────────────────────────
+
+interface SiteRowProps {
+  site: Site;
+  conformite?: ConformiteSiteSummary;
+}
+
+function SiteRow({ site, conformite }: SiteRowProps) {
   const navigate = useNavigate();
   const { data: detail } = useSiteDetail(site.id);
   const collecte = detail?.collecteSite;
-  const showActions = onEdit || onDelete;
   const goToSite = () => navigate(`/sites/${site.id}`);
   const onKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -280,15 +284,10 @@ function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
       goToSite();
     }
   };
-  const stop = (handler: (s: Site) => void) => (e: MouseEvent) => {
-    e.stopPropagation();
-    handler(site);
-  };
 
   const responsable = collecte?.nomResponsable ?? site.responsableName ?? '—';
   const statutJuridique = collecte?.statutJuridique ?? (site.legalStatus === 'formel' ? 'Formel' : 'Informel');
   const anneeCreation = collecte?.anneeCreation ?? (site.createdYear > 0 ? site.createdYear : null);
-  const couvertureSociale = collecte?.couvertureSociale ?? null;
 
   return (
     <tr
@@ -313,29 +312,11 @@ function SiteRow({ site, onEdit, onDelete }: SiteRowProps) {
       <td>{responsable}</td>
       <td>{statutJuridique ?? '—'}</td>
       <td>{anneeCreation ?? '—'}</td>
-      <td>{couvertureSociale ?? '—'}</td>
-      {showActions ? (
-        <td className={styles.actions} onClick={(e) => e.stopPropagation()}>
-          {onEdit ? (
-            <IconButton
-              aria-label={`Modifier ${site.shortName}`}
-              variant="ghost"
-              onClick={stop(onEdit)}
-            >
-              <Pencil size={14} />
-            </IconButton>
-          ) : null}
-          {onDelete ? (
-            <IconButton
-              aria-label={`Supprimer ${site.shortName}`}
-              variant="ghost"
-              onClick={stop(onDelete)}
-            >
-              <Trash2 size={14} />
-            </IconButton>
-          ) : null}
-        </td>
-      ) : null}
+      <td>
+        {conformite
+          ? <ConformiteBadge statut={conformite.statut} />
+          : <span className={styles.confBadgeNd}>—</span>}
+      </td>
     </tr>
   );
 }

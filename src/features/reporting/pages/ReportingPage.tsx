@@ -1,393 +1,405 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  ChevronLeft,
-  ChevronRight,
+  AlertTriangle,
+  CheckCircle2,
   FileSpreadsheet,
   FileText,
-  Printer,
   Trash2,
+  X,
 } from 'lucide-react';
-import { Badge, Button, Select, Skeleton } from '@/components/common';
-import { useToast } from '@/app/providers/ToastProvider';
-import { useAuth } from '@/app/providers/AuthProvider';
-import { useCollections } from '@/features/collection/hooks/useCollections';
-import { useAlerts } from '@/features/alerts/hooks/useAlerts';
-import { useSites } from '@/features/sites/hooks/useSites';
-import { mockUsers } from '@/mocks/fixtures/users';
-import { buildAggregate } from '../lib/aggregator';
-import {
-  REPORT_TEMPLATES,
-  defaultPeriod,
-  periodLabel,
-  templateById,
-  type ReportTemplateId,
-} from '../lib/reportSpec';
-import { exportReportToXlsx } from '../lib/xlsxExport';
-import { ReportPreview } from '../components/ReportPreview';
+import { Badge, Button, Skeleton, StructuredText } from '@/components/common';
 import { useReportHistory } from '../hooks/useReportHistory';
+import { useRapportAnalyseDetail, useRapportsAnalyse } from '../hooks/useRapportsAnalyse';
 import styles from './ReportingPage.module.css';
 
-const SECTION_LABEL: Record<string, string> = {
-  cover: 'Couverture',
-  executive: 'Synthèse exécutive',
-  kpis: 'Indicateurs clés',
-  domains: 'Conformité par domaine',
-  exceedances: 'Dépassements',
-  alerts: 'Alertes',
-  lab: 'Laboratoire',
-  silences: 'Présence terrain',
-  baseline: 'Comparaison référence 2025',
-  recommendations: 'Recommandations',
-  legal: 'Cadre légal',
-  appendix: 'Annexe',
+// ── Labels ────────────────────────────────────────────────────────────────────
+
+const STATUT_LABEL: Record<string, string> = {
+  confirme: 'Confirmé',
+  brouillon: 'Brouillon',
+  archive: 'Archivé',
 };
 
-function sectionLabelOf(id?: string): string {
-  if (!id) return '';
-  return SECTION_LABEL[id] ?? id;
+const STATUT_VARIANT: Record<string, 'success' | 'warning' | 'neutral' | 'info'> = {
+  confirme: 'success',
+  brouillon: 'warning',
+  archive: 'neutral',
+};
+
+const MILIEU_LABEL: Record<string, string> = {
+  AIR: 'Air',
+  EAU_USEE: 'Eau usée',
+  SEDIMENT: 'Sédiment',
+  EAU_SURFACE: 'Eau de surface',
+  SOL: 'Sol',
+};
+
+// Commentaire associé à chaque milieu dans le détail
+const MILIEU_COMMENTAIRE_KEY: Record<string, 'commentaireAir' | 'commentaireEau' | 'commentaireSediment'> = {
+  AIR: 'commentaireAir',
+  EAU_USEE: 'commentaireEau',
+  SEDIMENT: 'commentaireSediment',
+};
+
+function fmtDate(iso: string) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export function ReportingPage() {
-  const toast = useToast();
-  const { user } = useAuth();
+  const [fromFilter, setFromFilter] = useState('');
+  const [toFilter, setToFilter] = useState('');
+  const [siteFilter, setSiteFilter] = useState('');
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('rapport'));
+  const [activeMilieu, setActiveMilieu] = useState('');
+  const detailPanelRef = useRef<HTMLElement>(null);
 
-  const [templateId, setTemplateId] = useState<ReportTemplateId>('monthly');
-  const initial = defaultPeriod('monthly');
-  const [from, setFrom] = useState<string>(initial.from.slice(0, 10));
-  const [to, setTo] = useState<string>(initial.to.slice(0, 10));
-  const [siteId, setSiteId] = useState<string>('all');
-  const [pageIndex, setPageIndex] = useState(0);
-  const [isCustomPeriod, setIsCustomPeriod] = useState(false);
+  const { data: rapports = [], isLoading } = useRapportsAnalyse();
+  const { data: detail, isLoading: detailLoading } = useRapportAnalyseDetail(selectedId);
+  const { items: history, removeEntry } = useReportHistory();
 
-  const pickTemplate = (id: ReportTemplateId) => {
-    setTemplateId(id);
-    setIsCustomPeriod(false);
-    const p = defaultPeriod(id);
-    setFrom(p.from.slice(0, 10));
-    setTo(p.to.slice(0, 10));
-  };
-  const onChangeFrom = (v: string) => {
-    setFrom(v);
-    setIsCustomPeriod(true);
-  };
-  const onChangeTo = (v: string) => {
-    setTo(v);
-    setIsCustomPeriod(true);
-  };
-
-  // Reset à la page 0 quand le périmètre du rapport change
-  useEffect(() => {
-    setPageIndex(0);
-  }, [templateId, from, to, siteId]);
-
-  const { data: collectionsPage, isLoading: cLoad } = useCollections();
-  const { data: alertsPage, isLoading: aLoad } = useAlerts();
-  const { data: sitesPage, isLoading: sLoad } = useSites();
-  const isLoading = cLoad || aLoad || sLoad;
-
-  const { items: history, recordGeneration, removeEntry } = useReportHistory();
-
-  const template = templateById(templateId);
-  const sites = sitesPage?.items ?? [];
-  const selectedSite = sites.find((s) => s.id === siteId);
-  const totalPages = template.sections.length;
-  const currentPage = Math.min(pageIndex, totalPages - 1);
-
-  const goPrev = () => {
-    if (currentPage <= 0) return;
-    setPageIndex(currentPage - 1);
-  };
-  const goNext = () => {
-    if (currentPage >= totalPages - 1) return;
-    setPageIndex(currentPage + 1);
-  };
-
-  // Navigation clavier ← / → (hors champs de saisie)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName ?? '';
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
-      if (e.key === 'ArrowLeft') goPrev();
-      else if (e.key === 'ArrowRight') goNext();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, totalPages]);
-
-  const aggregate = useMemo(() => {
-    if (!collectionsPage || !alertsPage || !sitesPage) return null;
-    const fromIso = new Date(`${from}T00:00:00`).toISOString();
-    const toIso = new Date(`${to}T23:59:59`).toISOString();
-    return buildAggregate(
-      collectionsPage.items,
-      alertsPage.items,
-      sitesPage.items,
-      { from: fromIso, to: toIso, label: periodLabel(fromIso, toIso) },
-      { siteId: siteId === 'all' ? undefined : siteId },
-    );
-  }, [collectionsPage, alertsPage, sitesPage, from, to, siteId]);
-
-  const generatedByName = useMemo(() => {
-    if (!user) return undefined;
-    return mockUsers.find((u) => u.id === user.id)?.fullName ?? user.id;
-  }, [user]);
-
-  const handlePrint = () => {
-    if (!aggregate) return;
-    const root = document.getElementById('report-print-root');
-    if (!root) return;
-
-    // Hoist le rapport à <body> : sort des parents avec transform/overflow
-    // qui le clipperaient à l'impression. On rétablit après.
-    const parent = root.parentNode!;
-    const nextSibling = root.nextSibling;
-    document.body.appendChild(root);
-
-    // Force toutes les pages visibles dans la sortie PDF
-    const hiddenPages = Array.from(
-      root.querySelectorAll<HTMLElement>('[data-active="false"]'),
-    );
-    hiddenPages.forEach((el) => el.setAttribute('data-active', 'true'));
-
-    document.body.classList.add('printing-report');
-    window.print();
-    document.body.classList.remove('printing-report');
-
-    // Restore l'état d'aperçu
-    hiddenPages.forEach((el) => el.setAttribute('data-active', 'false'));
-    if (nextSibling) parent.insertBefore(root, nextSibling);
-    else parent.appendChild(root);
-
-    void recordGeneration({
-      templateId,
-      templateTitle: template.title,
-      periodLabel: aggregate.period.label,
-      scopeLabel: selectedSite ? selectedSite.shortName : 'Multi-sites',
-      generatedBy: generatedByName,
-      exportedFormats: ['PDF'],
+  // ── Filtrage ─────────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    return rapports.filter((r) => {
+      const date = r.dateEchantillonnage.slice(0, 10);
+      if (fromFilter && date < fromFilter) return false;
+      if (toFilter && date > toFilter) return false;
+      if (siteFilter && !r.siteNom.toLowerCase().includes(siteFilter.toLowerCase())) return false;
+      return true;
     });
-    toast.success('Boîte d\'impression ouverte — choisissez « Enregistrer en PDF ».');
-  };
+  }, [rapports, fromFilter, toFilter, siteFilter]);
 
-  const handleXlsx = () => {
-    if (!aggregate) return;
-    try {
-      exportReportToXlsx(aggregate, template, selectedSite?.shortName);
-      void recordGeneration({
-        templateId,
-        templateTitle: template.title,
-        periodLabel: aggregate.period.label,
-        scopeLabel: selectedSite ? selectedSite.shortName : 'Multi-sites',
-        generatedBy: generatedByName,
-        exportedFormats: ['XLSX'],
-      });
-      toast.success('Export XLSX téléchargé.');
-    } catch {
-      toast.error('Échec de l\'export XLSX.');
+  // ── Stats scope strip ─────────────────────────────────────────────────────────
+  const confirmes = rapports.filter((r) => r.statut === 'confirme').length;
+  const uniqueSites = new Set(rapports.map((r) => r.siteNom)).size;
+  const uniqueLabs = new Set(rapports.map((r) => r.laboratoireNom)).size;
+  const totalAnalyses = rapports.reduce((s, r) => s + r.nombreAnalyses, 0);
+  const avecFichier = rapports.filter((r) => r.fichierDisponible).length;
+
+  // ── Onglets milieu ─────────────────────────────────────────────────────────────
+  const milieus = detail ? Object.keys(detail.analysesParMilieu) : [];
+  const currentMilieu =
+    activeMilieu && milieus.includes(activeMilieu) ? activeMilieu : (milieus[0] ?? '');
+  const analysesMilieu = detail ? (detail.analysesParMilieu[currentMilieu] ?? []) : [];
+  const commentaireKey = MILIEU_COMMENTAIRE_KEY[currentMilieu];
+  const currentCommentaire = detail && commentaireKey ? (detail[commentaireKey] as string | undefined) ?? '' : '';
+
+  const openDetail = (id: string) => {
+    setSelectedId(id);
+    setActiveMilieu('');
+  };
+  const closeDetail = () => setSelectedId(null);
+
+  // Amène directement au panneau de détail (previewSurface) du rapport sélectionné.
+  useEffect(() => {
+    if (selectedId) {
+      detailPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  };
-
-  const scopeLabel = selectedSite ? `Mono-site · ${selectedSite.shortName}` : 'Multi-sites';
+  }, [selectedId]);
 
   return (
     <div className={styles.page}>
+      {/* ── Hero ── */}
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>Reporting</span>
           <h1 className={styles.heroTitle}>Rapports</h1>
           <p className={styles.heroDescription}>
-            Bilans générés à partir des collectes validées, alertes et bordereaux
-            laboratoire de la plateforme. Prévisualisation à l'écran, export PDF
-            ou XLSX prêt pour transmission.
+            Bordereaux d'analyse laboratoire — résultats par milieu (air, eau usée, sédiment),
+            conclusion et recommandations.
           </p>
         </div>
       </header>
 
-      {/* Données réellement disponibles pour le périmètre courant. */}
+      {/* ── Scope strip ── */}
       <section className={styles.scope} aria-label="Données incluses">
         <div className={styles.scopeItem}>
-          <span className={styles.scopeLabel}>Période</span>
-          <span className={styles.scopeValue}>{aggregate?.period.label ?? '—'}</span>
+          <span className={styles.scopeLabel}>Total rapports</span>
+          <span className={styles.scopeValue}>{isLoading ? '—' : rapports.length}</span>
         </div>
         <div className={styles.scopeItem}>
-          <span className={styles.scopeLabel}>Périmètre</span>
-          <span className={styles.scopeValue}>{scopeLabel}</span>
-        </div>
-        <div className={styles.scopeItem}>
-          <span className={styles.scopeLabel}>Collectes incluses</span>
-          <span className={styles.scopeValue}>{aggregate?.collections.length ?? 0}</span>
-        </div>
-        <div className={styles.scopeItem}>
-          <span className={styles.scopeLabel}>Alertes</span>
-          <span className={styles.scopeValue}>{aggregate?.alerts.total ?? 0}</span>
-        </div>
-        <div className={styles.scopeItem}>
-          <span className={styles.scopeLabel}>Bordereaux labo</span>
-          <span className={styles.scopeValue}>
-            {aggregate ? `${aggregate.lab.received} / ${aggregate.lab.total}` : '—'}
-          </span>
+          <span className={styles.scopeLabel}>Confirmés</span>
+          <span className={styles.scopeValue}>{isLoading ? '—' : confirmes}</span>
         </div>
         <div className={styles.scopeItem}>
           <span className={styles.scopeLabel}>Sites couverts</span>
-          <span className={styles.scopeValue}>{aggregate?.siteCount ?? 0}</span>
+          <span className={styles.scopeValue}>{isLoading ? '—' : uniqueSites}</span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Laboratoires</span>
+          <span className={styles.scopeValue}>{isLoading ? '—' : uniqueLabs}</span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Analyses totales</span>
+          <span className={styles.scopeValue}>{isLoading ? '—' : totalAnalyses}</span>
+        </div>
+        <div className={styles.scopeItem}>
+          <span className={styles.scopeLabel}>Avec fichier</span>
+          <span className={styles.scopeValue}>{isLoading ? '—' : avecFichier}</span>
         </div>
       </section>
 
-      <section className={styles.templateGrid} aria-label="Templates disponibles">
-        {(Object.keys(REPORT_TEMPLATES) as ReportTemplateId[]).map((id) => {
-          const t = REPORT_TEMPLATES[id];
-          const active = id === templateId && !isCustomPeriod;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => pickTemplate(id)}
-              className={`${styles.templateCard} ${active ? styles.templateCardActive : ''}`}
-              aria-pressed={active}
+      {/* ── Filtres ── */}
+      <section className={styles.controls} aria-label="Filtres">
+        <div className={styles.controlGroup}>
+          <label className={styles.controlLabel} htmlFor="ra-from">Du</label>
+          <input
+            id="ra-from"
+            type="date"
+            className={styles.controlInput}
+            value={fromFilter}
+            onChange={(e) => setFromFilter(e.target.value)}
+          />
+        </div>
+        <div className={styles.controlGroup}>
+          <label className={styles.controlLabel} htmlFor="ra-to">au</label>
+          <input
+            id="ra-to"
+            type="date"
+            className={styles.controlInput}
+            value={toFilter}
+            onChange={(e) => setToFilter(e.target.value)}
+          />
+        </div>
+        <div className={styles.controlGroup}>
+          <label className={styles.controlLabel} htmlFor="ra-site">Site</label>
+          <input
+            id="ra-site"
+            type="text"
+            className={styles.controlInput}
+            value={siteFilter}
+            onChange={(e) => setSiteFilter(e.target.value)}
+            placeholder="Rechercher un site…"
+          />
+        </div>
+        {(fromFilter || toFilter || siteFilter) && (
+          <div className={styles.controlActions}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFromFilter('');
+                setToFilter('');
+                setSiteFilter('');
+              }}
             >
-              <span className={styles.templateCadence}>{t.cadenceLabel}</span>
-              <h3 className={styles.templateTitle}>{t.title}</h3>
-              <p className={styles.templateDesc}>{t.description}</p>
-              <footer className={styles.templateFoot}>
-                <span>~{t.approxPages} pages</span>
-              </footer>
-            </button>
-          );
-        })}
+              Réinitialiser
+            </Button>
+          </div>
+        )}
       </section>
 
-      <section className={styles.controls} aria-label="Paramètres du rapport">
-        <div className={styles.controlGroup}>
-          <label className={styles.controlLabel} htmlFor="report-from">Du</label>
-          <input
-            id="report-from"
-            type="date"
-            className={styles.controlInput}
-            value={from}
-            onChange={(e) => onChangeFrom(e.target.value)}
-          />
-        </div>
-        <div className={styles.controlGroup}>
-          <label className={styles.controlLabel} htmlFor="report-to">au</label>
-          <input
-            id="report-to"
-            type="date"
-            className={styles.controlInput}
-            value={to}
-            onChange={(e) => onChangeTo(e.target.value)}
-          />
-        </div>
-        <div className={styles.controlGroup}>
-          <label className={styles.controlLabel}>Périmètre</label>
-          <Select
-            value={siteId}
-            onChange={setSiteId}
-            options={[
-              { value: 'all', label: 'Multi-sites (tous)' },
-              ...sites.map((s) => ({ value: s.id, label: `Mono · ${s.shortName}` })),
-            ]}
-          />
-        </div>
-        <div className={styles.controlActions}>
-          <Button
-            variant="secondary"
-            iconLeft={<FileSpreadsheet size={14} />}
-            onClick={handleXlsx}
-            disabled={!aggregate}
-          >
-            Exporter XLSX
-          </Button>
-          <Button
-            variant="primary"
-            iconLeft={<Printer size={14} />}
-            onClick={handlePrint}
-            disabled={!aggregate}
-          >
-            Générer PDF
-          </Button>
-        </div>
-      </section>
-
-      <section className={styles.previewWrap} aria-label="Aperçu du rapport">
-        <header className={styles.previewHead}>
+      {/* ── Liste des rapports ── */}
+      <section className={styles.rapportsList} aria-label="Liste des rapports">
+        <header className={styles.rapportsHead}>
           <div className={styles.previewHeadText}>
-            <h2 className={styles.previewTitle}>{template.title}</h2>
+            <h2 className={styles.previewTitle}>Rapports d'analyse</h2>
             <p className={styles.previewMeta}>
-              {aggregate?.period.label ?? '—'} · {scopeLabel}
+              {isLoading
+                ? 'Chargement…'
+                : `${filtered.length} résultat${filtered.length !== 1 ? 's' : ''}`}
             </p>
           </div>
-          {aggregate ? (
-            <span className={styles.previewCount}>
-              {aggregate.collections.length} collectes · {totalPages} pages
-            </span>
-          ) : null}
         </header>
 
-        <div className={styles.previewSurface}>
-          {isLoading || !aggregate ? (
-            <div className={styles.previewLoading}>
-              <Skeleton width="210mm" height="297mm" />
-            </div>
-          ) : (
-            <div className={styles.previewStage}>
-              <button
-                type="button"
-                className={`${styles.flipNav} ${styles.flipPrev}`}
-                onClick={goPrev}
-                disabled={currentPage <= 0}
-                aria-label="Page précédente"
-              >
-                <ChevronLeft size={18} />
-              </button>
-
-              <div className={styles.previewScale}>
-                <ReportPreview
-                  template={template}
-                  aggregate={aggregate}
-                  siteShortName={selectedSite?.shortName}
-                  generatedByName={generatedByName}
-                  activePageIndex={currentPage}
-                />
-              </div>
-
-              <button
-                type="button"
-                className={`${styles.flipNav} ${styles.flipNext}`}
-                onClick={goNext}
-                disabled={currentPage >= totalPages - 1}
-                aria-label="Page suivante"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {aggregate ? (
-          <footer className={styles.previewFooter} data-print-hide="true">
-            <span className={styles.pageCounter}>
-              Page <strong>{currentPage + 1}</strong> sur {totalPages}
-              <span className={styles.pageSection}>
-                · {sectionLabelOf(template.sections[currentPage])}
-              </span>
+        {isLoading ? (
+          <div className={styles.rapportsSkeleton}>
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height={96} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className={styles.rapportsEmpty}>
+            <FileText size={32} />
+            <span>
+              {rapports.length === 0
+                ? 'Aucun rapport disponible'
+                : 'Aucun résultat pour ces filtres'}
             </span>
-            <div className={styles.pageDots}>
-              {template.sections.map((id, i) => (
+          </div>
+        ) : (
+          <ul className={styles.rapportsGrid}>
+            {filtered.map((r) => (
+              <li key={r.id}>
                 <button
-                  key={id}
                   type="button"
-                  className={`${styles.pageDot} ${i === currentPage ? styles.pageDotActive : ''}`}
-                  onClick={() => setPageIndex(i)}
-                  aria-label={`Aller à la page ${i + 1}`}
-                  title={sectionLabelOf(id)}
-                />
-              ))}
-            </div>
-          </footer>
-        ) : null}
+                  className={`${styles.rapportCard} ${selectedId === r.id ? styles.rapportCardActive : ''}`}
+                  onClick={() => openDetail(r.id)}
+                  aria-pressed={selectedId === r.id}
+                >
+                  {selectedId === r.id && <span className={styles.rapportCardBar} />}
+                  <div className={styles.rapportCardTop}>
+                    <span className={styles.rapportSite}>{r.siteCode || r.siteNom || '—'}</span>
+                    <Badge variant={STATUT_VARIANT[r.statut] ?? 'neutral'} size="sm">
+                      {STATUT_LABEL[r.statut] ?? r.statut}
+                    </Badge>
+                  </div>
+                  {r.typeOuvrage && (
+                    <span className={styles.rapportTypeOuvrage}>{r.typeOuvrage}</span>
+                  )}
+                  <span className={styles.rapportLab}>{r.laboratoireNom || '—'}</span>
+                  <footer className={styles.rapportCardFoot}>
+                    <span>{r.mission}</span>
+                    <span className={styles.rapportDot}>·</span>
+                    <span>{fmtDate(r.dateEchantillonnage)}</span>
+                    <span className={styles.rapportDot}>·</span>
+                    <span>{r.nombreAnalyses} analyse{r.nombreAnalyses !== 1 ? 's' : ''}</span>
+                  </footer>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
+      {/* ── Panneau de détail ── */}
+      {selectedId && (
+        <section className={styles.detailPanel} aria-label="Détail du rapport" ref={detailPanelRef}>
+          <header className={styles.previewHead}>
+            <div className={styles.previewHeadText}>
+              <h2 className={styles.previewTitle}>
+                {detailLoading ? 'Chargement…' : (detail?.typeOuvrage || detail?.siteNom || '—')}
+              </h2>
+              <p className={styles.previewMeta}>
+                {detail
+                  ? `${detail.laboratoireNom} · ${detail.mission} · Échantillonnage ${fmtDate(detail.dateEchantillonnage)}`
+                  : ''}
+              </p>
+            </div>
+            <div className={styles.detailHeadActions}>
+              <button
+                type="button"
+                className={styles.detailClose}
+                onClick={closeDetail}
+                aria-label="Fermer le détail"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </header>
+
+          <div className={styles.previewSurface}>
+            {detailLoading ? (
+              <div className={styles.previewLoading}>
+                <Skeleton width="100%" height={240} />
+              </div>
+            ) : detail ? (
+              <div className={styles.detailBody}>
+                {/* Onglets milieu */}
+                {milieus.length > 0 && (
+                  <>
+                    <div className={styles.milieuTabs} role="tablist" aria-label="Milieu">
+                      {milieus.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          role="tab"
+                          aria-selected={m === currentMilieu}
+                          className={`${styles.milieuTab} ${m === currentMilieu ? styles.milieuTabActive : ''}`}
+                          onClick={() => setActiveMilieu(m)}
+                        >
+                          {MILIEU_LABEL[m] ?? m}
+                          <span className={styles.milieuCount}>
+                            {detail.analysesParMilieu[m]?.length ?? 0}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Tableau des résultats */}
+                    <div className={styles.analysesWrap}>
+                      {analysesMilieu.length === 0 ? (
+                        <p className={styles.detailEmpty}>Aucune analyse pour ce milieu.</p>
+                      ) : (
+                        <table className={styles.analysesTable}>
+                          <thead>
+                            <tr>
+                              <th>Paramètre</th>
+                              <th>Valeur</th>
+                              <th>Unité</th>
+                              <th>Conformité</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analysesMilieu.map((a) => (
+                              <tr
+                                key={a.id}
+                                className={a.conforme === false ? styles.rowNonConforme : ''}
+                              >
+                                <td className={styles.tdParam}>{a.libelle || a.parametre || '—'}</td>
+                                <td className={styles.tdNum}>{a.valeurBrute || (a.valeur ?? '—')}</td>
+                                <td className={styles.tdMuted}>{a.unite || '—'}</td>
+                                <td>
+                                  {a.conforme === null ? (
+                                    <span className={styles.conformeNd}>—</span>
+                                  ) : a.conforme ? (
+                                    <span className={styles.conformeOk}>
+                                      <CheckCircle2 size={13} />
+                                      Conforme
+                                    </span>
+                                  ) : (
+                                    <span className={styles.conformeNok}>
+                                      <AlertTriangle size={13} />
+                                      Non conforme
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    {/* Commentaire du milieu actif */}
+                    {currentCommentaire && (
+                      <div className={styles.detailTextBlock}>
+                        <h3 className={styles.detailTextTitle}>
+                          Observations — {MILIEU_LABEL[currentMilieu] ?? currentMilieu}
+                        </h3>
+                        <p className={styles.detailTextBody}>{currentCommentaire}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Conclusion et recommandations */}
+                {(detail.conclusion || detail.recommandations.length > 0) && (
+                  <div className={styles.detailTexts}>
+                    {detail.conclusion && (
+                      <div className={styles.detailTextBlock}>
+                        <h3 className={styles.detailTextTitle}>Conclusion</h3>
+                        <p className={styles.detailTextBody}>{detail.conclusion}</p>
+                      </div>
+                    )}
+                    {detail.recommandations.length > 0 && (
+                      <div className={styles.detailTextBlock}>
+                        <h3 className={styles.detailTextTitle}>Recommandations</h3>
+                        {detail.recommandations.map((rec, i) => (
+                          <StructuredText key={i} text={rec} className={styles.detailTextBody} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      )}
+
+      {/* ── Historique ── */}
       <section className={styles.history} aria-label="Historique">
         <header className={styles.historyHead}>
           <h2 className={styles.historyTitle}>Historique</h2>

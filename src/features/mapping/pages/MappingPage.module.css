@@ -236,42 +236,6 @@
   color: #fff;
 }
 
-/* Toggles surcouches */
-.toggle {
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-out);
-  align-items: flex-start;
-}
-.toggle:hover {
-  background: var(--color-surface-2);
-}
-.toggle input {
-  margin-top: 3px;
-  accent-color: var(--color-primary);
-}
-.toggleBody {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.toggleLabel {
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  font-weight: var(--weight-medium);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.toggleHint {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  line-height: 1.4;
-}
 /* Légende */
 .legend {
   list-style: none;
@@ -350,10 +314,10 @@
   background: var(--color-surface-2);
   border-color: var(--color-border);
 }
-.siteCard[data-level='critical'] {
+.siteCard[data-level='CRITIQUE'] {
   background: color-mix(in srgb, var(--color-danger) 4%, transparent);
 }
-.siteCard[data-level='critical']:hover {
+.siteCard[data-level='CRITIQUE']:hover {
   background: color-mix(in srgb, var(--color-danger) 9%, transparent);
 }
 .siteCardDot {

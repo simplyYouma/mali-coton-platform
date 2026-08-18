@@ -1,14 +1,34 @@
 import { useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { Button, FormField, Input } from '@/components/common';
+import { http } from '@/lib/http';
 import { useLogin } from '../hooks/useLogin';
 import styles from './LoginPage.module.css';
+
+interface StatistiquesPubliques {
+  sitesSuivis: number;
+  composantes: number;
+  composantesCodes: string[];
+  seuilsNormatifs: number;
+  resultatsAnalyses: number;
+}
+
+function useStatistiquesPubliques() {
+  return useQuery<StatistiquesPubliques>({
+    queryKey: ['statistiques-publiques'],
+    queryFn: () => http<StatistiquesPubliques>('/statistiques-publiques', { public: true }),
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+}
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const login = useLogin();
+  const { data: stats } = useStatistiquesPubliques();
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,10 +69,15 @@ export function LoginPage() {
             Suivi socio-environnemental des sites de teinture artisanale.
           </h2>
           <ul className={styles.metaList}>
-            <li><span>5</span> sites pilotes</li>
-            <li><span>~600</span> teinturiers·ères</li>
-            <li><span>49</span> indicateurs</li>
-            <li><span>3 ans</span> de suivi</li>
+            <li><span>{stats?.sitesSuivis ?? '—'}</span> sites suivis</li>
+            <li><span>{stats?.resultatsAnalyses ?? '—'}</span> résultats d'analyses</li>
+            <li><span>{stats?.seuilsNormatifs ?? '—'}</span> seuils normatifs</li>
+            <li>
+              <span>{stats?.composantes ?? '—'}</span> composantes
+              {stats?.composantesCodes && (
+                <small> ({stats.composantesCodes.join(' · ')})</small>
+              )}
+            </li>
           </ul>
         </div>
       </section>

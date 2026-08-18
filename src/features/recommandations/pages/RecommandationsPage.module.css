@@ -385,11 +385,9 @@
   flex-direction: column;
 }
 .detailDescription {
-  margin: 0;
   font-size: var(--text-md);
   color: var(--color-text);
   line-height: 1.6;
-  white-space: pre-wrap;
 }
 .muted {
   color: var(--color-text-disabled);

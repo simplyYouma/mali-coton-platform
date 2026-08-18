@@ -3,14 +3,9 @@ import {
   LayoutDashboard,
   MapPin,
   ClipboardList,
-  ClipboardCheck,
-  AlertTriangle,
   Map,
-  BarChart3,
   Lightbulb,
   Users,
-  UsersRound,
-  ScrollText,
   Beaker,
   Microscope,
   Pipette,
@@ -55,13 +50,14 @@ const ALL_NAV: NavSpec[] = [
     roles: ['admin', 'superviseur'],
     section: 'main',
   },
-  {
-    to: '/collecte/validation',
-    label: 'Validation',
-    icon: <ClipboardCheck size={18} />,
-    roles: ['admin', 'superviseur'],
-    section: 'main',
-  },
+  /* Validation : masquee temporairement de la nav (route conservee). */
+  // {
+  //   to: '/collecte/validation',
+  //   label: 'Validation',
+  //   icon: <ClipboardCheck size={18} />,
+  //   roles: ['admin', 'superviseur'],
+  //   section: 'main',
+  // },
   {
     to: '/labo/analyses',
     label: 'Résultats d\'analyse',
@@ -96,13 +92,14 @@ const ALL_NAV: NavSpec[] = [
     roles: ['agent', 'admin', 'superviseur'],
     section: 'main',
   },
-  {
-    to: '/alertes',
-    label: 'Alertes',
-    icon: <AlertTriangle size={18} />,
-    roles: ['admin', 'superviseur'],
-    section: 'main',
-  },
+  /* Alertes : masquee temporairement de la nav (route conservee). */
+  // {
+  //   to: '/alertes',
+  //   label: 'Alertes',
+  //   icon: <AlertTriangle size={18} />,
+  //   roles: ['admin', 'superviseur'],
+  //   section: 'main',
+  // },
   {
     to: '/recommandations',
     label: 'Recommandations',
@@ -110,13 +107,14 @@ const ALL_NAV: NavSpec[] = [
     roles: ['admin', 'superviseur', 'visitor'],
     section: 'main',
   },
-  {
-    to: '/agents',
-    label: 'Agents',
-    icon: <UsersRound size={18} />,
-    roles: ['admin', 'superviseur'],
-    section: 'main',
-  },
+  /* Agents : masquee temporairement de la nav (route conservee). */
+  // {
+  //   to: '/agents',
+  //   label: 'Agents',
+  //   icon: <UsersRound size={18} />,
+  //   roles: ['admin', 'superviseur'],
+  //   section: 'main',
+  // },
   {
     to: '/cartographie',
     label: 'Cartographie',
@@ -124,13 +122,14 @@ const ALL_NAV: NavSpec[] = [
     roles: ['admin', 'superviseur', 'visitor'],
     section: 'tools',
   },
-  {
-    to: '/analytics',
-    label: 'Analytics',
-    icon: <BarChart3 size={18} />,
-    roles: ['admin', 'superviseur', 'visitor'],
-    section: 'tools',
-  },
+  /* Analytics : masquee temporairement de la nav (route conservee). */
+  // {
+  //   to: '/analytics',
+  //   label: 'Analytics',
+  //   icon: <BarChart3 size={18} />,
+  //   roles: ['admin', 'superviseur', 'visitor'],
+  //   section: 'tools',
+  // },
   {
     to: '/reporting',
     label: 'Rapports',
@@ -168,13 +167,14 @@ const ALL_NAV: NavSpec[] = [
     roles: ['admin'],
     section: 'admin',
   },
-  {
-    to: '/admin/audit',
-    label: 'Journal d\'audit',
-    icon: <ScrollText size={18} />,
-    roles: ['admin'],
-    section: 'admin',
-  },
+  /* Journal d'audit : masquee temporairement de la nav (route conservee). */
+  // {
+  //   to: '/admin/audit',
+  //   label: 'Journal d\'audit',
+  //   icon: <ScrollText size={18} />,
+  //   roles: ['admin'],
+  //   section: 'admin',
+  // },
   {
     to: '/admin/formulaires',
     label: 'Modèles formulaires',

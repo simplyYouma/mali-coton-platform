@@ -1,0 +1,328 @@
+/* ─────────────────────────────────────────────────────────
+ * ConformiteSitePanel — onglet conformité environnementale
+ * ───────────────────────────────────────────────────────── */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ── Résumé strip ── */
+.resumeStrip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .resumeStrip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .resumeStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.resumeCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-right: 1px solid var(--color-border);
+}
+.resumeCell:last-child { border-right: none; }
+@media (max-width: 900px) {
+  .resumeCell:nth-child(3n) { border-right: none; }
+  .resumeCell:nth-child(3n+1):nth-last-child(-n+3) { border-top: 1px solid var(--color-border); }
+}
+
+.resumeLabel {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-semibold);
+}
+
+.resumeValue {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.resumeOk  { color: var(--color-success, #16a34a); }
+.resumeNok { color: var(--color-danger,  #dc2626); }
+
+/* ── Badges statut ── */
+.statutBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+}
+.statutBadgeSm {
+  padding: 2px 8px;
+  font-size: var(--text-2xs);
+}
+
+.statut_CONFORME    { background: var(--color-success-bg, #dcfce7); color: #166534; }
+.statut_A_SURVEILLER { background: var(--color-warning-bg, #fef9c3); color: #854d0e; }
+.statut_CRITIQUE    { background: var(--color-danger-bg,  #fee2e2); color: #991b1b; }
+.statut_NON_EVALUE  { background: var(--color-surface-2); color: var(--color-text-muted); }
+
+/* ── Jauges ── */
+.gaugeWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+.gaugeTrack {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.gaugeFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s var(--ease-out);
+}
+.gaugeFill_CONFORME    { background: #16a34a; }
+.gaugeFill_A_SURVEILLER { background: #ca8a04; }
+.gaugeFill_CRITIQUE    { background: #dc2626; }
+.gaugeFill_NON_EVALUE  { background: var(--color-border-strong); }
+.gaugePct {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  min-width: 42px;
+}
+.gaugePlaceholder {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ── Tuiles composantes ── */
+.composanteGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+@media (max-width: 640px) {
+  .composanteGrid { grid-template-columns: 1fr; }
+}
+
+.composanteTile {
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+  position: relative;
+}
+.composanteTile:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 2px 8px rgba(10,10,11,0.06);
+}
+.composanteTileActive {
+  border-color: var(--color-ink-night);
+  background: var(--color-surface-2);
+  box-shadow: none;
+}
+.composanteTileActive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  width: 3px;
+  background: var(--color-ink-night);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.composanteCode {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.composanteMini { margin-top: var(--space-1); }
+
+.composanteCounters {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+}
+.cOk  { color: #16a34a; font-weight: var(--weight-semibold); }
+.cNok { color: #dc2626; font-weight: var(--weight-semibold); }
+.cNd  { color: var(--color-text-muted); }
+
+/* ── Section tableau — carte indépendante (en-tête + tableau) ── */
+.tableSection {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tableHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.tableTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.tableMeta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.paramTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.paramTable th {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  background: var(--color-surface-sunken);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.paramTable td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+.paramTable tr:last-child td { border-bottom: none; }
+.paramTable tr:hover td { background: var(--color-surface-2); }
+
+.paramRow_CONFORME td    { }
+.paramRow_NON_CONFORME td { background: var(--color-danger-bg, rgba(220,38,38,0.04)); }
+.paramRow_NON_CONFORME:hover td { background: var(--color-danger-bg, rgba(220,38,38,0.07)); }
+.paramRow_A_SURVEILLER td { background: rgba(202,138,4,0.04); }
+
+.tdLibelle { font-weight: var(--weight-medium); color: var(--color-text); }
+.tdValeur  {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+.valeurBrute {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.unite {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.tdSeuil { color: var(--color-text-muted); white-space: nowrap; font-size: var(--text-xs); }
+.tdNorme { white-space: nowrap; }
+
+.normeBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.tdStatut { white-space: nowrap; }
+
+.conformeOk {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #16a34a;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+.conformeNok {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #dc2626;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+.conformeWarn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ca8a04;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+.conformeNd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  cursor: help;
+}
