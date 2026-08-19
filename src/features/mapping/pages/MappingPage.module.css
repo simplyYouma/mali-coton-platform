@@ -346,13 +346,6 @@
   align-items: center;
   gap: 4px;
 }
-.siteCardSep {
-  color: var(--color-text-disabled);
-}
-.siteCardAlert {
-  color: var(--color-danger);
-  font-weight: var(--weight-semibold);
-}
 
 /* ───── Bouton Recentrer en haut-droite de la carte ───── */
 .mapRecenterBtn {
@@ -493,29 +486,54 @@
   color: var(--color-text-muted);
   margin-left: 2px;
 }
-.popupSpark {
+
+/* Paramètres hors seuil — liste compacte, la valeur alignée à droite pour
+ * qu'on balaie la colonne des mesures d'un seul regard. */
+.popupMesures {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 4px 0;
+  gap: 5px;
 }
-.popupSparkLabel {
+.popupMesuresTitre {
   font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--color-text-muted);
   font-weight: var(--weight-bold);
 }
-.popupAlert {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--text-xs);
-  color: var(--color-danger);
-  font-weight: var(--weight-semibold);
+.popupMesuresListe {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.popupMesure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
   padding: 4px 8px;
-  background: var(--color-danger-bg);
   border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+}
+.popupMesureNom {
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.popupMesureValeur {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-danger);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Barre d'actions unifiée — séparateur visuel au-dessus */

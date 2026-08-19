@@ -8,7 +8,6 @@ import { adminHandlers } from './admin';
 import { alertsHandlers } from './alerts';
 import { recommandationsHandlers } from './recommandations';
 import { structuralsHandlers } from './structurals';
-import { formulairesHandlers } from './formulaires';
 
 export const handlers: HttpHandler[] = [
   ...authHandlers,
@@ -20,5 +19,4 @@ export const handlers: HttpHandler[] = [
   ...alertsHandlers,
   ...recommandationsHandlers,
   ...structuralsHandlers,
-  ...formulairesHandlers,
 ];

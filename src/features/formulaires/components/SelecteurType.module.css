@@ -1,0 +1,69 @@
+.familles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.famille {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.familleTitre {
+  margin: 0;
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-bold);
+}
+.grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-2);
+}
+.tuile {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px var(--space-2);
+  min-height: 44px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+.tuile:hover,
+.tuile:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-surface-2);
+}
+.tuileIcone {
+  grid-row: 1 / 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+.tuile:hover .tuileIcone {
+  color: var(--color-primary);
+}
+.tuileNom {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+.tuileAide {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}

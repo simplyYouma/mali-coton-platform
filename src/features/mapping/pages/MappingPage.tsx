@@ -12,7 +12,6 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Map as MapIcon,
@@ -25,12 +24,8 @@ import {
 } from 'lucide-react';
 import { Badge, Skeleton } from '@/components/common';
 import { useSites } from '@/features/sites/hooks/useSites';
-import { useCollections } from '@/features/collection/hooks/useCollections';
-import { useAlerts } from '@/features/alerts/hooks/useAlerts';
-import { useConformiteGlobale } from '@/features/conformite/hooks/useConformite';
+import { useConformiteGlobale, useConformiteSite } from '@/features/conformite/hooks/useConformite';
 import type { StatutConformite } from '@/features/conformite/api/conformite';
-import { formatRelativeTime } from '@/lib/format';
-import type { Collection } from '@/features/collection/api/collection.types';
 import type { Site } from '@/features/sites/api/site.types';
 import styles from './MappingPage.module.css';
 
@@ -95,8 +90,6 @@ export function MappingPage() {
   const { data: sitesPage, isLoading } = useSites();
   const sites = useMemo(() => sitesPage?.items ?? [], [sitesPage]);
 
-  const { data: collectionsPage } = useCollections({});
-  const { data: alertsPage } = useAlerts();
 
   const { data: conformiteGlobale } = useConformiteGlobale();
 
@@ -144,56 +137,6 @@ export function MappingPage() {
     const lng = filteredSites.reduce((s, x) => s + x.coordinates.lng, 0) / filteredSites.length;
     return [lat, lng];
   }, [filteredSites]);
-
-  /* Stats par site agreges des collectes — dernieres valeurs cle +
-   * sparkline pH 90 jours pour afficher dans la popup. */
-  type SiteStats = {
-    lastCollectionAt: string | null;
-    lastPh: number | null;
-    lastSulfates: number | null;
-    lastEpi: number | null;
-    phSeries: number[];
-    activeAlerts: number;
-  };
-  const siteStats = useMemo(() => {
-    const map = new Map<string, SiteStats>();
-    const cutoff = Date.now() - 90 * 86_400_000;
-    for (const s of sites) {
-      const all = (collectionsPage?.items ?? []).filter(
-        (c: Collection) => c.siteId === s.id,
-      );
-      const sorted = [...all].sort(
-        (a, b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime(),
-      );
-      const latest = sorted[0];
-      const getVal = (c: Collection | undefined, ind: string) => {
-        if (!c) return null;
-        const m = c.measurements.find((x) => x.indicatorId === ind);
-        const v = m?.value;
-        return typeof v === 'number' && Number.isFinite(v) ? v : null;
-      };
-      const phSeries = all
-        .filter((c) => new Date(c.collectedAt).getTime() >= cutoff)
-        .sort((a, b) => new Date(a.collectedAt).getTime() - new Date(b.collectedAt).getTime())
-        .map((c) => {
-          const m = c.measurements.find((x) => x.indicatorId === 'water.ph');
-          return typeof m?.value === 'number' && Number.isFinite(m.value) ? m.value : null;
-        })
-        .filter((v): v is number => v != null);
-      const activeAlerts = (alertsPage?.items ?? []).filter(
-        (a) => a.siteId === s.id && a.status === 'active',
-      ).length;
-      map.set(s.id, {
-        lastCollectionAt: latest?.collectedAt ?? null,
-        lastPh: getVal(latest, 'water.ph'),
-        lastSulfates: getVal(latest, 'water.sulfates'),
-        lastEpi: getVal(latest, 'health.epi_usage'),
-        phSeries,
-        activeAlerts,
-      });
-    }
-    return map;
-  }, [sites, collectionsPage, alertsPage]);
 
   return (
     <div className={styles.page}>
@@ -287,7 +230,6 @@ export function MappingPage() {
                 })
                 .map((s) => {
                   const lvl = conformityFor(s.id);
-                  const ss = siteStats.get(s.id);
                   return (
                     <button
                       key={s.id}
@@ -303,17 +245,7 @@ export function MappingPage() {
                       />
                       <span className={styles.siteCardBody}>
                         <span className={styles.siteCardName}>{s.shortName}</span>
-                        <span className={styles.siteCardMeta}>
-                          {s.location.commune}
-                          {ss?.activeAlerts ? (
-                            <>
-                              <span className={styles.siteCardSep}>·</span>
-                              <span className={styles.siteCardAlert}>
-                                {ss.activeAlerts} alerte{ss.activeAlerts > 1 ? 's' : ''}
-                              </span>
-                            </>
-                          ) : null}
-                        </span>
+                        <span className={styles.siteCardMeta}>{s.location.commune}</span>
                       </span>
                     </button>
                   );
@@ -396,26 +328,15 @@ export function MappingPage() {
 
               {/* Marqueurs sites — couleur alignée sur la conformité réelle
                * (labo), filtrés par zone et statut via le panneau lateral. */}
-              {filteredSites.map((site) => {
-                const lvl = conformityFor(site.id);
-                const ss = siteStats.get(site.id);
-                return (
-                  <SiteMarker
-                    key={site.id}
-                    site={site}
-                    lvl={lvl}
-                    hasAlert={(ss?.activeAlerts ?? 0) > 0}
-                    activeAlerts={ss?.activeAlerts ?? 0}
-                    lastCollectionAt={ss?.lastCollectionAt ?? null}
-                    lastPh={ss?.lastPh ?? null}
-                    lastSulfates={ss?.lastSulfates ?? null}
-                    lastEpi={ss?.lastEpi ?? null}
-                    phSeries={ss?.phSeries ?? []}
-                    shouldOpenPopup={openPopupSiteId === site.id}
-                    onPopupOpened={() => setOpenPopupSiteId(null)}
-                  />
-                );
-              })}
+              {filteredSites.map((site) => (
+                <SiteMarker
+                  key={site.id}
+                  site={site}
+                  lvl={conformityFor(site.id)}
+                  shouldOpenPopup={openPopupSiteId === site.id}
+                  onPopupOpened={() => setOpenPopupSiteId(null)}
+                />
+              ))}
 
               {/* Composant invisible qui ecoute focusTarget et fait fly-to */}
               <MapFocus target={focusTarget} />
@@ -454,22 +375,11 @@ interface GeoInfo {
 interface SiteMarkerProps {
   site: Site;
   lvl: StatutConformite;
-  hasAlert: boolean;
-  activeAlerts: number;
-  lastCollectionAt: string | null;
-  lastPh: number | null;
-  lastSulfates: number | null;
-  lastEpi: number | null;
-  phSeries: number[];
   shouldOpenPopup: boolean;
   onPopupOpened: () => void;
 }
 
-function SiteMarker({
-  site, lvl, hasAlert, activeAlerts,
-  lastCollectionAt, lastPh, lastSulfates, lastEpi, phSeries,
-  shouldOpenPopup, onPopupOpened,
-}: SiteMarkerProps) {
+function SiteMarker({ site, lvl, shouldOpenPopup, onPopupOpened }: SiteMarkerProps) {
   const markerRef = useRef<L.Marker>(null);
   const map = useMap();
   const onPopupOpenedRef = useRef(onPopupOpened);
@@ -556,50 +466,13 @@ function SiteMarker({
             </span>
           </div>
 
-          {/* KPIs dernière collecte */}
-          <div className={styles.popupKpiGrid}>
-            <div className={styles.popupKpi}>
-              <span className={styles.popupKpiLabel}>pH</span>
-              <span className={styles.popupKpiValue}>
-                {lastPh != null ? lastPh.toFixed(2) : '—'}
-              </span>
-            </div>
-            <div className={styles.popupKpi}>
-              <span className={styles.popupKpiLabel}>Sulfates</span>
-              <span className={styles.popupKpiValue}>
-                {lastSulfates != null ? Math.round(lastSulfates) : '—'}
-                <span className={styles.popupKpiUnit}>mg/L</span>
-              </span>
-            </div>
-            <div className={styles.popupKpi}>
-              <span className={styles.popupKpiLabel}>EPI</span>
-              <span className={styles.popupKpiValue}>
-                {lastEpi != null ? `${Math.round(lastEpi)}%` : '—'}
-              </span>
-            </div>
-          </div>
-
-          {phSeries.length >= 2 ? (
-            <div className={styles.popupSpark}>
-              <span className={styles.popupSparkLabel}>
-                pH · {phSeries.length} mesures · 90 j
-              </span>
-              <PopupSparkline values={phSeries} />
-            </div>
-          ) : null}
-
-          {lastCollectionAt ? (
-            <span className={styles.popupMeta}>
-              Dernière collecte : {formatRelativeTime(lastCollectionAt)}
-            </span>
-          ) : null}
-
-          {hasAlert ? (
-            <span className={styles.popupAlert}>
-              <AlertTriangle size={11} /> {activeAlerts} alerte
-              {activeAlerts > 1 ? 's' : ''} active{activeAlerts > 1 ? 's' : ''}
-            </span>
-          ) : null}
+          {/* Mesures issues des analyses laboratoire.
+            *
+            * Les valeurs affichées ici viennent de l'endpoint de conformité, et
+            * non des collectes : en live, `import_kobos` ne porte aucune mesure
+            * (`measurements` y est toujours vide), si bien que l'ancien bloc
+            * pH / Sulfates / EPI restait invariablement à « — ». */}
+          <MesuresSite siteId={site.id} actif={popupOpen} />
 
           {/* Barre d'actions unifiée */}
           <div className={styles.popupActions}>
@@ -634,6 +507,80 @@ function SiteMarker({
 }
 
 /* ─────────────────────────────────────
+ * MesuresSite — paramètres analysés du site, chargés à l'ouverture du popup
+ * ─────────────────────────────────────*/
+function MesuresSite({ siteId, actif }: { siteId: string; actif: boolean }) {
+  /* `useConformiteSite` s'active sur la présence de l'id : passer `undefined`
+   * tant que le popup est fermé évite d'appeler l'API pour tous les sites au
+   * chargement de la carte. Le cache est partagé avec la fiche site. */
+  const { data, isLoading, isError } = useConformiteSite(actif ? siteId : undefined);
+
+  if (isLoading) {
+    return <span className={styles.popupMeta}>Chargement des mesures…</span>;
+  }
+  if (isError || !data) {
+    return <span className={styles.popupMeta}>Mesures indisponibles pour ce site.</span>;
+  }
+
+  const { resume, composantes } = data;
+
+  /* Les paramètres hors seuil d'abord : c'est l'information qu'on vient
+   * chercher en ouvrant un site sur la carte. */
+  const horsSeuil = composantes
+    .flatMap((c) => c.parametres)
+    .filter((prm) => prm.statut === 'NON_CONFORME' || prm.statut === 'CRITIQUE');
+
+  return (
+    <>
+      <div className={styles.popupKpiGrid}>
+        <div className={styles.popupKpi}>
+          <span className={styles.popupKpiLabel}>Conformité</span>
+          <span className={styles.popupKpiValue}>
+            {resume.tauxConformite.toFixed(0)}
+            <span className={styles.popupKpiUnit}>%</span>
+          </span>
+        </div>
+        <div className={styles.popupKpi}>
+          <span className={styles.popupKpiLabel}>Conformes</span>
+          <span className={styles.popupKpiValue}>{resume.conformes}</span>
+        </div>
+        <div className={styles.popupKpi}>
+          <span className={styles.popupKpiLabel}>Hors seuil</span>
+          <span className={styles.popupKpiValue}>{resume.nonConformes}</span>
+        </div>
+      </div>
+
+      {horsSeuil.length > 0 ? (
+        <div className={styles.popupMesures}>
+          <span className={styles.popupMesuresTitre}>Paramètres hors seuil</span>
+          <ul className={styles.popupMesuresListe}>
+            {horsSeuil.slice(0, 3).map((prm) => (
+              <li key={prm.id} className={styles.popupMesure}>
+                <span className={styles.popupMesureNom}>{prm.libelle || prm.code}</span>
+                <span className={styles.popupMesureValeur}>
+                  {prm.valeurBrute || '—'}
+                  {prm.unite ? <span className={styles.popupKpiUnit}>{prm.unite}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {horsSeuil.length > 3 ? (
+            <span className={styles.popupMeta}>
+              + {horsSeuil.length - 3} autre{horsSeuil.length - 3 > 1 ? 's' : ''} paramètre
+              {horsSeuil.length - 3 > 1 ? 's' : ''} hors seuil
+            </span>
+          ) : null}
+        </div>
+      ) : resume.totalEvaluables > 0 ? (
+        <span className={styles.popupMeta}>Tous les paramètres évalués sont dans les seuils.</span>
+      ) : (
+        <span className={styles.popupMeta}>Aucun paramètre évalué pour ce site.</span>
+      )}
+    </>
+  );
+}
+
+/* ─────────────────────────────────────
  * MapFocus — composant invisible qui ecoute le focusTarget et fait
  * flyTo via useMap (react-leaflet). Permet de centrer la carte quand
  * le sup clique sur un site dans le panel lateral.
@@ -649,46 +596,4 @@ function MapFocus({ target }: { target: [number, number, number] | null }) {
     map.flyTo([target[0], target[1]], target[2], { duration: 0.8 });
   }, [target, map]);
   return null;
-}
-
-/* ─────────────────────────────────────
- * PopupSparkline — petite courbe SVG des dernieres valeurs (pH 90j).
- * ─────────────────────────────────────*/
-function PopupSparkline({ values }: { values: number[] }) {
-  if (values.length < 2) return null;
-  const w = 200;
-  const h = 36;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const step = w / (values.length - 1);
-  const pts = values
-    .map((v, i) => {
-      const x = i * step;
-      const y = h - ((v - min) / range) * (h - 4) - 2;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' L');
-  /* Surveille la derniere valeur pour colorer la sparkline */
-  const last = values[values.length - 1]!;
-  const isOk = last >= 6.5 && last <= 8.5; // OMS pH
-  const color = isOk ? '#16a34a' : '#dc2626';
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      width="100%"
-      height={h}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path d={`M${pts}`} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      {/* Point final */}
-      <circle
-        cx={(values.length - 1) * step}
-        cy={h - ((last - min) / range) * (h - 4) - 2}
-        r={2.5}
-        fill={color}
-      />
-    </svg>
-  );
 }

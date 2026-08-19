@@ -13,10 +13,18 @@ import { getToken } from './tokenStore';
 export class HttpError extends Error {
   status: number;
   payload: ApiError;
-  constructor(status: number, payload: ApiError) {
+  /**
+   * Corps de réponse brut tel que parsé.
+   *
+   * `payload` est normalisé pour l'affichage et ne retient qu'un message ; les
+   * erreurs de validation 422 portent le détail par champ, qui serait perdu.
+   */
+  body: unknown;
+  constructor(status: number, payload: ApiError, body?: unknown) {
     super(payload.message);
     this.status = status;
     this.payload = payload;
+    this.body = body;
   }
 }
 
@@ -51,14 +59,18 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
     if (token) authHeader['Authorization'] = `Bearer ${token}`;
   }
 
+  /* Un FormData porte sa propre frontière multipart : lui imposer un
+   * Content-Type JSON casserait l'upload, et le sérialiser le viderait. */
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
   const response = await fetch(url.toString(), {
     headers: {
-      'Content-Type': contentType,
+      ...(isFormData ? {} : { 'Content-Type': contentType }),
       Accept: contentType,
       ...authHeader,
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: isFormData ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
     ...rest,
   });
 
@@ -87,7 +99,7 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
       message,
       correlationId: 'n/a',
     };
-    throw new HttpError(response.status, errorPayload);
+    throw new HttpError(response.status, errorPayload, data);
   }
 
   return data as T;

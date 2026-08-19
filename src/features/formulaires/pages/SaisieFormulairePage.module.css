@@ -1,0 +1,265 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.entete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.enteteTexte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  width: fit-content;
+}
+.retour:hover {
+  color: var(--color-primary);
+}
+.titre {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h1);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+/* État d'enregistrement : discret, il informe sans capter l'attention. */
+.sauvegarde {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.sauvegardeLocal {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+}
+
+.corps {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* ── Stepper ── */
+.stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - var(--space-7));
+  overflow-y: auto;
+}
+.etape {
+  display: grid;
+  grid-template-columns: 28px 1fr 16px;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.etape:hover {
+  background: var(--color-surface-2);
+}
+/* Une seule couleur d'accent, pour la seule étape courante. */
+.etape[data-actif='true'] {
+  background: var(--color-primary-soft, var(--color-surface-2));
+}
+.etape[data-actif='true'] .etapeLibelle {
+  color: var(--color-primary);
+  font-weight: var(--weight-bold);
+}
+.etapeCode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  color: var(--color-text-muted);
+}
+.etapeCorps {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.etapeLibelle {
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.etapeCompteur {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.etapePuce {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-disabled);
+}
+.etape[data-etat='complete'] .etapePuce {
+  color: var(--color-success);
+}
+.etape[data-etat='erreur'] .etapePuce {
+  color: var(--color-danger);
+}
+.etape[data-etat='erreur'] .etapeCompteur {
+  color: var(--color-danger);
+}
+
+/* ── Panneau de saisie ── */
+.panneau {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  min-width: 0;
+}
+.panneauHead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.panneauEyebrow {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-semibold);
+}
+.panneauTitre {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.champs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.blocage {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+.blocage > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--color-warning);
+}
+
+/* Tablette et mobile : le sommaire devient une barre défilante au-dessus de la
+ * saisie, et les actions passent en pleine largeur (cibles ≥ 44px). */
+@media (max-width: 900px) {
+  .corps {
+    grid-template-columns: 1fr;
+  }
+  .stepper {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    max-height: none;
+    scroll-snap-type: x proximity;
+  }
+  .etape {
+    grid-template-columns: 24px 1fr;
+    min-width: 170px;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+  .etapePuce {
+    display: none;
+  }
+  .panneau {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 560px) {
+  .navigation {
+    flex-direction: column-reverse;
+  }
+  .navigation > button {
+    width: 100%;
+  }
+}

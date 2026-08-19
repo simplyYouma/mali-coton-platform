@@ -65,5 +65,8 @@ export type { PlaceholderProps } from './Placeholder/Placeholder';
 export { StructuredText } from './StructuredText/StructuredText';
 export type { StructuredTextProps } from './StructuredText/StructuredText';
 
+export { NoteExplicative } from './NoteExplicative/NoteExplicative';
+export type { NoteExplicativeProps, EtapeNote } from './NoteExplicative/NoteExplicative';
+
 export { AppShell } from './AppShell';
 export type { AppShellProps, NavItem, NavSection } from './AppShell';

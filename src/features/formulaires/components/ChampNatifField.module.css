@@ -1,0 +1,181 @@
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Options d'un choix : empilées, cibles tactiles confortables — la saisie se
+ * fait debout, souvent d'une seule main. */
+.choixGroupe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.choixGroupe > label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.choixGroupe > label:hover {
+  background: var(--color-surface-2);
+}
+
+/* Alerte de cohérence — informative, jamais bloquante : ton ambre, pas rouge. */
+.alerte {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--color-warning);
+}
+.alerte > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.etatOptions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.etatOptionsErreur {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+}
+
+/* ── GEOPOINT ── */
+.gpsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.gpsValeur {
+  flex: 1 1 200px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.gpsCoords {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+.gpsVide {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.gpsBtn,
+.fichierBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+.gpsBtn:hover:not(:disabled),
+.fichierBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.gpsBtn:disabled,
+.fichierBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.gpsErreur {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+}
+
+/* ── FICHIER ── */
+.fichierWrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.fichierInput {
+  display: none;
+}
+.fichierNom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fichierRetirer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.fichierRetirer:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+@media (max-width: 640px) {
+  .gpsWrap,
+  .fichierWrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gpsBtn,
+  .fichierBtn {
+    width: 100%;
+  }
+}

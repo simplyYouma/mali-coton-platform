@@ -26,12 +26,10 @@ import { AnalyticsPage } from '@/features/analytics';
 import { ReportingPage } from '@/features/reporting';
 import { LabSamplesPage, PrelevementsPage, AnalysesPage } from '@/features/lab';
 import {
-  FormulaireListPage,
-  FormulaireCollectePage,
-  SoumissionsListPage,
-  FormulaireAdminListPage,
-  FormulaireFormPage,
-  ChampListPage,
+  ModelesFormulairePage,
+  StructureFormulairePage,
+  SaisieFormulairePage,
+  ConstructeurFormulairePage,
 } from '@/features/formulaires';
 import { RoleGuard } from '@/components/common';
 
@@ -138,15 +136,20 @@ export function AppRoutes() {
             </RoleGuard>
           }
         />
-        {/* Formulaires de collecte — agent */}
-        <Route path="/formulaires" element={<FormulaireListPage />} />
-        <Route path="/formulaires/soumissions" element={<SoumissionsListPage />} />
-        <Route path="/formulaires/:id/saisir" element={<FormulaireCollectePage />} />
-        {/* Formulaires de collecte — admin */}
-        <Route path="/admin/formulaires" element={<FormulaireAdminListPage />} />
-        <Route path="/admin/formulaires/nouveau" element={<FormulaireFormPage />} />
-        <Route path="/admin/formulaires/:id/editer" element={<FormulaireFormPage />} />
-        <Route path="/admin/formulaires/:id/champs" element={<ChampListPage />} />
+        {/* Collecte native — agent */}
+        <Route path="/formulaires" element={<ModelesFormulairePage />} />
+        <Route path="/formulaires/:code" element={<StructureFormulairePage />} />
+        <Route path="/formulaires/:code/saisir" element={<SaisieFormulairePage />} />
+        {/* Collecte native — constructeur (admin) */}
+        <Route path="/admin/formulaires" element={<ModelesFormulairePage />} />
+        <Route
+          path="/admin/formulaires/:id/constructeur"
+          element={
+            <RoleGuard roles={['admin']}>
+              <ConstructeurFormulairePage />
+            </RoleGuard>
+          }
+        />
 
         <Route path="/cartographie" element={<MappingPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />

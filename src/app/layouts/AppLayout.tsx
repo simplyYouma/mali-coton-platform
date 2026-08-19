@@ -175,13 +175,15 @@ const ALL_NAV: NavSpec[] = [
   //   roles: ['admin'],
   //   section: 'admin',
   // },
-  {
-    to: '/admin/formulaires',
-    label: 'Modèles formulaires',
-    icon: <FormInput size={18} />,
-    roles: ['admin'],
-    section: 'admin',
-  },
+  /* Modeles formulaires : masquee de la nav (route conservee) — elle servait
+   * le meme catalogue que « Formulaires », l'entree faisait doublon. */
+  // {
+  //   to: '/admin/formulaires',
+  //   label: 'Modèles formulaires',
+  //   icon: <FormInput size={18} />,
+  //   roles: ['admin'],
+  //   section: 'admin',
+  // },
 ];
 
 const SECTION_TITLES: Record<NavSpec['section'], string> = {

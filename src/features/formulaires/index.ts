@@ -1,7 +1,13 @@
-export { FormulaireListPage } from './pages/FormulaireListPage';
-export { FormulaireCollectePage } from './pages/FormulaireCollectePage';
-export { SoumissionsListPage } from './pages/SoumissionsListPage';
-export { FormulaireAdminListPage } from './pages/FormulaireAdminListPage';
-export { FormulaireFormPage } from './pages/FormulaireFormPage';
-export { ChampListPage } from './pages/ChampListPage';
-export type { FormulaireCollecte, SoumissionFormulaire, ChampFormulaire } from './api/formulaires.types';
+export { ModelesFormulairePage } from './pages/ModelesFormulairePage';
+export { StructureFormulairePage } from './pages/StructureFormulairePage';
+export { SaisieFormulairePage } from './pages/SaisieFormulairePage';
+export { ConstructeurFormulairePage } from './pages/ConstructeurFormulairePage';
+export { ChampNatifField } from './components/ChampNatifField';
+export type {
+  ChampNatif,
+  FormulairePublie,
+  ReponsesFormulaire,
+  SectionNatif,
+  TypeChampNatif,
+  ValeurChamp,
+} from './api/formulairesNatifs.types';
