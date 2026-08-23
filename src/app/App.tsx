@@ -7,6 +7,7 @@ import { ToastViewport } from './providers/ToastProvider';
 import { ConfirmProvider } from './providers/ConfirmProvider';
 import { SessionExpiredModal } from './providers/SessionExpiredModal';
 import { PwaUpdatePrompt } from '@/pwa/PwaUpdatePrompt';
+import { PwaInstallPrompt } from '@/pwa/PwaInstallPrompt';
 import { AppRoutes } from './routes';
 
 export function App() {
@@ -21,6 +22,7 @@ export function App() {
               <ToastViewport />
               <SessionExpiredModal />
               <PwaUpdatePrompt />
+              <PwaInstallPrompt />
             </ConfirmProvider>
           </BrowserRouter>
         </ThemeProvider>

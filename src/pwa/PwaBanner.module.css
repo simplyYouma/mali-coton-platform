@@ -1,3 +1,9 @@
+/**
+ * Habillage commun aux bannieres PWA : invitation a installer, proposition de
+ * mise a jour. Les deux occupent la meme place et suivent la meme grammaire
+ * visuelle ; les separer en deux feuilles revenait a les laisser diverger.
+ */
+
 .banner {
   position: fixed;
   left: 50%;
@@ -30,8 +36,16 @@
   color: var(--color-text);
 }
 
+/* Consigne iOS : le geste a faire, sur une seconde ligne discrete. */
+.hint {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-muted);
+}
+
 .action {
   flex-shrink: 0;
+  /* Cible tactile confortable sur tablette (cf. @media pointer:coarse). */
   padding: 6px 14px;
   border: none;
   border-radius: var(--radius-pill, 999px);
@@ -44,6 +58,10 @@
 }
 .action:hover {
   background: var(--color-primary-hover);
+}
+.action:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .dismiss {
