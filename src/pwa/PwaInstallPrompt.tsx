@@ -2,8 +2,10 @@ import { useCallback, useState, useSyncExternalStore } from 'react';
 import { Download, Share, X } from 'lucide-react';
 import {
   estIos,
+  installationRefusee,
   lancerInstallation,
   lireEtatPwa,
+  memoriserRefusInstallation,
   souscrirePwa,
 } from './pwaRegistration';
 import styles from './PwaBanner.module.css';
@@ -16,29 +18,12 @@ import styles from './PwaBanner.module.css';
  * interdisant toute installation automatique, une invitation visible est le
  * seul levier dont dispose l'application.
  *
- * Proposee une fois, jamais deux : un refus est memorise. Mieux vaut un agent
- * qui n'installe pas qu'un agent qui reprend la meme banniere a chaque visite.
+ * Proposee une fois, puis mise en sommeil : un refus est memorise trente jours.
+ * Mieux vaut un agent qui n'installe pas qu'un agent qui retrouve la meme
+ * banniere a chaque visite — mais un geste accidentel ne doit pas etre
+ * irreversible, et une desinstallation doit pouvoir etre suivie d'une
+ * reinstallation.
  */
-
-const CLE_REFUS = 'paset.installation.refusee';
-
-/* Le stockage local peut etre indisponible (navigation privee, restrictions
- * d'entreprise) : son absence ne doit jamais empecher l'affichage. */
-function refusMemorise(): boolean {
-  try {
-    return localStorage.getItem(CLE_REFUS) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function memoriserRefus(): void {
-  try {
-    localStorage.setItem(CLE_REFUS, '1');
-  } catch {
-    /* Sans stockage, la banniere reapparaitra a la prochaine visite. */
-  }
-}
 
 export function PwaInstallPrompt() {
   const { installable, installee, majDisponible } = useSyncExternalStore(
@@ -46,11 +31,11 @@ export function PwaInstallPrompt() {
     lireEtatPwa,
     lireEtatPwa,
   );
-  const [refusee, setRefusee] = useState(refusMemorise);
+  const [refusee, setRefusee] = useState(installationRefusee);
   const [enCours, setEnCours] = useState(false);
 
   const ecarter = useCallback(() => {
-    memoriserRefus();
+    memoriserRefusInstallation();
     setRefusee(true);
   }, []);
 

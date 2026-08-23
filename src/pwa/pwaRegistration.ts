@@ -111,6 +111,46 @@ export function estIos(): boolean {
   return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && tactile);
 }
 
+/**
+ * Memoire du refus d'installation.
+ *
+ * Un refus se perime : quelqu'un qui ecarte la banniere un jour peut vouloir
+ * installer trois mois plus tard, et un refus definitif lui retirerait le seul
+ * moyen de le faire. Un geste accidentel ne doit pas etre irreversible.
+ */
+const CLE_REFUS = 'paset.installation.refusee';
+const DUREE_REFUS_MS = 30 * 24 * 3600 * 1000;
+
+/* Le stockage local peut etre indisponible (navigation privee, restrictions
+ * d'entreprise) : son absence ne doit jamais empecher l'affichage. */
+export function installationRefusee(): boolean {
+  try {
+    const brut = localStorage.getItem(CLE_REFUS);
+    if (!brut) return false;
+    const quand = Number(brut);
+    if (!Number.isFinite(quand)) return false;
+    return Date.now() - quand < DUREE_REFUS_MS;
+  } catch {
+    return false;
+  }
+}
+
+export function memoriserRefusInstallation(): void {
+  try {
+    localStorage.setItem(CLE_REFUS, String(Date.now()));
+  } catch {
+    /* Sans stockage, la banniere reapparaitra a la prochaine visite. */
+  }
+}
+
+export function oublierRefusInstallation(): void {
+  try {
+    localStorage.removeItem(CLE_REFUS);
+  } catch {
+    /* Rien a oublier si le stockage est indisponible. */
+  }
+}
+
 /** Met en place l'ecoute des evenements d'installation du navigateur. */
 export function surveillerInstallation(): void {
   if (typeof window === 'undefined') return;
@@ -127,6 +167,10 @@ export function surveillerInstallation(): void {
 
   window.addEventListener('appinstalled', () => {
     invitation = null;
+    /* L'application est installee : un refus anterieur n'a plus d'objet. On
+     * l'oublie pour qu'une desinstallation future reproprose l'installation
+     * au lieu de rester muette. */
+    oublierRefusInstallation();
     publier({ ...etat, installable: false, installee: true });
   });
 }
