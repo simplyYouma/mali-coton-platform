@@ -176,6 +176,7 @@ comme une application native.
 | Icônes | `public/img/`, régénérables via `node tools/generate-icons.mjs` (servies hors de `public/icons/` : ce chemin est bloqué par une couche de sécurité de l'hébergeur en production) |
 | Service worker | Généré au build (Workbox). Coque applicative précachée, lectures d'API en *network-first*, images en *cache-first* |
 | Mise à jour | Proposée par une bannière, jamais imposée : une saisie en cours n'est pas interrompue |
+| Installation | Proposée par une bannière, une seule fois : un refus est mémorisé. Aucun lien ne peut installer une PWA — les navigateurs l'interdisent, seul un geste de l'utilisateur le permet. Sur iPhone et iPad, la bannière affiche la marche à suivre dans Safari |
 
 **En développement, le service worker reste éteint.** MSW pose le sien pour
 intercepter les requêtes de démonstration, et une page ne peut être contrôlée
