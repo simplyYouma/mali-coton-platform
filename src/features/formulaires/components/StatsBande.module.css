@@ -1,0 +1,66 @@
+/* Colonnes dimensionnées à leur contenu plutôt qu'étirées : `width: fit-content`
+ * garde la bande compacte en pleine page, et la carte la contraint d'elle-même. */
+.bande {
+  display: flex;
+  margin: 0;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.cellule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-5);
+  border-right: 1px solid var(--color-border);
+  min-width: 120px;
+}
+.cellule:last-child {
+  border-right: none;
+}
+
+.label {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  font-weight: var(--weight-semibold);
+}
+
+.valeur {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Dans une carte : trois colonnes doivent tenir sans déborder. */
+.bande[data-taille='compact'] {
+  width: 100%;
+}
+.bande[data-taille='compact'] .cellule {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3) var(--space-3);
+}
+.bande[data-taille='compact'] .label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.bande[data-taille='compact'] .valeur {
+  font-size: var(--text-h3);
+}
+
+@media (max-width: 640px) {
+  .bande {
+    width: 100%;
+    overflow-x: auto;
+  }
+}

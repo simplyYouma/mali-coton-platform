@@ -1,6 +1,6 @@
 import { useCallback, useId, useRef, useState, type ReactElement } from 'react';
-import { AlertTriangle, Loader2, MapPin, Paperclip, X } from 'lucide-react';
-import { FormField, Input, Textarea, Select, Checkbox, Radio } from '@/components/common';
+import { AlertTriangle, MapPin, Paperclip, X } from 'lucide-react';
+import { FormField, Input, Textarea, Select, Checkbox, Radio, Spinner } from '@/components/common';
 import { useOptionsReference } from '../hooks/useFormulairesNatifs';
 import { basculerChoixMultiple } from '../lib/logiqueChamp';
 import {
@@ -224,7 +224,7 @@ function EtatOptions({ chargement, permission }: { chargement: boolean; permissi
   if (chargement) {
     return (
       <div className={styles.etatOptions}>
-        <Loader2 size={14} className={styles.spin} aria-hidden="true" />
+        <Spinner size={14} decoratif />
         Chargement de la liste…
       </div>
     );
@@ -292,7 +292,7 @@ function GpsChamp({
       </div>
       <button type="button" className={styles.gpsBtn} onClick={acquerir} disabled={disabled || enCours}>
         {enCours ? (
-          <Loader2 size={15} className={styles.spin} aria-hidden="true" />
+          <Spinner size={15} decoratif />
         ) : (
           <MapPin size={15} aria-hidden="true" />
         )}
@@ -355,7 +355,7 @@ function FichierChamp({
         disabled={disabled || envoi}
       >
         {envoi ? (
-          <Loader2 size={15} className={styles.spin} aria-hidden="true" />
+          <Spinner size={15} decoratif />
         ) : (
           <Paperclip size={15} aria-hidden="true" />
         )}

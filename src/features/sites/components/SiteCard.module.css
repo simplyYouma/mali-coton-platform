@@ -33,6 +33,12 @@
   min-width: 0;
   flex: 1;
 }
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
 .refMark {
   display: inline-flex;
   align-items: center;
@@ -70,6 +76,12 @@
   gap: 2px;
   flex-shrink: 0;
 }
+/* Séparée visuellement de désactiver/réactiver : irréversible, contrairement
+ * à la bascule active/inactive. */
+.deleteAction:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
 
 /* ───── Meta — version flat, sans box ───── */
 .meta {
@@ -97,6 +109,19 @@
 .metaItem svg {
   color: var(--color-text-muted);
   flex-shrink: 0;
+}
+.metaGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+/* Discrète : moins de poids visuel que .metaType, qui reste la donnée
+ * principale de la puce. */
+.metaSource {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 .metaType {
   font-size: var(--text-2xs);

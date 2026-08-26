@@ -16,13 +16,15 @@ import {
   Select,
 } from '@/components/common';
 import { useCollections } from '../hooks/useCollections';
-import { exportRowsToXlsx } from '@/lib/xlsxExport';
+import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { mockUsers } from '@/mocks/fixtures/users';
 import { CollectionRow } from '../components/CollectionRow';
 import { STATUS_LABEL, type CollectionStatus } from '../api/collection.types';
 import styles from './CollectionsListPage.module.css';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 
 /* Workflow lineaire — chaque collecte traverse ces etapes dans l'ordre.
  * needs_correction est deprecie depuis le retrait de 'Demander correction'
@@ -37,7 +39,8 @@ const TABS: Array<{ value: 'all' | CollectionStatus; label: string }> = [
 ];
 
 export function CollectionsListPage() {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
+  const { peut } = useAutorisations();
   const [tab, setTab] = useState<'all' | CollectionStatus>('all');
   const [siteFilter, setSiteFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('all');
@@ -45,19 +48,27 @@ export function CollectionsListPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  const isAgent = role === 'agent';
+  /* Importer crée des collectes : c'est cette permission qui ouvre l'action. */
+  const peutImporter = peut(PERM.collecteCreate);
+  /* Périmètre de la liste — pas un droit d'accès : qui valide les collectes
+   * supervise l'ensemble, les autres ne voient que les leurs. Dérivé d'une
+   * permission plutôt que du nom du rôle, qui n'est pas fiable en base. */
+  const vueTerrain = !peut(PERM.collecteValidate);
 
-  const { data: sitesData } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte existante) — seul l'agrégat l'exclut,
+   * jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesData } = useSites({ inclureInactifs: true });
   const { data, isLoading } = useCollections({
-    agentId: isAgent ? user?.id : undefined,
+    agentId: vueTerrain ? user?.id : undefined,
     status: tab === 'all' ? undefined : tab,
     siteId: siteFilter === 'all' ? undefined : siteFilter,
   });
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, { id: string; shortName: string; city: string }>();
+    const map = new Map<string, { id: string; shortName: string; city: string; actif: boolean }>();
     sitesData?.items.forEach((s) =>
-      map.set(s.id, { id: s.id, shortName: s.shortName, city: s.location.city }),
+      map.set(s.id, { id: s.id, shortName: s.shortName, city: s.location.city, actif: s.actif }),
     );
     return map;
   }, [sitesData]);
@@ -125,6 +136,7 @@ export function CollectionsListPage() {
         { header: 'Validé le', accessor: (c) => c.validatedAt ?? '' },
       ],
       rows: filteredItems,
+      note: noteScopeSitesActifs(),
     });
   };
 
@@ -157,22 +169,24 @@ export function CollectionsListPage() {
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>
-            {isAgent ? 'Mes collectes' : 'Suivi des collectes'}
+            {vueTerrain ? 'Mes collectes' : 'Suivi des collectes'}
           </span>
           <h1 className={styles.heroTitle}>
-            {isAgent ? 'Mes collectes terrain' : 'Collectes'}
+            {vueTerrain ? 'Mes collectes terrain' : 'Collectes'}
           </h1>
           <p className={styles.heroDescription}>
             Visites terrain enregistrées par les agents Sahel Environnement.
           </p>
         </div>
         <div className={styles.heroActions}>
-          <Link to="/collecte/import">
-            <Button variant="kobo" iconLeft={<FileSpreadsheet size={16} />}>
-              Importer depuis Kobo
-            </Button>
-          </Link>
-          {!isAgent ? (
+          {peutImporter ? (
+            <Link to="/collecte/import">
+              <Button variant="kobo" iconLeft={<FileSpreadsheet size={16} />}>
+                Importer depuis Kobo
+              </Button>
+            </Link>
+          ) : null}
+          {peutImporter ? (
             <Button
               variant="excel"
               iconLeft={<FileSpreadsheet size={16} />}
@@ -229,11 +243,13 @@ export function CollectionsListPage() {
             title="Aucune collecte trouvée"
             description="Importez depuis Kobo ou ajustez les filtres."
             action={
-              <Link to="/collecte/import">
-                <Button variant="primary" iconLeft={<FileSpreadsheet size={16} />}>
-                  Importer depuis Kobo
-                </Button>
-              </Link>
+              peutImporter ? (
+                <Link to="/collecte/import">
+                  <Button variant="primary" iconLeft={<FileSpreadsheet size={16} />}>
+                    Importer depuis Kobo
+                  </Button>
+                </Link>
+              ) : undefined
             }
           />
         ) : (

@@ -4,19 +4,31 @@
   gap: var(--space-4);
 }
 
-.entete {
+.hero {
+  /* Mise en page portée par src/styles/pageHero.css (source de vérité). */
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
 }
-.enteteTexte {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+/* `heroEyebrow` et `heroTitle` n'ont pas de style propre : pageHero.css cible
+ * le premier span et le h1 de la colonne principale. Les classes restent pour
+ * garder le markup lisible et repérable. */
+.heroEyebrow,
+.heroTitle {
   min-width: 0;
 }
+
+.heroLeft {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.heroActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .retour {
   display: inline-flex;
   align-items: center;
@@ -29,21 +41,6 @@
 }
 .retour:hover {
   color: var(--color-primary);
-}
-.titre {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-h1);
-  font-weight: var(--weight-bold);
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-}
-.enteteActions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
 }
 
 .onglets {
@@ -72,6 +69,10 @@
   color: var(--color-primary);
   font-weight: var(--weight-bold);
 }
+.ongletBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
 
 /* ── Trois colonnes persistantes ── */
 .colonnes {
@@ -95,8 +96,12 @@
   max-height: calc(100vh - var(--space-7));
   overflow-y: auto;
 }
+/* Plan du formulaire : même surface bleue que le sommaire de la saisie, pour
+ * que les deux écrans se lisent de la même façon. */
 .plan {
   padding: var(--space-2);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .planSection {
@@ -105,7 +110,7 @@
 }
 .planSectionHead {
   display: grid;
-  grid-template-columns: 14px 28px 1fr auto;
+  grid-template-columns: 14px 1fr auto;
   align-items: center;
   gap: 6px;
   min-height: 36px;
@@ -118,48 +123,46 @@
   width: 100%;
 }
 .planSectionHead:hover {
-  background: var(--color-surface-2);
+  background: rgba(255, 255, 255, 0.12);
+}
+.planSectionHead[data-actif='true'],
+.planSectionHead[data-actif='true']:hover {
+  background: var(--color-surface);
 }
 .planSectionHead[data-actif='true'] .planLibelle {
   color: var(--color-primary);
   font-weight: var(--weight-bold);
 }
-.planChevron {
+.planSectionHead[data-actif='true'] .planChevron,
+.planSectionHead[data-actif='true'] .planCompte {
   color: var(--color-text-muted);
+  opacity: 1;
+}
+.planChevron {
+  color: var(--color-ink-text);
+  opacity: 0.75;
   transition: transform var(--duration-fast) var(--ease-out);
 }
 .planChevron[data-replie='true'] {
   transform: rotate(-90deg);
 }
-.planCode {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 20px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: var(--weight-bold);
-  color: var(--color-text-muted);
-}
 .planLibelle {
   font-size: var(--text-xs);
-  color: var(--color-text);
+  color: var(--color-ink-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .planCompte {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: var(--color-ink-text);
+  opacity: 0.72;
   font-variant-numeric: tabular-nums;
 }
 .planChamps {
   list-style: none;
   margin: 0 0 var(--space-2);
-  padding: 0 0 0 var(--space-4);
+  padding: 0 0 0 var(--space-3);
 }
 .planChamp {
   display: block;
@@ -167,24 +170,29 @@
   min-height: 30px;
   padding: 5px var(--space-2);
   border: none;
-  border-left: 2px solid var(--color-border);
+  border-left: 2px solid rgba(255, 255, 255, 0.28);
   background: transparent;
   text-align: left;
   font-size: var(--text-2xs);
-  color: var(--color-text-muted);
+  color: var(--color-ink-text);
+  opacity: 0.82;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .planChamp:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
 }
-.planChamp[data-actif='true'] {
-  border-left-color: var(--color-primary);
+.planChamp[data-actif='true'],
+.planChamp[data-actif='true']:hover {
+  border-left-color: var(--color-surface);
+  background: var(--color-surface);
   color: var(--color-primary);
   font-weight: var(--weight-semibold);
+  opacity: 1;
 }
 
 /* ── Canvas ── */
@@ -269,7 +277,15 @@
 /* Seule la sélection courante porte l'accent. */
 .ligne[data-actif='true'] {
   border-color: var(--color-primary);
-  background: var(--color-surface-2);
+  background: var(--color-primary-soft);
+}
+.ligne[data-actif='true'] .ligneLibelle {
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+.ligne:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 .ligne[data-nouveau='true'] {
   border-style: dashed;
@@ -314,13 +330,6 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   width: 100%;
-}
-.ligneCode {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .lignePastilles {
   display: inline-flex;

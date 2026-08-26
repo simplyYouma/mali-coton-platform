@@ -18,7 +18,10 @@ export function LabSamplesPage() {
   const [statutFilter, setStatutFilter] = useState('');
   const [labFilter, setLabFilter] = useState('');
 
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const { data: labs } = useLaboratoires();
   const { data: page, isLoading } = useEchantillons({
     site: siteFilter || undefined,

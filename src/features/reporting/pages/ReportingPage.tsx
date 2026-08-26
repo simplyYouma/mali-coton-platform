@@ -8,7 +8,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { Badge, Button, Skeleton, StructuredText } from '@/components/common';
+import { Badge, Button, Skeleton, Spinner, StructuredText } from '@/components/common';
+import { useSites } from '@/features/sites/hooks/useSites';
 import { useReportHistory } from '../hooks/useReportHistory';
 import { useRapportAnalyseDetail, useRapportsAnalyse } from '../hooks/useRapportsAnalyse';
 import styles from './ReportingPage.module.css';
@@ -70,6 +71,18 @@ export function ReportingPage() {
   const { data: detail, isLoading: detailLoading } = useRapportAnalyseDetail(selectedId);
   const { items: history, removeEntry } = useReportHistory();
 
+  /* inclureInactifs : un rapport rattaché à un site désactivé reste affiché
+   * (badge « Inactif »), mais ne doit plus peser dans les compteurs du
+   * bandeau — cf. `rapportsActifs` ci-dessous. Croisé par `siteCode`, la
+   * seule clé stable partagée entre `RapportAnalyseSummary` et `Site`. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
+  const sitesByCode = useMemo(() => {
+    const map = new Map<string, boolean>();
+    sitesPage?.items.forEach((s) => map.set(s.codeSite, s.actif));
+    return map;
+  }, [sitesPage]);
+  const estSiteInactif = (siteCode: string) => sitesByCode.get(siteCode) === false;
+
   // ── Filtrage ─────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     return rapports.filter((r) => {
@@ -82,11 +95,17 @@ export function ReportingPage() {
   }, [rapports, fromFilter, toFilter, siteFilter]);
 
   // ── Stats scope strip ─────────────────────────────────────────────────────────
-  const confirmes = rapports.filter((r) => r.statut === 'confirme').length;
-  const uniqueSites = new Set(rapports.map((r) => r.siteNom)).size;
-  const uniqueLabs = new Set(rapports.map((r) => r.laboratoireNom)).size;
-  const totalAnalyses = rapports.reduce((s, r) => s + r.nombreAnalyses, 0);
-  const avecFichier = rapports.filter((r) => r.fichierDisponible).length;
+  // Un site désactivé sort des compteurs — inconnu (code absent du référentiel) reste compté, comme ailleurs.
+  const rapportsActifs = useMemo(
+    () => rapports.filter((r) => !estSiteInactif(r.siteCode)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rapports, sitesByCode],
+  );
+  const confirmes = rapportsActifs.filter((r) => r.statut === 'confirme').length;
+  const uniqueSites = new Set(rapportsActifs.map((r) => r.siteNom)).size;
+  const uniqueLabs = new Set(rapportsActifs.map((r) => r.laboratoireNom)).size;
+  const totalAnalyses = rapportsActifs.reduce((s, r) => s + r.nombreAnalyses, 0);
+  const avecFichier = rapportsActifs.filter((r) => r.fichierDisponible).length;
 
   // ── Onglets milieu ─────────────────────────────────────────────────────────────
   const milieus = detail ? Object.keys(detail.analysesParMilieu) : [];
@@ -127,7 +146,7 @@ export function ReportingPage() {
       <section className={styles.scope} aria-label="Données incluses">
         <div className={styles.scopeItem}>
           <span className={styles.scopeLabel}>Total rapports</span>
-          <span className={styles.scopeValue}>{isLoading ? '—' : rapports.length}</span>
+          <span className={styles.scopeValue}>{isLoading ? '—' : rapportsActifs.length}</span>
         </div>
         <div className={styles.scopeItem}>
           <span className={styles.scopeLabel}>Confirmés</span>
@@ -206,9 +225,14 @@ export function ReportingPage() {
           <div className={styles.previewHeadText}>
             <h2 className={styles.previewTitle}>Rapports d'analyse</h2>
             <p className={styles.previewMeta}>
-              {isLoading
-                ? 'Chargement…'
-                : `${filtered.length} résultat${filtered.length !== 1 ? 's' : ''}`}
+              {isLoading ? (
+                <span className={styles.chargement}>
+                  <Spinner size={13} label="Chargement des rapports" />
+                  Chargement…
+                </span>
+              ) : (
+                `${filtered.length} résultat${filtered.length !== 1 ? 's' : ''}`
+              )}
             </p>
           </div>
         </header>
@@ -240,7 +264,15 @@ export function ReportingPage() {
                 >
                   {selectedId === r.id && <span className={styles.rapportCardBar} />}
                   <div className={styles.rapportCardTop}>
-                    <span className={styles.rapportSite}>{r.siteCode || r.siteNom || '—'}</span>
+                    <span className={styles.rapportSite}>
+                      {r.siteCode || r.siteNom || '—'}
+                      {/* Le site est exclu des compteurs mais le rapport reste
+                       * affiché — le badge dit pourquoi le total ne recoupe
+                       * pas la liste. */}
+                      {estSiteInactif(r.siteCode) ? (
+                        <Badge size="sm" variant="neutral">Inactif</Badge>
+                      ) : null}
+                    </span>
                     <Badge variant={STATUT_VARIANT[r.statut] ?? 'neutral'} size="sm">
                       {STATUT_LABEL[r.statut] ?? r.statut}
                     </Badge>
@@ -269,7 +301,14 @@ export function ReportingPage() {
           <header className={styles.previewHead}>
             <div className={styles.previewHeadText}>
               <h2 className={styles.previewTitle}>
-                {detailLoading ? 'Chargement…' : (detail?.typeOuvrage || detail?.siteNom || '—')}
+                {detailLoading ? (
+                  <span className={styles.chargement}>
+                    <Spinner size={16} label="Chargement du rapport" />
+                    Chargement…
+                  </span>
+                ) : (
+                  detail?.typeOuvrage || detail?.siteNom || '—'
+                )}
               </h2>
               <p className={styles.previewMeta}>
                 {detail

@@ -50,7 +50,14 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
   }
 
   // API Platform exige application/ld+json en live ; MSW accepte application/json.
-  const contentType = API_MODE === 'live' ? 'application/ld+json' : 'application/json';
+  const acceptType = API_MODE === 'live' ? 'application/ld+json' : 'application/json';
+  /* PATCH ne décrit qu'une différence : API Platform n'accepte ce corps qu'en
+   * `application/merge-patch+json` (répond 415 en `ld+json`, 405 sur PUT pour
+   * une mise à jour partielle). Centralisé ici plutôt que répété à chaque
+   * appelant PATCH. */
+  const method = (rest.method ?? 'GET').toUpperCase();
+  const requestContentType =
+    API_MODE === 'live' && method === 'PATCH' ? 'application/merge-patch+json' : acceptType;
 
   // Injection du Bearer token JWT (live uniquement, sauf endpoints publics).
   const authHeader: Record<string, string> = {};
@@ -63,10 +70,22 @@ export async function http<T>(path: string, options: RequestOptions = {}): Promi
    * Content-Type JSON casserait l'upload, et le sérialiser le viderait. */
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
+  /* Dev uniquement, PATCH seulement : permet de vérifier le corps et le
+   * Content-Type réellement envoyés sans dépendre de l'inspecteur réseau —
+   * utile pour confirmer qu'aucun appelant ne glisse un objet complet dans
+   * une mise à jour partielle. Restreint à PATCH pour ne pas noyer la
+   * console sur chaque requête en développement normal. */
+  if (import.meta.env.DEV && method === 'PATCH') {
+    console.warn(`[http] PATCH ${url.toString()}`, {
+      contentType: isFormData ? 'multipart/form-data' : requestContentType,
+      body,
+    });
+  }
+
   const response = await fetch(url.toString(), {
     headers: {
-      ...(isFormData ? {} : { 'Content-Type': contentType }),
-      Accept: contentType,
+      ...(isFormData ? {} : { 'Content-Type': requestContentType }),
+      Accept: acceptType,
       ...authHeader,
       ...headers,
     },

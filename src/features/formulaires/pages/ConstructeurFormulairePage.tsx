@@ -294,15 +294,17 @@ export function ConstructeurFormulairePage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.entete}>
-        <div className={styles.enteteTexte}>
-          <Link to={`/formulaires/${formulaire.code}`} className={styles.retour}>
-            <ArrowLeft size={14} aria-hidden="true" />
-            {formulaire.titre}
-          </Link>
-          <h1 className={styles.titre}>Constructeur</h1>
+      <Link to={`/formulaires/${formulaire.code}`} className={styles.retour}>
+        <ArrowLeft size={14} aria-hidden="true" />
+        {formulaire.titre}
+      </Link>
+
+      <header className={styles.hero} data-page-header>
+        <div className={styles.heroLeft}>
+          <span className={styles.heroEyebrow}>Structure du questionnaire</span>
+          <h1 className={styles.heroTitle}>Constructeur</h1>
         </div>
-        <div className={styles.enteteActions}>
+        <div className={styles.heroActions}>
           <div className={styles.onglets} role="tablist">
             <button
               type="button" role="tab" aria-selected={onglet === 'edition'}
@@ -424,7 +426,6 @@ export function ConstructeurFormulairePage() {
                       data-replie={replie ? 'true' : undefined}
                       aria-hidden="true"
                     />
-                    <span className={styles.planCode}>{s.code}</span>
                     <span className={styles.planLibelle}>{s.libelle}</span>
                     <span className={styles.planCompte}>{champs.length}</span>
                   </button>
@@ -500,7 +501,6 @@ export function ConstructeurFormulairePage() {
                           valeur={champ.libelle}
                           onChange={(libelle) => majChamp(champ.id, { libelle })}
                         />
-                        <code className={styles.ligneCode}>{champ.code || '—'}</code>
                       </span>
                       <span className={styles.lignePastilles}>
                         {estNouveau(champ) ? <Badge size="sm" variant="info">Nouveau</Badge> : null}
@@ -573,7 +573,6 @@ export function ConstructeurFormulairePage() {
               <ReglagesChamp
                 champ={champCourant}
                 brouillon={brouillon}
-                formulaire={formulaire}
                 ordreSections={ordreSections}
                 onChange={(patch) => majChamp(champCourant.id, patch)}
               />

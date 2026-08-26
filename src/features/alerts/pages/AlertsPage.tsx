@@ -9,16 +9,18 @@ import {
   FileSpreadsheet,
   ShieldAlert,
 } from 'lucide-react';
-import { exportRowsToXlsx } from '@/lib/xlsxExport';
+import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import {
+  Badge,
   Button,
   EmptyState,
   Select,
-  Skeleton,
+  SkeletonSplit,
 } from '@/components/common';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
+import type { Site } from '@/features/sites/api/site.types';
 import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import type {
   AlertCategory,
@@ -35,6 +37,8 @@ import {
 import { formatAlertSummary } from '../lib/alertSummary';
 import { mockUsers } from '@/mocks/fixtures/users';
 import styles from './AlertsPage.module.css';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 
 const SEVERITY_OPTIONS = [
   { value: '', label: 'Toutes sévérités' },
@@ -78,19 +82,23 @@ const CATEGORY_LABEL: Record<AlertCategory, string> = {
 };
 
 export function AlertsPage() {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
+  const { peut } = useAutorisations();
   const toast = useToast();
   const [filter, setFilter] = useState<AlertFilter>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isLoading } = useAlerts(filter);
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const ackMut = useAcknowledgeAlert();
   const resolveMut = useResolveAlert();
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, string>();
-    sitesPage?.items.forEach((s) => map.set(s.id, s.shortName));
+    const map = new Map<string, Site>();
+    sitesPage?.items.forEach((s) => map.set(s.id, s));
     return map;
   }, [sitesPage]);
 
@@ -154,7 +162,8 @@ export function AlertsPage() {
     }
   };
 
-  const canAct = role === 'superviseur' || role === 'admin';
+  /* Traiter, assigner, clôturer relèvent de la gestion des alertes. */
+  const canAct = peut(PERM.alerteManage);
 
   const handleExport = () => {
     exportRowsToXlsx({
@@ -166,13 +175,14 @@ export function AlertsPage() {
         { header: 'Sévérité', accessor: (a) => a.severity },
         { header: 'Statut', accessor: (a) => STATUS_LABEL[a.status] },
         { header: 'Catégorie', accessor: (a) => CATEGORY_LABEL[a.category] },
-        { header: 'Site', accessor: (a) => (a.siteId ? sitesById.get(a.siteId) ?? '' : '') },
+        { header: 'Site', accessor: (a) => (a.siteId ? sitesById.get(a.siteId)?.shortName ?? '' : '') },
         { header: 'Soulevée le', accessor: (a) => a.raisedAt },
         { header: 'Prise en compte le', accessor: (a) => a.acknowledgedAt ?? '' },
         { header: 'Résolue le', accessor: (a) => a.resolvedAt ?? '' },
         { header: 'Résumé', accessor: (a) => a.summary ?? '' },
       ],
       rows: items,
+      note: noteScopeSitesActifs(),
     });
   };
 
@@ -240,7 +250,7 @@ export function AlertsPage() {
       </div>
 
       {isLoading ? (
-        <Skeleton height={420} />
+        <SkeletonSplit />
       ) : items.length === 0 ? (
         <EmptyState
           icon={<CheckCircle2 size={24} />}
@@ -258,7 +268,7 @@ export function AlertsPage() {
               {items.map((alert) => {
                 const Icon = CATEGORY_ICON[alert.category];
                 const isActive = (selected?.id ?? items[0]?.id) === alert.id;
-                const siteName = alert.siteId ? sitesById.get(alert.siteId) : null;
+                const siteName = alert.siteId ? sitesById.get(alert.siteId)?.shortName : null;
                 return (
                   <button
                     key={alert.id}
@@ -293,7 +303,10 @@ export function AlertsPage() {
             ) : (
               <AlertDetail
                 alert={selected}
-                siteName={selected.siteId ? sitesById.get(selected.siteId) ?? selected.siteId : null}
+                siteName={
+                  selected.siteId ? sitesById.get(selected.siteId)?.shortName ?? selected.siteId : null
+                }
+                siteInactif={selected.siteId ? sitesById.get(selected.siteId)?.actif === false : false}
                 canAct={canAct}
                 onAcknowledge={handleAcknowledge}
                 onResolve={handleResolve}
@@ -312,6 +325,8 @@ export function AlertsPage() {
 interface AlertDetailProps {
   alert: AlertEntry;
   siteName: string | null;
+  /** Le site est exclu des agrégats mais reste résolu — le badge dit pourquoi. */
+  siteInactif?: boolean;
   canAct: boolean;
   onAcknowledge: () => void;
   onResolve: () => void;
@@ -323,6 +338,7 @@ interface AlertDetailProps {
 function AlertDetail({
   alert,
   siteName,
+  siteInactif,
   canAct,
   onAcknowledge,
   onResolve,
@@ -343,6 +359,7 @@ function AlertDetail({
           {siteName ? (
             <span className={styles.detailSite}>
               site <strong>{siteName}</strong>
+              {siteInactif ? <Badge size="sm" variant="neutral">Inactif</Badge> : null}
             </span>
           ) : null}
           <ul className={styles.detailTimeline} aria-label="Actions effectuées">

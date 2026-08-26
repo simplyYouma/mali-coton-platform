@@ -39,6 +39,22 @@ export interface OptionsSource {
   permission: string;
 }
 
+/**
+ * Référence partagée « agents de collecte » — utilisée par le champ de
+ * formulaire `grp_a/agent` (voir `ReglagesChamp.tsx`) et par la résolution
+ * auteur → nom dans les vues « tous les brouillons » (voir `BrouillonsPage`) :
+ * une seule définition pour ne pas laisser diverger les deux usages.
+ */
+export const SOURCE_AGENTS_COLLECTE: OptionsSource = {
+  mode: 'reference',
+  resource: 'agents_collecte',
+  endpoint: '/api/references/agents-collecte',
+  valueField: 'value',
+  labelField: 'label',
+  idField: 'resourceId',
+  permission: 'collecte.create',
+};
+
 export interface ConditionChamp {
   active: boolean;
   champParentCode: string;
@@ -128,6 +144,15 @@ export interface SoumissionNative {
   reponses: ReponsesFormulaire;
   createdAt: string;
   updatedAt: string;
+  /** Auteur de la soumission — sert à cloisonner « Mes brouillons » par agent. */
+  createdById: number | null;
+  /**
+   * Compteur de révision porté par le serveur (constaté jusqu'à 4 sur un
+   * brouillon plusieurs fois complété). Reçu en lecture ; non réémis à
+   * l'écriture tant que l'API ne documente pas de conflit optimiste dessus —
+   * l'inventer serait risquer un rejet silencieux du PUT.
+   */
+  revision: number | null;
 }
 
 export interface CreerBrouillonInput {

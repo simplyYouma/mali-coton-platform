@@ -62,6 +62,22 @@ export function updateSite(id: string, patch: Partial<SiteInput>): Promise<Site>
   return http<Site>(resourcePath('sites', id), { method: 'PUT', body: patch });
 }
 
+/**
+ * Active/désactive un site — jamais via `updateSite` : un PUT partiel sur
+ * API Platform peut écraser les champs absents du corps envoyé, alors qu'un
+ * PATCH ne porte que la différence (voir `http()` pour le Content-Type
+ * `merge-patch+json` requis).
+ */
+export function setSiteActif(id: string, actif: boolean): Promise<Site> {
+  if (API_MODE === 'live') {
+    return http<SiteTeintureBackend>(resourcePath('sites', id), {
+      method: 'PATCH',
+      body: { actif },
+    }).then(toSite);
+  }
+  return http<Site>(resourcePath('sites', id), { method: 'PATCH', body: { actif } });
+}
+
 export function deleteSite(id: string): Promise<void> {
   return http<void>(resourcePath('sites', id), { method: 'DELETE' });
 }

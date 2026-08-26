@@ -4,19 +4,31 @@
   gap: var(--space-5);
 }
 
-.entete {
+.hero {
+  /* Mise en page portée par src/styles/pageHero.css (source de vérité) —
+   * seul l'alignement des actions est propre à cette page. */
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
 }
-.enteteTexte {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+/* `heroEyebrow` et `heroTitle` n'ont pas de style propre : pageHero.css cible
+ * le premier span et le h1 de la colonne principale. Les classes restent pour
+ * garder le markup lisible et repérable. */
+.heroEyebrow,
+.heroTitle {
   min-width: 0;
 }
+
+.heroLeft {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.heroActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .retour {
   display: inline-flex;
   align-items: center;
@@ -29,15 +41,6 @@
 }
 .retour:hover {
   color: var(--color-primary);
-}
-.titre {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-h1);
-  font-weight: var(--weight-bold);
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-  line-height: 1.05;
 }
 
 /* État d'enregistrement : discret, il informe sans capter l'attention. */
@@ -58,14 +61,10 @@
   background: var(--color-warning-bg);
   color: var(--color-warning);
 }
-.spin {
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spin { animation: none; }
+.sauvegardeErreur {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .corps {
@@ -75,14 +74,18 @@
   align-items: start;
 }
 
-/* ── Stepper ── */
+/* ── Stepper ──
+ * Surface bleue pleine, dans la même teinte que la bande de titre : le
+ * sommaire devient un repère de navigation à part entière plutôt qu'une carte
+ * blanche de plus. Le rapport figure/fond s'inverse — c'est l'étape courante
+ * qui passe en clair. */
 .stepper {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: var(--space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-lg);
   position: sticky;
   top: var(--space-4);
@@ -91,42 +94,42 @@
 }
 .etape {
   display: grid;
-  grid-template-columns: 28px 1fr 16px;
+  grid-template-columns: 1fr 16px;
   align-items: center;
   gap: var(--space-2);
   min-height: 44px;
-  padding: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: transparent;
   text-align: left;
   cursor: pointer;
   width: 100%;
-  transition: background-color var(--duration-fast) var(--ease-out);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
+/* Survol d'une étape inactive : simple voile clair, pas de changement de ton. */
 .etape:hover {
-  background: var(--color-surface-2);
+  background: rgba(255, 255, 255, 0.12);
 }
-/* Une seule couleur d'accent, pour la seule étape courante. */
-.etape[data-actif='true'] {
-  background: var(--color-primary-soft, var(--color-surface-2));
+/* Étape courante : bloc clair sur fond bleu — l'inverse du reste, donc
+ * repérable immédiatement. */
+.etape[data-actif='true'],
+.etape[data-actif='true']:hover {
+  background: var(--color-surface);
 }
 .etape[data-actif='true'] .etapeLibelle {
   color: var(--color-primary);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
 }
-.etapeCode {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 22px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: var(--weight-bold);
+.etape[data-actif='true'] .etapeCompteur {
   color: var(--color-text-muted);
+  opacity: 1;
+}
+.etape:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-surface);
 }
 .etapeCorps {
   display: flex;
@@ -135,32 +138,53 @@
   min-width: 0;
 }
 .etapeLibelle {
-  font-size: var(--text-xs);
-  color: var(--color-text);
+  font-size: var(--text-sm);
+  color: var(--color-ink-text);
   font-weight: var(--weight-medium);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Compteur atténué par l'opacité plutôt qu'un gris, qui jurerait sur le bleu. */
 .etapeCompteur {
-  font-size: 10px;
-  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  color: var(--color-ink-text);
+  opacity: 0.72;
   font-variant-numeric: tabular-nums;
 }
 .etapePuce {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-disabled);
+  color: var(--color-ink-text);
+  opacity: 0.75;
 }
-.etape[data-etat='complete'] .etapePuce {
-  color: var(--color-success);
-}
+/* Erreur : ton clair chaud — le rouge du thème serait illisible sur le bleu. */
 .etape[data-etat='erreur'] .etapePuce {
-  color: var(--color-danger);
+  color: var(--color-amber);
+  opacity: 1;
 }
 .etape[data-etat='erreur'] .etapeCompteur {
+  color: var(--color-amber);
+  opacity: 1;
+}
+.etape[data-actif='true'][data-etat='complete'] .etapePuce {
+  color: var(--color-success);
+  opacity: 1;
+}
+.etape[data-actif='true'][data-etat='erreur'] .etapePuce,
+.etape[data-actif='true'][data-etat='erreur'] .etapeCompteur {
   color: var(--color-danger);
+}
+
+/* Section verrouillée : atténuée, curseur explicite ; pas de survol actif —
+ * on ne suggère pas une action qui n'aura aucun effet. */
+.etape[data-verrouillee='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.etape[data-verrouillee='true']:hover {
+  background: transparent;
 }
 
 /* ── Panneau de saisie ── */
@@ -198,10 +222,22 @@
   line-height: 1.2;
 }
 
+/* Deux colonnes dès que la place le permet : empiler 109 questions sur une
+ * seule colonne rend la fiche interminable. Repasse à une colonne sous 900px,
+ * largeur en deçà de laquelle la saisie tactile devient inconfortable. */
 .champs {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5) var(--space-4);
+  align-items: start;
+}
+.champs > [data-large='true'] {
+  grid-column: 1 / -1;
+}
+@media (max-width: 900px) {
+  .champs {
+    grid-template-columns: 1fr;
+  }
 }
 
 .navigation {
@@ -242,7 +278,7 @@
     scroll-snap-type: x proximity;
   }
   .etape {
-    grid-template-columns: 24px 1fr;
+    grid-template-columns: 1fr;
     min-width: 170px;
     flex: 0 0 auto;
     scroll-snap-align: start;

@@ -1,243 +1,63 @@
 import { Outlet } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  MapPin,
-  ClipboardList,
-  Map,
-  Lightbulb,
-  Users,
-  Beaker,
-  Microscope,
-  Pipette,
-  ShieldCheck,
-  Database,
-  FileText,
-  FormInput,
-} from 'lucide-react';
 import { AppShell } from '@/components/common/AppShell';
-import type { NavItem, NavSection } from '@/components/common/AppShell';
-import { useAuth } from '@/app/providers/AuthProvider';
+import type { NavSection } from '@/components/common/AppShell';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { navigationPour } from '@/app/navigation';
+import { PERM } from '@/features/auth/lib/permissions';
 import { useSyncQueue } from '@/features/collection/hooks/useSyncQueue';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useAlerts } from '@/features/alerts/hooks/useAlerts';
 import { useRecommandations } from '@/features/recommandations/hooks/useRecommandations';
-import type { UserRole } from '@/types/common';
 
-interface NavSpec extends NavItem {
-  roles: UserRole[];
-  section: 'main' | 'labo' | 'tools' | 'admin';
-}
-
-const ALL_NAV: NavSpec[] = [
-  {
-    to: '/dashboard',
-    label: 'Tableau de bord',
-    icon: <LayoutDashboard size={18} />,
-    roles: ['admin', 'superviseur', 'visitor'],
-    section: 'main',
-  },
-  {
-    to: '/sites',
-    label: 'Sites',
-    icon: <MapPin size={18} />,
-    roles: ['admin', 'superviseur', 'visitor'],
-    section: 'main',
-  },
-  {
-    to: '/collecte',
-    label: 'Collectes',
-    icon: <ClipboardList size={18} />,
-    roles: ['admin', 'superviseur'],
-    section: 'main',
-  },
-  /* Validation : masquee temporairement de la nav (route conservee). */
-  // {
-  //   to: '/collecte/validation',
-  //   label: 'Validation',
-  //   icon: <ClipboardCheck size={18} />,
-  //   roles: ['admin', 'superviseur'],
-  //   section: 'main',
-  // },
-  {
-    to: '/labo/analyses',
-    label: 'Résultats d\'analyse',
-    icon: <Microscope size={18} />,
-    roles: ['admin', 'superviseur', 'lab'],
-      /* Le laboratoire agree consulte et saisit ses resultats ici : c'est
-       * la seule section qui le concerne. */
-    section: 'labo',
-  },
-  {
-    to: '/labo/prelevements',
-    label: 'Prélèvements',
-    icon: <Pipette size={18} />,
-    roles: ['admin', 'superviseur', 'lab'],
-      /* Le laboratoire agree consulte et saisit ses resultats ici : c'est
-       * la seule section qui le concerne. */
-    section: 'labo',
-  },
-  {
-    to: '/labo/echantillons',
-    label: 'Échantillons',
-    icon: <Beaker size={18} />,
-    roles: ['admin', 'superviseur', 'lab'],
-      /* Le laboratoire agree consulte et saisit ses resultats ici : c'est
-       * la seule section qui le concerne. */
-    section: 'labo',
-  },
-  {
-    to: '/formulaires',
-    label: 'Formulaires',
-    icon: <FormInput size={18} />,
-    roles: ['agent', 'admin', 'superviseur'],
-    section: 'main',
-  },
-  /* Alertes : masquee temporairement de la nav (route conservee). */
-  // {
-  //   to: '/alertes',
-  //   label: 'Alertes',
-  //   icon: <AlertTriangle size={18} />,
-  //   roles: ['admin', 'superviseur'],
-  //   section: 'main',
-  // },
-  {
-    to: '/recommandations',
-    label: 'Recommandations',
-    icon: <Lightbulb size={18} />,
-    roles: ['admin', 'superviseur', 'visitor'],
-    section: 'main',
-  },
-  /* Agents : masquee temporairement de la nav (route conservee). */
-  // {
-  //   to: '/agents',
-  //   label: 'Agents',
-  //   icon: <UsersRound size={18} />,
-  //   roles: ['admin', 'superviseur'],
-  //   section: 'main',
-  // },
-  {
-    to: '/cartographie',
-    label: 'Cartographie',
-    icon: <Map size={18} />,
-    roles: ['admin', 'superviseur', 'visitor'],
-    section: 'tools',
-  },
-  /* Analytics : masquee temporairement de la nav (route conservee). */
-  // {
-  //   to: '/analytics',
-  //   label: 'Analytics',
-  //   icon: <BarChart3 size={18} />,
-  //   roles: ['admin', 'superviseur', 'visitor'],
-  //   section: 'tools',
-  // },
-  {
-    to: '/reporting',
-    label: 'Rapports',
-    icon: <FileText size={18} />,
-    roles: ['admin', 'superviseur', 'visitor'],
-    section: 'tools',
-  },
-  {
-    to: '/admin/utilisateurs',
-    label: 'Utilisateurs',
-    icon: <Users size={18} />,
-    roles: ['admin'],
-    section: 'admin',
-  },
-  {
-    to: '/admin/roles',
-    label: 'Rôles & permissions',
-    icon: <ShieldCheck size={18} />,
-    roles: ['admin'],
-    section: 'admin',
-  },
-  /* Indicateurs : integre comme onglet de /admin/referentiels.
-   * On masque l'entree dediee, la route conserve sa redirection. */
-  // {
-  //   to: '/admin/indicateurs',
-  //   label: 'Indicateurs',
-  //   icon: <ListChecks size={18} />,
-  //   roles: ['admin'],
-  //   section: 'admin',
-  // },
-  {
-    to: '/admin/referentiels',
-    label: 'Référentiels',
-    icon: <Database size={18} />,
-    roles: ['admin'],
-    section: 'admin',
-  },
-  /* Journal d'audit : masquee temporairement de la nav (route conservee). */
-  // {
-  //   to: '/admin/audit',
-  //   label: 'Journal d\'audit',
-  //   icon: <ScrollText size={18} />,
-  //   roles: ['admin'],
-  //   section: 'admin',
-  // },
-  /* Modeles formulaires : masquee de la nav (route conservee) — elle servait
-   * le meme catalogue que « Formulaires », l'entree faisait doublon. */
-  // {
-  //   to: '/admin/formulaires',
-  //   label: 'Modèles formulaires',
-  //   icon: <FormInput size={18} />,
-  //   roles: ['admin'],
-  //   section: 'admin',
-  // },
-];
-
-const SECTION_TITLES: Record<NavSpec['section'], string> = {
-  main: 'Menu principal',
-  labo: 'Analyse & Laboratoire',
-  tools: 'Outils & analyse',
-  admin: 'Administration',
-};
-
+/**
+ * Coquille applicative et menu latéral.
+ *
+ * Les entrées viennent de `src/app/navigation.tsx`, que partagent aussi les
+ * gardes de route : décrire le menu ici en plus aurait laissé les deux
+ * critères diverger, comme c'était le cas auparavant.
+ */
 export function AppLayout() {
-  const { role } = useAuth();
+  const { peut, peutUneDe } = useAutorisations();
   // Démarre le sync queue processor (s'auto-déclenche au passage online).
   useSyncQueue();
 
-  /* Compteurs dynamiques pour la sidebar */
-  const canReview = role === 'admin' || role === 'superviseur';
-  const submittedQ = useCollections(canReview ? { status: 'submitted' } : undefined);
-  const labCompleteQ = useCollections(canReview ? { status: 'lab_complete' } : undefined);
-  const validationCount = canReview
+  /* Compteurs de la sidebar — conditionnés à la permission qui ouvre la page
+   * concernée, pour ne pas interroger une ressource fermée à l'utilisateur. */
+  const peutValider = peut(PERM.collecteValidate);
+  const submittedQ = useCollections(peutValider ? { status: 'submitted' } : undefined);
+  const labCompleteQ = useCollections(peutValider ? { status: 'lab_complete' } : undefined);
+  const validationCount = peutValider
     ? (submittedQ.data?.items.length ?? 0) + (labCompleteQ.data?.items.length ?? 0)
     : 0;
 
-  const alertsQ = useAlerts(canReview ? { status: 'active' } : undefined);
-  const criticalAlertsCount = canReview
+  const peutVoirAlertes = peutUneDe([PERM.alerteRead, PERM.alerteManage]);
+  const alertsQ = useAlerts(peutVoirAlertes ? { status: 'active' } : undefined);
+  const criticalAlertsCount = peutVoirAlertes
     ? (alertsQ.data?.items ?? []).filter((a) => a.severity === 'critical').length
     : 0;
 
   const recoQ = useRecommandations();
-  const openRecoCount = (recoQ.data?.items ?? []).filter(
-    (r) => r.statut === 'proposee' || r.statut === 'en_cours',
-  ).length;
+  const openRecoCount = peutVoirAlertes
+    ? (recoQ.data?.items ?? []).filter(
+        (r) => r.statut === 'proposee' || r.statut === 'en_cours',
+      ).length
+    : 0;
 
-  const groups: Record<string, NavItem[]> = { main: [], labo: [], tools: [], admin: [] };
-  ALL_NAV.forEach((item) => {
-    if (!role || !item.roles.includes(role)) return;
-    const { roles: _r, section, ...rest } = item;
-    /* Injecte les badges dynamiques */
-    if (rest.to === '/collecte/validation' && validationCount > 0) {
-      rest.badge = validationCount;
-    }
-    if (rest.to === '/alertes' && criticalAlertsCount > 0) {
-      rest.badge = criticalAlertsCount;
-      rest.badgeTone = 'danger';
-    }
-    if (rest.to === '/recommandations' && openRecoCount > 0) {
-      rest.badge = openRecoCount;
-      rest.badgeTone = 'warning';
-    }
-    groups[section]!.push(rest);
-  });
-
-  const sections: NavSection[] = (['main', 'labo', 'tools', 'admin'] as Array<NavSpec['section']>)
-    .filter((key) => groups[key]!.length > 0)
-    .map((key) => ({ title: SECTION_TITLES[key], items: groups[key]! }));
+  const sections: NavSection[] = navigationPour(peutUneDe).map((section) => ({
+    ...section,
+    items: section.items.map((item) => {
+      if (item.to === '/collecte/validation' && validationCount > 0) {
+        return { ...item, badge: validationCount };
+      }
+      if (item.to === '/alertes' && criticalAlertsCount > 0) {
+        return { ...item, badge: criticalAlertsCount, badgeTone: 'danger' as const };
+      }
+      if (item.to === '/recommandations' && openRecoCount > 0) {
+        return { ...item, badge: openRecoCount, badgeTone: 'warning' as const };
+      }
+      return item;
+    }),
+  }));
 
   return (
     <AppShell sections={sections}>

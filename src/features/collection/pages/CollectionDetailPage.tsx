@@ -49,6 +49,8 @@ import {
   useValidateCollection,
 } from '../hooks/useCollectionMutations';
 import styles from './CollectionDetailPage.module.css';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 
 const WEATHER_LABEL: Record<'sunny' | 'cloudy' | 'rainy' | 'windy', string> = {
   sunny: 'Ensoleillé',
@@ -111,9 +113,13 @@ export function CollectionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
-  const { user, role } = useAuth();
+  const { user } = useAuth();
+  const { peut } = useAutorisations();
   const { data: collection, isLoading, error } = useCollection(id);
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const validateMut = useValidateCollection();
   const rejectMut = useRejectCollection();
 
@@ -189,8 +195,9 @@ export function CollectionDetailPage() {
     [collection],
   );
 
+  const peutValider = peut(PERM.collecteValidate);
   const canValidate =
-    (role === 'superviseur' || role === 'admin') &&
+    peutValider &&
     collection !== undefined &&
     (collection.status === 'submitted' ||
       collection.status === 'lab_complete' ||
@@ -272,7 +279,13 @@ export function CollectionDetailPage() {
             ) : null}
           </span>
           <h1 className={styles.heroTitle}>
-            {site ? site.shortName : 'Collecte'} —{' '}
+            {site ? site.shortName : 'Collecte'}
+            {/* Le site est exclu des agrégats mais reste résolu — le badge
+             * dit pourquoi il n'apparaît plus dans les listes filtrées. */}
+            {site?.actif === false ? (
+              <Badge size="sm" variant="neutral" style={{ marginLeft: 8, marginRight: 8 }}>Inactif</Badge>
+            ) : null}
+            {' '}—{' '}
             <span style={{ color: 'rgba(255, 255, 255, 0.78)', fontWeight: 'var(--weight-regular)' }}>
               {formatDateTime(collection.collectedAt, 'dd MMM yyyy · HH:mm')}
             </span>
@@ -287,7 +300,7 @@ export function CollectionDetailPage() {
           </p>
         </div>
         <div className={styles.headerActions}>
-          {labPendingMeasurements.length > 0 && (role === 'superviseur' || role === 'admin') ? (
+          {labPendingMeasurements.length > 0 && peutValider ? (
             <Link to={`/collecte/${collection.id}/resultats-labo`}>
               <Button variant="secondary" iconLeft={<Beaker size={16} />}>
                 Saisir résultats labo
@@ -485,7 +498,7 @@ export function CollectionDetailPage() {
                       hasValue && rule && Number.isFinite(numericValue)
                         ? computeLocalConformity(rule, numericValue)
                         : null;
-                    const canEdit = role === 'superviseur' || role === 'admin';
+                    const canEdit = peutValider;
 
                     return (
                       <div

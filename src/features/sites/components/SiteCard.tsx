@@ -1,9 +1,9 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Users, Clock, Pencil, Trash2 } from 'lucide-react';
-import { IconButton } from '@/components/common';
+import { MapPin, Users, Clock, Pencil, Power, PowerOff, Trash2 } from 'lucide-react';
+import { Badge, IconButton } from '@/components/common';
 import type { Site } from '../api/site.types';
-import { SITE_TYPE_SHORT } from '../api/site.types';
+import { SITE_SOURCE_LABEL, SITE_TYPE_SHORT } from '../api/site.types';
 import { ConformityBadge } from './ConformityBadge';
 import { formatRelativeTime } from '@/lib/format';
 import styles from './SiteCard.module.css';
@@ -12,9 +12,11 @@ export interface SiteCardProps {
   site: Site;
   onEdit?: (site: Site) => void;
   onDelete?: (site: Site) => void;
+  /** Absent = action masquée, pas grisée — décidé par l'appelant via `peut()`. */
+  onToggleActif?: (site: Site) => void;
 }
 
-export function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
+export function SiteCard({ site, onEdit, onDelete, onToggleActif }: SiteCardProps) {
   const stop = (handler?: (s: Site) => void) => (e: MouseEvent) => {
     if (!handler) return;
     e.preventDefault();
@@ -23,7 +25,7 @@ export function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
   };
 
   const adminActions: ReactNode | null =
-    onEdit || onDelete ? (
+    onEdit || onDelete || onToggleActif ? (
       <div className={styles.adminActions}>
         {onEdit ? (
           <IconButton
@@ -34,10 +36,22 @@ export function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
             <Pencil size={14} />
           </IconButton>
         ) : null}
+        {onToggleActif ? (
+          <IconButton
+            aria-label={site.actif ? `Désactiver ${site.shortName}` : `Réactiver ${site.shortName}`}
+            variant="ghost"
+            onClick={stop(onToggleActif)}
+          >
+            {site.actif ? <PowerOff size={14} /> : <Power size={14} />}
+          </IconButton>
+        ) : null}
+        {/* Séparée visuellement de désactiver/réactiver : les deux actions ne
+         * se rattrapent pas de la même façon (l'une réversible, l'autre non). */}
         {onDelete ? (
           <IconButton
             aria-label={`Supprimer ${site.shortName}`}
             variant="ghost"
+            className={styles.deleteAction}
             onClick={stop(onDelete)}
           >
             <Trash2 size={14} />
@@ -61,7 +75,13 @@ export function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
     >
       <header className={styles.header}>
         <div className={styles.titleBlock}>
-          <h3 className={styles.title}>{site.shortName}</h3>
+          <div className={styles.titleRow}>
+            <h3 className={styles.title}>{site.shortName}</h3>
+            {/* Se lit sans ouvrir la fiche — c'est le point du badge. */}
+            {!site.actif ? (
+              <Badge size="sm" variant="neutral">Inactif</Badge>
+            ) : null}
+          </div>
           <p className={styles.subtitle}>{subtitle}</p>
         </div>
         {adminActions}
@@ -73,7 +93,13 @@ export function SiteCard({ site, onEdit, onDelete }: SiteCardProps) {
             <MapPin size={14} aria-hidden="true" />
             {site.location.commune}, {site.location.city}
           </span>
-          <span className={styles.metaType}>{SITE_TYPE_SHORT[site.type]}</span>
+          <span className={styles.metaGroup}>
+            {/* Discret : les deux provenances coexistent dans le même
+             * référentiel mais n'offrent pas le même niveau de détail — le
+             * savoir avant d'ouvrir la fiche évite de la croire incomplète. */}
+            <span className={styles.metaSource}>{SITE_SOURCE_LABEL[site.source]}</span>
+            <span className={styles.metaType}>{SITE_TYPE_SHORT[site.type]}</span>
+          </span>
         </div>
         <div className={styles.metaRow}>
           <span className={styles.metaItem}>

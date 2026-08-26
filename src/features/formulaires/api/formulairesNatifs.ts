@@ -48,15 +48,121 @@ function unwrapListe<T>(raw: unknown): T[] {
   if (Array.isArray(raw)) return raw as T[];
   if (raw && typeof raw === 'object') {
     const o = raw as Record<string, unknown>;
-    for (const cle of ['member', 'hydra:member', 'items', 'data']) {
+    /* `resultats` est la convention de ce backend (cf. /rapports-analyse) ;
+     * les autres clés couvrent Hydra et les formes usuelles. Oublier
+     * `resultats` renvoyait une liste vide — donc 0 brouillon partout. */
+    for (const cle of ['resultats', 'member', 'hydra:member', 'items', 'data']) {
       if (Array.isArray(o[cle])) return o[cle] as T[];
     }
   }
   return [];
 }
 
+/**
+ * Code du formulaire porté par une soumission, quelle que soit la forme reçue.
+ *
+ * Le backend renvoie aujourd'hui une chaîne (`formulaireCode: "FICHE_SITE"`),
+ * mais la même donnée peut arriver en IRI ou en objet imbriqué selon le
+ * sérialiseur. On normalise à l'entrée pour que le reste du module ne
+ * connaisse qu'une seule forme — un groupement raté est silencieux.
+ */
+export function extraireFormulaireCode(brut: unknown): string {
+  if (!brut || typeof brut !== 'object') return '';
+  const o = brut as Record<string, unknown>;
+
+  for (const cle of ['formulaireCode', 'formulaire', 'formulaireCollecte', 'code']) {
+    const v = o[cle];
+    if (typeof v === 'string' && v !== '') {
+      // IRI (`/api/formulaire_collectes/7`) → dernier segment.
+      return v.startsWith('/') ? (v.split('/').filter(Boolean).pop() ?? '') : v;
+    }
+    if (v && typeof v === 'object') {
+      const imbrique = v as Record<string, unknown>;
+      for (const sousCle of ['code', 'formulaireCode', '@id']) {
+        const sv = imbrique[sousCle];
+        if (typeof sv === 'string' && sv !== '') {
+          return sv.startsWith('/') ? (sv.split('/').filter(Boolean).pop() ?? '') : sv;
+        }
+      }
+    }
+  }
+  return '';
+}
+
+/** Normalise un brouillon brut : code de formulaire résolu, auteur et révision typés. */
+function normaliserBrouillon(b: Record<string, unknown>): SoumissionNative {
+  return {
+    ...(b as unknown as SoumissionNative),
+    formulaireCode: extraireFormulaireCode(b),
+    createdById: typeof b.createdById === 'number' ? b.createdById : null,
+    revision: typeof b.revision === 'number' ? b.revision : null,
+  };
+}
+
 export async function fetchBrouillons(): Promise<SoumissionNative[]> {
-  return unwrapListe<SoumissionNative>(await http<unknown>('/soumissions/brouillons'));
+  const liste = unwrapListe<Record<string, unknown>>(await http<unknown>('/soumissions/brouillons'));
+  return liste.map(normaliserBrouillon);
+}
+
+export interface BrouillonsTousParams {
+  page?: number;
+  limite?: number;
+  formulaireCode?: string;
+}
+
+export interface BrouillonsPortee {
+  items: SoumissionNative[];
+  total: number;
+}
+
+/**
+ * Vue « tous » — tous les brouillons, tous auteurs, paginée par le serveur.
+ * Réservée à qui détient `soumission.validate` (voir `fetchBrouillonsSelonPortee`).
+ * `limite` doit pouvoir rester petit : un comptage par modèle n'a besoin que
+ * de `total`, jamais de parcourir des pages entières pour l'obtenir.
+ */
+export async function fetchBrouillonsTous(params: BrouillonsTousParams = {}): Promise<BrouillonsPortee> {
+  const brut = await http<Record<string, unknown>>('/soumissions/brouillons/tous', {
+    query: {
+      page: params.page,
+      limite: params.limite,
+      formulaireCode: params.formulaireCode,
+    },
+  });
+  const items = unwrapListe<Record<string, unknown>>(brut).map(normaliserBrouillon);
+  const total = typeof brut.total === 'number' ? brut.total : items.length;
+  return { items, total };
+}
+
+/**
+ * Choix de portée — décidé une fois ici, jamais dans un composant.
+ *
+ * `peutVoirTout` doit venir de `peut('soumission.validate')` (jamais d'un nom
+ * de rôle) et n'est évaluable que via le hook d'autorisations ; cette
+ * fonction ne fait qu'appliquer la décision déjà prise. Un agent de collecte
+ * ne doit *jamais* recevoir `/brouillons/tous` puis se faire filtrer côté
+ * client : les données des autres agents auraient alors déjà transité
+ * jusqu'au navigateur.
+ */
+export async function fetchBrouillonsSelonPortee(
+  peutVoirTout: boolean,
+  params: BrouillonsTousParams = {},
+): Promise<BrouillonsPortee> {
+  if (peutVoirTout) return fetchBrouillonsTous(params);
+  const items = await fetchBrouillons();
+  return { items, total: items.length };
+}
+
+/**
+ * Relit un brouillon précis par son identifiant client.
+ *
+ * La reprise ne doit jamais dépendre de la liste : elle peut être paginée ou
+ * tronquée, et « Reprendre » vise un brouillon précis parmi plusieurs du même
+ * modèle — pas le premier trouvé.
+ */
+export async function fetchBrouillon(clientSubmissionId: string): Promise<SoumissionNative> {
+  const brut = await http<Record<string, unknown>>(`/soumissions/brouillons/${clientSubmissionId}`);
+  return normaliserBrouillon(brut);
 }
 
 /** `formulaireCode` n'est accepté qu'ici — le PUT de complétion ne porte que `reponses`. */
@@ -64,6 +170,16 @@ export function creerBrouillon(input: CreerBrouillonInput): Promise<SoumissionNa
   return http<SoumissionNative>('/soumissions/brouillons', { method: 'POST', body: input });
 }
 
+/**
+ * Le serveur renvoie un compteur `revision` sur chaque brouillon (constaté
+ * jusqu'à 4 sur une même fiche plusieurs fois complétée), mais aucune
+ * documentation ne précise s'il est attendu en retour pour un contrôle de
+ * concurrence optimiste sur ce PUT. Faute de pouvoir le vérifier (endpoint
+ * accessible seulement avec un jeton), on ne l'invente pas dans le corps —
+ * l'ajouter sans certitude risquerait un rejet silencieux d'un champ non
+ * attendu. `revision` est conservé côté client (`BrouillonLocal.revision`)
+ * pour un usage futur si l'API venait à l'exiger.
+ */
 export function completerBrouillon(
   clientSubmissionId: string,
   input: CompleterBrouillonInput,
@@ -165,11 +281,20 @@ export function normaliserEndpoint(endpoint: string): string {
 
 export async function fetchOptionsReference(source: OptionsSource): Promise<OptionChamp[]> {
   const raw = await http<unknown>(normaliserEndpoint(source.endpoint));
-  return unwrapListe<Record<string, unknown>>(raw).map((item) => {
-    const value = item[source.valueField] ?? item[source.idField];
-    const label = item[source.labelField] ?? value;
-    return { value: String(value ?? ''), label: String(label ?? '') };
-  });
+  return unwrapListe<Record<string, unknown>>(raw)
+    /* Un élément explicitement désactivé (`actif: false`) — un site
+     * `sites_collecte`, potentiellement d'autres ressources de référence à
+     * l'avenir — ne doit jamais être une cible de saisie proposée. Générique
+     * plutôt que spécifique à `sites_collecte` : la règle vaut pour toute
+     * ressource de référence qui porte ce champ. Non vérifié si le backend
+     * filtre déjà côté serveur — filtré ici dans le doute, sans effet si
+     * l'API ne renvoie que des actifs. */
+    .filter((item) => item.actif !== false)
+    .map((item) => {
+      const value = item[source.valueField] ?? item[source.idField];
+      const label = item[source.labelField] ?? value;
+      return { value: String(value ?? ''), label: String(label ?? '') };
+    });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -192,21 +317,12 @@ export function ajouterChamp(formulaireId: number, input: AjouterChampInput): Pr
   });
 }
 
-/**
- * Mise à jour partielle d'un champ.
- *
- * API Platform n'accepte PATCH qu'en `application/merge-patch+json` (PUT
- * répond 405 sur cette ressource) — d'où l'en-tête explicite.
- */
+/** Mise à jour partielle d'un champ (PUT répond 405 sur cette ressource). */
 export function modifierChamp(
   champId: number,
   patch: Partial<Omit<ChampNatif, 'id'>>,
 ): Promise<ChampNatif> {
-  return http<ChampNatif>(`/champ_formulaires/${champId}`, {
-    method: 'PATCH',
-    body: patch,
-    headers: { 'Content-Type': 'application/merge-patch+json' },
-  });
+  return http<ChampNatif>(`/champ_formulaires/${champId}`, { method: 'PATCH', body: patch });
 }
 
 export function supprimerChamp(champId: number): Promise<void> {
@@ -230,11 +346,7 @@ export function creerSection(input: SectionInput): Promise<unknown> {
 }
 
 export function modifierSection(sectionId: number, patch: Partial<SectionInput>): Promise<unknown> {
-  return http(`/section_formulaires/${sectionId}`, {
-    method: 'PATCH',
-    body: patch,
-    headers: { 'Content-Type': 'application/merge-patch+json' },
-  });
+  return http(`/section_formulaires/${sectionId}`, { method: 'PATCH', body: patch });
 }
 
 export function supprimerSection(sectionId: number): Promise<void> {

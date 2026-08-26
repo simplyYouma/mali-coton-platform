@@ -64,39 +64,6 @@
   text-decoration: none;
 }
 
-.bandeau {
-  display: flex;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-.bandeauCell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--space-3) var(--space-5);
-  border-right: 1px solid var(--color-border);
-  min-width: 120px;
-}
-.bandeauCell:last-child {
-  border-right: none;
-}
-.bandeauLabel {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--color-text-muted);
-  font-weight: var(--weight-semibold);
-}
-.bandeauValeur {
-  font-family: var(--font-display);
-  font-size: var(--text-h2);
-  font-weight: var(--weight-bold);
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
 
 .arbre {
   display: flex;
@@ -110,40 +77,28 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
+/* Bande de section bleue, même teinte que la bande de titre et que le sommaire
+ * de la saisie — les pages du module se répondent. */
 .sectionHead {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-2);
-  border-bottom: 1px solid var(--color-border);
-}
-.sectionCode {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 30px;
-  height: 24px;
-  padding: 0 7px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-bold);
-  color: var(--color-text-muted);
+  background: var(--color-primary);
+  border-bottom: 1px solid var(--color-primary);
 }
 .sectionTitre {
   margin: 0;
   flex: 1;
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
-  color: var(--color-text);
+  color: var(--color-ink-text);
   letter-spacing: -0.01em;
 }
 .sectionCompte {
   font-size: var(--text-2xs);
-  color: var(--color-text-muted);
+  color: var(--color-ink-text);
+  opacity: 0.72;
   font-variant-numeric: tabular-nums;
 }
 
@@ -169,14 +124,13 @@
   width: 30px;
   height: 30px;
   border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  color: var(--color-text-muted);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 .champCorps {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
   min-width: 0;
   flex: 1;
 }
@@ -190,13 +144,6 @@
 }
 .champRequis {
   color: var(--color-danger);
-}
-.champCode {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .champMeta {
   display: inline-flex;
@@ -230,8 +177,5 @@
     width: 100%;
     justify-content: flex-start;
     padding-left: calc(30px + var(--space-3));
-  }
-  .bandeau {
-    overflow-x: auto;
   }
 }

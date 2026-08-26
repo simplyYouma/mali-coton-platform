@@ -3,6 +3,7 @@
   align-items: center;
   justify-content: center;
   color: currentColor;
+  flex-shrink: 0;
 }
 .spinner svg {
   animation: spin 0.8s linear infinite;
@@ -14,8 +15,21 @@
   }
 }
 
+@keyframes pulsation {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Rotation réellement neutralisée : la ralentir la laissait tourner, ce que la
+ * préférence vise précisément à éviter. Une pulsation d'opacité continue de
+ * signaler l'attente sans mouvement. */
 @media (prefers-reduced-motion: reduce) {
   .spinner svg {
-    animation-duration: 2s;
+    animation: pulsation 1.6s ease-in-out infinite;
   }
 }

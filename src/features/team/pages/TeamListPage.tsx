@@ -7,7 +7,7 @@ import {
   UserCheck,
   Users as UsersIcon,
 } from 'lucide-react';
-import { exportRowsToXlsx } from '@/lib/xlsxExport';
+import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import {
   Badge,
   Button,
@@ -20,6 +20,7 @@ import {
 } from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
+import type { Site } from '@/features/sites/api/site.types';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { useCreateUser, useUsers } from '@/features/admin/hooks/useAdmin';
 import styles from './TeamListPage.module.css';
@@ -54,7 +55,12 @@ export function TeamListPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { data: usersPage, isLoading } = useUsers();
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un agent déjà affecté à un site depuis désactivé doit
+   * garder ce nom résolu dans la liste (sitesById) ; seul le formulaire de
+   * nouvelle affectation (sitesActifs) doit l'exclure — on ne réaffecte pas
+   * un agent à un site désactivé. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
+  const sitesActifs = useMemo(() => (sitesPage?.items ?? []).filter((s) => s.actif), [sitesPage]);
   const { data: collectionsPage } = useCollections();
   const createMut = useCreateUser();
 
@@ -79,10 +85,18 @@ export function TeamListPage() {
   }, [agents, query]);
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, string>();
-    (sitesPage?.items ?? []).forEach((s) => map.set(s.id, s.shortName));
+    const map = new Map<string, Site>();
+    (sitesPage?.items ?? []).forEach((s) => map.set(s.id, s));
     return map;
   }, [sitesPage]);
+
+  /* Le site est exclu des agrégats mais reste résolu — le suffixe dit
+   * pourquoi un agent semble affecté à un site qui n'apparaît plus ailleurs. */
+  const libelleSite = (id: string): string => {
+    const s = sitesById.get(id);
+    if (!s) return id;
+    return s.actif ? s.shortName : `${s.shortName} (inactif)`;
+  };
 
   const collectionsByAgent = useMemo(() => {
     const map = new Map<string, number>();
@@ -170,9 +184,7 @@ export function TeamListPage() {
                   {
                     header: 'Sites assignés',
                     accessor: (a) =>
-                      a.assignedSiteIds
-                        .map((id) => sitesById.get(id) ?? id)
-                        .join(', '),
+                      a.assignedSiteIds.map(libelleSite).join(', '),
                   },
                   {
                     header: 'Nb collectes',
@@ -180,6 +192,7 @@ export function TeamListPage() {
                   },
                 ],
                 rows: filtered,
+                note: noteScopeSitesActifs(),
               });
             }}
           >
@@ -222,7 +235,7 @@ export function TeamListPage() {
             <tbody>
               {filtered.map((a) => {
                 const count = collectionsByAgent.get(a.id) ?? 0;
-                const sites = a.assignedSiteIds.map((id) => sitesById.get(id) ?? id);
+                const sites = a.assignedSiteIds.map(libelleSite);
                 return (
                   <tr
                     key={a.id}
@@ -325,7 +338,7 @@ export function TeamListPage() {
           <div className={styles.formGridFull}>
             <FormField label="Sites affectés" required>
               <div className={styles.checklist}>
-                {(sitesPage?.items ?? []).map((s) => (
+                {sitesActifs.map((s) => (
                   <Checkbox
                     key={s.id}
                     checked={form.assignedSiteIds.includes(s.id)}

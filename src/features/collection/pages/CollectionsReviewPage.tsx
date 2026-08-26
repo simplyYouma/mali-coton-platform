@@ -36,7 +36,10 @@ export function CollectionsReviewPage() {
 
   const submittedQ = useCollections({ status: 'submitted' });
   const labCompleteQ = useCollections({ status: 'lab_complete' });
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
 
   const items = useMemo(() => {
     const a = submittedQ.data?.items ?? [];
@@ -92,9 +95,9 @@ export function CollectionsReviewPage() {
   );
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, { shortName: string; city: string }>();
+    const map = new Map<string, { shortName: string; city: string; actif: boolean }>();
     sitesPage?.items.forEach((s) =>
-      map.set(s.id, { shortName: s.shortName, city: s.location.city }),
+      map.set(s.id, { shortName: s.shortName, city: s.location.city, actif: s.actif }),
     );
     return map;
   }, [sitesPage]);
@@ -202,6 +205,9 @@ export function CollectionsReviewPage() {
                     <div className={styles.rowMain}>
                       <span className={styles.rowSite}>
                         {site?.shortName ?? c.siteId}
+                        {site?.actif === false ? (
+                          <Badge size="sm" variant="neutral">Inactif</Badge>
+                        ) : null}
                       </span>
                       <span className={styles.rowMeta}>
                         {usersById.get(c.agentId) ?? c.agentId} · {STATUS_LABEL[c.status]}

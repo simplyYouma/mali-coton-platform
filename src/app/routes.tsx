@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import type { UserRole } from '@/types/common';
 import { useAuth } from './providers/AuthProvider';
+import { useAutorisations } from './providers/AuthzProvider';
+import { GardePage } from './GardePage';
+import { premierePagePour } from './navigation';
+import { AucunAcces, PageLoader } from '@/components/common';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { AppLayout } from './layouts/AppLayout';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
@@ -13,8 +16,8 @@ import {
   CollectionImportPage,
 } from '@/features/collection';
 import {
-  UsersPage,
-  RolesPage,
+  ComptesPage,
+  RolesPermissionsPage,
   AuditLogsPage,
   RefDataPage,
 } from '@/features/admin';
@@ -26,16 +29,16 @@ import { AnalyticsPage } from '@/features/analytics';
 import { ReportingPage } from '@/features/reporting';
 import { LabSamplesPage, PrelevementsPage, AnalysesPage } from '@/features/lab';
 import {
+  BrouillonsPage,
   ModelesFormulairePage,
   StructureFormulairePage,
   SaisieFormulairePage,
   ConstructeurFormulairePage,
 } from '@/features/formulaires';
-import { RoleGuard } from '@/components/common';
 
 export function AppRoutes() {
-  const { isAuthenticated, role } = useAuth();
-  const accueil = defaultRoute(role);
+  const { isAuthenticated } = useAuth();
+  const { peutUneDe, isLoading, isError } = useAutorisations();
 
   if (!isAuthenticated) {
     return (
@@ -46,180 +49,149 @@ export function AppRoutes() {
     );
   }
 
+  /* Les droits conditionnent la page d'accueil : trancher avant de les
+   * connaître enverrait l'utilisateur sur un écran qui lui est fermé. */
+  if (isLoading) return <PageLoader label="Chargement de votre profil…" />;
+
+  const accueil = isError ? null : premierePagePour(peutUneDe);
+  if (!accueil) return <AucunAcces profilIndisponible={isError} />;
+
   return (
     <Routes>
       <Route path="/login" element={<Navigate to={accueil} replace />} />
       <Route element={<AppLayout />}>
         <Route path="/" element={<Navigate to={accueil} replace />} />
+
         <Route
           path="/dashboard"
-          element={
-            <RoleGuard roles={['admin', 'superviseur', 'visitor']}>
-              <DashboardPage />
-            </RoleGuard>
-          }
+          element={<GardePage to="/dashboard"><DashboardPage /></GardePage>}
         />
-        <Route path="/sites" element={<SitesListPage />} />
-        <Route path="/sites/:id" element={<SiteDetailPage />} />
-        <Route path="/collecte" element={<CollectionsListPage />} />
+        <Route path="/sites" element={<GardePage to="/sites"><SitesListPage /></GardePage>} />
+        <Route
+          path="/sites/:id"
+          element={<GardePage to="/sites/:id"><SiteDetailPage /></GardePage>}
+        />
+
+        <Route
+          path="/collecte"
+          element={<GardePage to="/collecte"><CollectionsListPage /></GardePage>}
+        />
         <Route
           path="/collecte/validation"
-          element={
-            <RoleGuard roles={['superviseur', 'admin']}>
-              <CollectionsReviewPage />
-            </RoleGuard>
-          }
+          element={<GardePage to="/collecte/validation"><CollectionsReviewPage /></GardePage>}
         />
         <Route
           path="/collecte/import"
-          element={
-            <RoleGuard roles={['admin', 'superviseur']}>
-              <CollectionImportPage />
-            </RoleGuard>
-          }
+          element={<GardePage to="/collecte/import"><CollectionImportPage /></GardePage>}
         />
-        <Route path="/collecte/:id" element={<CollectionDetailPage />} />
+        <Route
+          path="/collecte/:id"
+          element={<GardePage to="/collecte/:id"><CollectionDetailPage /></GardePage>}
+        />
         <Route
           path="/collecte/:id/resultats-labo"
           element={
-            <RoleGuard roles={['superviseur', 'admin']}>
-              <LabResultsPage />
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/labo/echantillons"
-          element={
-            <RoleGuard roles={['admin', 'superviseur', 'lab']}>
-              <LabSamplesPage />
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/labo/prelevements"
-          element={
-            <RoleGuard roles={['admin', 'superviseur', 'lab']}>
-              <PrelevementsPage />
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/labo/analyses"
-          element={
-            <RoleGuard roles={['admin', 'superviseur', 'lab']}>
-              <AnalysesPage />
-            </RoleGuard>
-          }
-        />
-        <Route path="/alertes" element={<AlertsPage />} />
-        <Route
-          path="/recommandations"
-          element={
-            <RoleGuard roles={['admin', 'superviseur', 'visitor']}>
-              <RecommandationsPage />
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/agents"
-          element={
-            <RoleGuard roles={['admin', 'superviseur']}>
-              <TeamListPage />
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/agents/:id"
-          element={
-            <RoleGuard roles={['admin', 'superviseur']}>
-              <AgentDetailPage />
-            </RoleGuard>
-          }
-        />
-        {/* Collecte native — agent */}
-        <Route path="/formulaires" element={<ModelesFormulairePage />} />
-        <Route path="/formulaires/:code" element={<StructureFormulairePage />} />
-        <Route path="/formulaires/:code/saisir" element={<SaisieFormulairePage />} />
-        {/* Collecte native — constructeur (admin) */}
-        <Route path="/admin/formulaires" element={<ModelesFormulairePage />} />
-        <Route
-          path="/admin/formulaires/:id/constructeur"
-          element={
-            <RoleGuard roles={['admin']}>
-              <ConstructeurFormulairePage />
-            </RoleGuard>
+            <GardePage to="/collecte/:id/resultats-labo"><LabResultsPage /></GardePage>
           }
         />
 
-        <Route path="/cartographie" element={<MappingPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/reporting" element={<ReportingPage />} />
+        <Route
+          path="/labo/echantillons"
+          element={<GardePage to="/labo/echantillons"><LabSamplesPage /></GardePage>}
+        />
+        <Route
+          path="/labo/prelevements"
+          element={<GardePage to="/labo/prelevements"><PrelevementsPage /></GardePage>}
+        />
+        <Route
+          path="/labo/analyses"
+          element={<GardePage to="/labo/analyses"><AnalysesPage /></GardePage>}
+        />
+
+        <Route path="/alertes" element={<GardePage to="/alertes"><AlertsPage /></GardePage>} />
+        <Route
+          path="/recommandations"
+          element={<GardePage to="/recommandations"><RecommandationsPage /></GardePage>}
+        />
+
+        <Route path="/agents" element={<GardePage to="/agents"><TeamListPage /></GardePage>} />
+        <Route
+          path="/agents/:id"
+          element={<GardePage to="/agents/:id"><AgentDetailPage /></GardePage>}
+        />
+
+        {/* Collecte native — agent */}
+        <Route
+          path="/formulaires"
+          element={<GardePage to="/formulaires"><ModelesFormulairePage /></GardePage>}
+        />
+        <Route
+          path="/formulaires/brouillons"
+          element={<GardePage to="/formulaires/brouillons"><BrouillonsPage /></GardePage>}
+        />
+        <Route
+          path="/formulaires/:code"
+          element={<GardePage to="/formulaires/:code"><StructureFormulairePage /></GardePage>}
+        />
+        <Route
+          path="/formulaires/:code/saisir"
+          element={
+            <GardePage to="/formulaires/:code/saisir"><SaisieFormulairePage /></GardePage>
+          }
+        />
+
+        {/* Collecte native — constructeur */}
+        <Route
+          path="/admin/formulaires"
+          element={<GardePage to="/admin/formulaires"><ModelesFormulairePage /></GardePage>}
+        />
+        <Route
+          path="/admin/formulaires/:id/constructeur"
+          element={
+            <GardePage to="/admin/formulaires/:id/constructeur">
+              <ConstructeurFormulairePage />
+            </GardePage>
+          }
+        />
+
+        <Route
+          path="/cartographie"
+          element={<GardePage to="/cartographie"><MappingPage /></GardePage>}
+        />
+        <Route
+          path="/analytics"
+          element={<GardePage to="/analytics"><AnalyticsPage /></GardePage>}
+        />
+        <Route
+          path="/reporting"
+          element={<GardePage to="/reporting"><ReportingPage /></GardePage>}
+        />
+
         <Route
           path="/admin/utilisateurs"
-          element={
-            <RoleGuard roles={['admin']}>
-              <UsersPage />
-            </RoleGuard>
-          }
+          element={<GardePage to="/admin/utilisateurs"><ComptesPage /></GardePage>}
         />
         <Route
           path="/admin/roles"
-          element={
-            <RoleGuard roles={['admin']}>
-              <RolesPage />
-            </RoleGuard>
-          }
+          element={<GardePage to="/admin/roles"><RolesPermissionsPage /></GardePage>}
         />
-        {/* Indicateurs : integre comme onglet de Referentiels.
-            On preserve l'URL legacy en redirigeant vers ?tab=indicateurs. */}
+        {/* Indicateurs : intégré comme onglet de Référentiels.
+            On préserve l'URL héritée en redirigeant vers ?tab=indicateurs. */}
         <Route
           path="/admin/indicateurs"
           element={<Navigate to="/admin/referentiels?tab=indicateurs" replace />}
         />
         <Route
           path="/admin/referentiels"
-          element={
-            <RoleGuard roles={['admin']}>
-              <RefDataPage />
-            </RoleGuard>
-          }
+          element={<GardePage to="/admin/referentiels"><RefDataPage /></GardePage>}
         />
         <Route
           path="/admin/audit"
-          element={
-            <RoleGuard roles={['admin']}>
-              <AuditLogsPage />
-            </RoleGuard>
-          }
+          element={<GardePage to="/admin/audit"><AuditLogsPage /></GardePage>}
         />
+
         <Route path="*" element={<Navigate to={accueil} replace />} />
       </Route>
     </Routes>
   );
-}
-
-/**
- * Page d'entree selon le role.
- *
- * L'agent terrain n'a acces ni au tableau de bord ni aux pages de pilotage :
- * sa navigation ne contient que les formulaires de collecte. L'envoyer sur
- * /dashboard le deposerait sur un ecran absent de son propre menu.
- */
-/**
- * Ecran d'arrivee apres connexion, selon le role.
- *
- * Le role `lab` existait dans le typage et dans le mapping d'authentification
- * sans qu'aucune route ni entree de menu ne lui soit ouverte : un utilisateur
- * laboratoire atterrissait sur /dashboard, qui lui est interdit, avec un menu
- * vide. Il est desormais dirige vers la section qui le concerne.
- */
-function defaultRoute(role: UserRole | null): string {
-  switch (role) {
-    case 'agent':
-      return '/formulaires';
-    case 'lab':
-      return '/labo/analyses';
-    default:
-      return '/dashboard';
-  }
 }

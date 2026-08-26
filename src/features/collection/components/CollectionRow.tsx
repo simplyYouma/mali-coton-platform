@@ -8,6 +8,7 @@ import {
   Pencil,
   XCircle,
 } from 'lucide-react';
+import { Badge } from '@/components/common';
 import {
   STATUS_LABEL,
   type Collection,
@@ -20,6 +21,9 @@ interface SiteSummary {
   id: string;
   shortName: string;
   city: string;
+  /** Le site est exclu des agrégats mais reste résolu ici — ce badge dit
+   * pourquoi le total ne recoupe pas la liste affichée. */
+  actif?: boolean;
 }
 
 export interface CollectionRowProps {
@@ -51,6 +55,9 @@ export function CollectionRow({ collection, site, agentName, href }: CollectionR
         <span className={styles.siteLine}>
           {site?.shortName ?? collection.siteId}
           {site?.city ? <span className={styles.siteCity}>· {site.city}</span> : null}
+          {site?.actif === false ? (
+            <Badge size="sm" variant="neutral">Inactif</Badge>
+          ) : null}
         </span>
         <span className={styles.statusLabel}>
           {STATUS_LABEL[collection.status]}

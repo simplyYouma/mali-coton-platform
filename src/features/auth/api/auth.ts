@@ -1,7 +1,7 @@
 import type { AuthenticatedUser, UserRole } from '@/types/common';
 import { http } from '@/lib/http';
 import { setToken, clearToken, decodeJwtPayload } from '@/lib/tokenStore';
-import { unwrapPaginated } from '@/lib/jsonld';
+import { fetchMe, nomComplet } from './me';
 import { API_MODE } from '@/lib/apiConfig';
 
 export interface LoginPayload {
@@ -27,21 +27,13 @@ interface JwtPayload {
   exp?: number;
 }
 
-/* ── Réponse brute /api/users ── */
-interface BackendUser {
-  '@id'?: string;
-  id: number;
-  nom: string;
-  prenom: string;
-  email: string;
-  actif: boolean;
-  rolesCollection?: {
-    values?: string[];
-    keys?: number[];
-  };
-}
-
-/** Mappe un rôle backend (code Role ou ROLE_XXX) vers notre UserRole. */
+/**
+ * Code de rôle backend → `UserRole` du client, pour l'affichage seul.
+ *
+ * Les codes sont incohérents en base (`ROLE_ADMIN`, mais `superviseur` sans
+ * préfixe) : cette table sert à étiqueter l'utilisateur, jamais à lui accorder
+ * un droit — les autorisations viennent de `profil.permissions`.
+ */
 function mapRole(raw: string): UserRole {
   const normalized = raw.toLowerCase().replace('role_', '');
   const map: Record<string, UserRole> = {
@@ -49,6 +41,7 @@ function mapRole(raw: string): UserRole {
     superviseur: 'superviseur',
     supervisor: 'superviseur',
     agent: 'agent',
+    agent_collecteur: 'agent',
     lab: 'lab',
     laboratoire: 'lab',
     visitor: 'visitor',
@@ -80,27 +73,22 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
   // Les rôles viennent directement du JWT (ex. ["ROLE_USER", "ROLE_ADMIN"])
   const jwtRoles = jwtPayload?.roles ?? [];
 
-  // 4. Récupérer les infos utilisateur depuis /api/users
-  const raw = await http<unknown>('/users', { query: { email } });
-  const page = unwrapPaginated<BackendUser>(raw);
-  const backendUser =
-    page.items.find((u) => u.email.toLowerCase() === email.toLowerCase()) ?? page.items[0];
+  /* 4. Profil via /api/me — seul endpoint ouvert à tout compte authentifié.
+   *    /api/users exige `utilisateur.manage` et aurait interdit la connexion à
+   *    un agent collecteur. */
+  const profil = await fetchMe();
 
-  if (!backendUser) {
-    clearToken();
-    throw new Error('Utilisateur introuvable après authentification.');
-  }
-
-  // 5. Construire le profil — priorité aux rôles JWT (plus fiables que rolesCollection)
-  const role =
-    jwtRoles.length > 0
-      ? mapRole(jwtRoles.find((r) => r !== 'ROLE_USER') ?? jwtRoles[0]!)
-      : mapRole(backendUser.rolesCollection?.values?.[0] ?? 'visitor');
+  /* 5. `role` ne sert plus qu'à l'affichage et aux quelques écrans encore
+   *    câblés dessus : les autorisations se lisent dans `profil.permissions`
+   *    via AuthzProvider. Les codes de rôle étant incohérents en base, on
+   *    prend le premier code reconnu, sans jamais en déduire de droit. */
+  const codesRole = profil.roles.length > 0 ? profil.roles : jwtRoles;
+  const role = mapRole(codesRole.find((r) => r !== 'ROLE_USER') ?? codesRole[0] ?? 'visitor');
 
   const user: AuthenticatedUser = {
-    id: String(backendUser.id),
-    email: backendUser.email,
-    fullName: `${backendUser.prenom} ${backendUser.nom}`.trim(),
+    id: String(profil.id),
+    email: profil.email || email,
+    fullName: nomComplet(profil) || email,
     role,
     assignedSiteIds: [],
     locale: 'fr',

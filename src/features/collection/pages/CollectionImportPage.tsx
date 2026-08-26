@@ -10,7 +10,11 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react';
-import { Button, Skeleton } from '@/components/common';
+import {
+  Button,
+  Skeleton,
+  Spinner,
+} from '@/components/common';
 import { useImportHistory, useKoboImport } from '../hooks/useKoboImport';
 import type { KoboImportStats, KoboImportType } from '../api/koboImport';
 import styles from './CollectionImportPage.module.css';
@@ -177,7 +181,8 @@ export function CollectionImportPage() {
       {/* ─── Chargement ─── */}
       {phase === 'loading' && (
         <div className={styles.loadingBox}>
-          <span className={styles.spinner} aria-hidden="true" />
+          {/* Un texte voisin annonce déjà l'attente : le spinner est décoratif. */}
+          <Spinner size={36} decoratif />
           <div>
             <strong>Synchronisation en cours…</strong>
             <p>

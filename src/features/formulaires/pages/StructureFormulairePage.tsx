@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Badge, Button, EmptyState, NoteExplicative, Skeleton } from '@/components/common';
-import { useAuth } from '@/app/providers/AuthProvider';
 import { useFormulairePublie } from '../hooks/useFormulairesNatifs';
 import {
   compterChamps,
@@ -26,7 +25,10 @@ import {
   type ChampNatif,
   type TypeChampNatif,
 } from '../api/formulairesNatifs.types';
+import { StatsBande } from '../components/StatsBande';
 import styles from './StructureFormulairePage.module.css';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 
 export const LIBELLE_TYPE: Record<TypeChampNatif, string> = {
   TEXTE: 'Texte court',
@@ -60,8 +62,9 @@ export const ICONE_TYPE: Record<TypeChampNatif, LucideIcon> = {
  */
 export function StructureFormulairePage() {
   const { code } = useParams<{ code: string }>();
-  const { role } = useAuth();
-  const isAdmin = role === 'admin';
+  const { peutUneDe } = useAutorisations();
+  /* Le constructeur modifie la structure : ce sont ces droits qui l'ouvrent. */
+  const peutConstruire = peutUneDe([PERM.formulaireCreate, PERM.formulaireUpdate]);
   const { data: formulaire, isLoading, isError } = useFormulairePublie(code);
 
   if (isLoading) {
@@ -90,6 +93,11 @@ export function StructureFormulairePage() {
   }
 
   const sections = [...formulaire.sections].sort((a, b) => a.ordre - b.ordre);
+  /* Les conditions référencent un champ par son code : on garde de quoi le
+   * retraduire en libellé, le code n'étant jamais montré. */
+  const parLibelle = new Map(
+    sections.flatMap((s) => s.champs.map((c) => [c.code, c.libelle] as const)),
+  );
 
   return (
     <div className={styles.page}>
@@ -100,9 +108,7 @@ export function StructureFormulairePage() {
 
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
-          <span className={styles.heroEyebrow}>
-            <code>{formulaire.code}</code> · version {formulaire.version}
-          </span>
+          <span className={styles.heroEyebrow}>Version {formulaire.version}</span>
           <h1 className={styles.heroTitle}>{formulaire.titre}</h1>
           <p className={styles.heroDescription}>{formulaire.description}</p>
         </div>
@@ -112,7 +118,7 @@ export function StructureFormulairePage() {
               Remplir
             </Button>
           </Link>
-          {isAdmin ? (
+          {peutConstruire ? (
             <Link to={`/admin/formulaires/${formulaire.id}/constructeur`}>
               <Button variant="secondary" iconLeft={<PencilRuler size={15} />}>
                 Ouvrir le constructeur
@@ -139,13 +145,8 @@ export function StructureFormulairePage() {
             detail: 'La question telle que l’agent la verra pendant la saisie.',
           },
           {
-            titre: 'Le code',
-            detail: (
-              <>
-                En petit dessous (<code>grp_a/id_site</code>) : l’identifiant technique sous lequel
-                la réponse est enregistrée. C’est lui qu’on retrouve dans les exports.
-              </>
-            ),
+            titre: 'Le type',
+            detail: 'Indique la forme attendue : texte, nombre, date, choix, photo ou position GPS.',
           },
           {
             titre: 'L’astérisque rouge',
@@ -164,28 +165,25 @@ export function StructureFormulairePage() {
         ]}
       />
 
-      <section className={styles.bandeau} aria-label="Résumé">
-        <div className={styles.bandeauCell}>
-          <span className={styles.bandeauLabel}>Sections</span>
-          <span className={styles.bandeauValeur}>{sections.length}</span>
-        </div>
-        <div className={styles.bandeauCell}>
-          <span className={styles.bandeauLabel}>Champs</span>
-          <span className={styles.bandeauValeur}>{compterChamps(formulaire)}</span>
-        </div>
-        <div className={styles.bandeauCell}>
-          <span className={styles.bandeauLabel}>Obligatoires</span>
-          <span className={styles.bandeauValeur}>
-            {sections.reduce((n, s) => n + s.champs.filter((c) => c.obligatoire).length, 0)}
-          </span>
-        </div>
-      </section>
+      <StatsBande
+        aria-label="Résumé"
+        stats={[
+          { label: 'Sections', valeur: sections.length },
+          { label: 'Champs', valeur: compterChamps(formulaire) },
+          {
+            label: 'Obligatoires',
+            valeur: sections.reduce(
+              (n, sec) => n + sec.champs.filter((c) => c.obligatoire).length,
+              0,
+            ),
+          },
+        ]}
+      />
 
       <div className={styles.arbre}>
         {sections.map((section) => (
           <section key={section.id} className={styles.section}>
             <header className={styles.sectionHead}>
-              <span className={styles.sectionCode}>{section.code}</span>
               <h2 className={styles.sectionTitre}>{section.libelle}</h2>
               <span className={styles.sectionCompte}>
                 {section.champs.length} champ{section.champs.length > 1 ? 's' : ''}
@@ -195,7 +193,7 @@ export function StructureFormulairePage() {
               {[...section.champs]
                 .sort((a, b) => a.ordre - b.ordre)
                 .map((champ) => (
-                  <LigneChamp key={champ.id} champ={champ} />
+                  <LigneChamp key={champ.id} champ={champ} parLibelle={parLibelle} />
                 ))}
             </ul>
           </section>
@@ -205,7 +203,15 @@ export function StructureFormulairePage() {
   );
 }
 
-function LigneChamp({ champ }: { champ: ChampNatif }) {
+/** Résumé lisible d'une condition — jamais le code brut du champ parent. */
+function libelleCondition(champ: ChampNatif, parLibelle: Map<string, string>): string {
+  if (!hasCondition(champ)) return '';
+  const parent = parLibelle.get(champ.condition.champParentCode) ?? 'un champ précédent';
+  const verbe = champ.condition.operateur === 'CONTAINS' ? 'contient' : 'est égal à';
+  return `Affiché si « ${parent} » ${verbe} « ${champ.condition.valeur} »`;
+}
+
+function LigneChamp({ champ, parLibelle }: { champ: ChampNatif; parLibelle: Map<string, string> }) {
   const Icone = ICONE_TYPE[champ.type] ?? TypeIcon;
   return (
     <li className={styles.champ}>
@@ -219,13 +225,12 @@ function LigneChamp({ champ }: { champ: ChampNatif }) {
             <Asterisk size={11} className={styles.champRequis} aria-label="obligatoire" />
           ) : null}
         </span>
-        <code className={styles.champCode}>{champ.code}</code>
       </div>
       <div className={styles.champMeta}>
         {/* Pastilles discrètes : elles signalent qu'un champ porte une règle,
          * le détail se lit dans le constructeur. */}
         {hasCondition(champ) ? (
-          <span className={styles.pastille} title={`Affiché si ${champ.condition.champParentCode} ${champ.condition.operateur === 'CONTAINS' ? 'contient' : '='} ${champ.condition.valeur}`}>
+          <span className={styles.pastille} title={libelleCondition(champ, parLibelle)}>
             <GitBranch size={11} aria-hidden="true" />
             Conditionnel
           </span>
