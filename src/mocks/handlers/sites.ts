@@ -125,6 +125,8 @@ export const sitesHandlers = [
       conformityByDomain: { ...NEUTRAL_CONFORMITY },
       lastCollectionAt: null,
       collectionsCount: 0,
+      actif: true,
+      source: 'KOBO',
     };
 
     store.unshift(newSite);
@@ -159,6 +161,33 @@ export const sitesHandlers = [
     return HttpResponse.json(next);
   }),
 
+  /** `setSiteActif` (activation/désactivation) passe par ici. */
+  http.patch('/api/v1/sites/:id', async ({ params, request }) => {
+    await delay(180);
+    const idx = store.findIndex((s) => s.id === params.id);
+    if (idx === -1) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_found',
+            message: 'Site introuvable.',
+            correlationId: uuid(),
+          },
+        },
+        { status: 404 },
+      );
+    }
+    const patch = (await request.json()) as Partial<Site>;
+    const current = store[idx]!;
+    const next: Site = { ...current, ...patch, id: current.id };
+    store[idx] = next;
+    return HttpResponse.json(next);
+  }),
+
+  /* Simule la contrainte de clé étrangère réelle : un site avec des
+   * collectes rattachées ne peut pas être supprimé — seulement désactivé.
+   * Les 5 sites pilotes en portent tous ; créer un site via POST puis le
+   * supprimer (`collectionsCount: 0`) illustre le chemin qui réussit. */
   http.delete('/api/v1/sites/:id', async ({ params }) => {
     await delay(180);
     const idx = store.findIndex((s) => s.id === params.id);
@@ -172,6 +201,19 @@ export const sitesHandlers = [
           },
         },
         { status: 404 },
+      );
+    }
+    const site = store[idx]!;
+    if (site.collectionsCount > 0) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'conflict',
+            message: `Impossible de supprimer « ${site.name} » : ${site.collectionsCount} collecte(s) y sont rattachées.`,
+            correlationId: uuid(),
+          },
+        },
+        { status: 409 },
       );
     }
     store.splice(idx, 1);

@@ -2,21 +2,32 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-width: 0;
 }
 
-/* Options d'un choix : empilées, cibles tactiles confortables — la saisie se
- * fait debout, souvent d'une seule main. */
+/* Intitulé du champ en bleu : il structure la lecture de la fiche. Cible le
+ * label direct de FormField — pas ceux des cases à cocher, qui restent neutres. */
+.champ > div > label {
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* Options réparties en grille fluide : plusieurs par ligne quand les libellés
+ * sont courts, une seule quand ils sont longs. Cibles tactiles ≥ 44px — la
+ * saisie se fait debout, souvent d'une seule main. */
 .choixGroupe {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 2px var(--space-3);
 }
 .choixGroupe > label {
   min-height: 44px;
   display: flex;
   align-items: center;
-  padding: var(--space-2) var(--space-2);
+  gap: var(--space-2);
+  padding: var(--space-2);
   border-radius: var(--radius-sm);
+  min-width: 0;
 }
 .choixGroupe > label:hover {
   background: var(--color-surface-2);
@@ -55,15 +66,6 @@
   color: var(--color-warning);
 }
 
-.spin {
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spin { animation: none; }
-}
 
 /* ── GEOPOINT ── */
 .gpsWrap {

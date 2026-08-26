@@ -1,9 +1,14 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 import {
   ajouterChamp,
   completerBrouillon,
   creerBrouillon,
+  fetchBrouillon,
   fetchBrouillons,
+  fetchBrouillonsSelonPortee,
+  fetchBrouillonsTous,
   fetchFormulairePublie,
   fetchOptionsReference,
   finaliserSoumission,
@@ -12,6 +17,7 @@ import {
   supprimerChamp,
   uploaderFichierChamp,
   type AjouterChampInput,
+  type BrouillonsTousParams,
 } from '../api/formulairesNatifs';
 import {
   CODES_FORMULAIRES,
@@ -54,12 +60,96 @@ export function useFormulairesPublies() {
 
 /* ── Brouillons ── */
 
-export function useBrouillons() {
+export function useBrouillons(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['soumissions', 'brouillons'],
     queryFn: fetchBrouillons,
     staleTime: 60 * 1000,
+    enabled: options.enabled ?? true,
   });
+}
+
+/**
+ * Un brouillon précis, par son identifiant client.
+ *
+ * La reprise d'une saisie ne doit jamais se fier à la liste — potentiellement
+ * paginée ou tronquée — pour retrouver LE bon brouillon parmi plusieurs du
+ * même modèle : elle relit sa fiche directement.
+ */
+export function useBrouillon(clientSubmissionId: string | undefined) {
+  return useQuery({
+    queryKey: ['soumissions', 'brouillons', clientSubmissionId],
+    queryFn: () => fetchBrouillon(clientSubmissionId!),
+    enabled: Boolean(clientSubmissionId),
+    staleTime: 0,
+    /* Un 404 est un cas légitime — un brouillon jamais synchronisé n'existe
+     * pas côté serveur, et doit se reprendre avec la seule copie locale.
+     * Le retenter retarderait cette reprise sans raison. */
+    retry: false,
+  });
+}
+
+/**
+ * Brouillons dans la portée que l'appelant a le droit de voir.
+ *
+ * Le choix d'endpoint (`/brouillons` propre, ou `/brouillons/tous` paginé)
+ * vit dans `fetchBrouillonsSelonPortee` — ce hook ne fait qu'évaluer la
+ * permission (seul un hook le peut) et la lui passer. Jamais l'inverse : un
+ * composant qui appellerait `/tous` puis filtrerait laisserait les données
+ * des autres agents transiter jusqu'au navigateur.
+ */
+export function useBrouillonsPortee(params: BrouillonsTousParams = {}) {
+  const { peut } = useAutorisations();
+  const peutVoirTout = peut(PERM.soumissionValidate);
+  const { data, isLoading, isError } = useQuery({
+    queryKey: [
+      'soumissions',
+      'brouillons',
+      'portee',
+      peutVoirTout,
+      params.page ?? 1,
+      params.limite ?? null,
+      params.formulaireCode ?? null,
+    ],
+    queryFn: () => fetchBrouillonsSelonPortee(peutVoirTout, params),
+    staleTime: 60 * 1000,
+  });
+  return {
+    items: data?.items ?? [],
+    total: data?.total ?? 0,
+    peutVoirTout,
+    isLoading,
+    isError,
+  };
+}
+
+/**
+ * Total de brouillons par modèle — pour les badges (« Mes brouillons (N) »,
+ * compteur par carte de `ModelesFormulairePage`).
+ *
+ * En vue « tous », une requête `limite=1` par modèle ne lit que `total` :
+ * jamais un parcours de pages entier pour un simple chiffre.
+ */
+export function useComptesBrouillonsServeur() {
+  const { peut } = useAutorisations();
+  const peutVoirTout = peut(PERM.soumissionValidate);
+
+  const resultats = useQueries({
+    queries: CODES_FORMULAIRES.map((code) => ({
+      queryKey: ['soumissions', 'brouillons', 'tous', 'compte', code],
+      queryFn: () => fetchBrouillonsTous({ formulaireCode: code, page: 1, limite: 1 }).then((r) => r.total),
+      enabled: peutVoirTout,
+      staleTime: 60 * 1000,
+    })),
+  });
+
+  return {
+    peutVoirTout,
+    isLoading: peutVoirTout && resultats.some((r) => r.isLoading),
+    comptesParCode: peutVoirTout
+      ? new Map(CODES_FORMULAIRES.map((code, i) => [code, resultats[i]?.data ?? 0]))
+      : null,
+  };
 }
 
 export function useCreerBrouillon() {

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { FileSpreadsheet, Pipette } from 'lucide-react';
 import { Badge, Button, EmptyState, Skeleton } from '@/components/common';
-import { exportRowsToXlsx } from '@/lib/xlsxExport';
+import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import { formatDateTime } from '@/lib/format';
 import { useSites } from '@/features/sites/hooks/useSites';
+import type { Site } from '@/features/sites/api/site.types';
 import { usePrelevements } from '../hooks/useLaboratoire';
 import {
   TYPE_PRELEVEMENT_LABEL,
@@ -18,7 +19,10 @@ export function PrelevementsPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [statutFilter, setStatutFilter] = useState('');
 
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const { data: page, isLoading } = usePrelevements({
     site: siteFilter || undefined,
     typePrelevement: typeFilter || undefined,
@@ -27,10 +31,10 @@ export function PrelevementsPage() {
 
   const sites = sitesPage?.items ?? [];
 
-  // Carte siteId → nom court pour affichage
+  // Carte siteId → site (nom court + état actif, pour le badge « Inactif »)
   const sitesById = useMemo(() => {
-    const map = new Map<string, string>();
-    sites.forEach((s) => map.set(s.id, s.shortName));
+    const map = new Map<string, Site>();
+    sites.forEach((s) => map.set(s.id, s));
     return map;
   }, [sites]);
 
@@ -40,7 +44,7 @@ export function PrelevementsPage() {
       if (!q) return true;
       return (
         p.codePrelevement.toLowerCase().includes(q) ||
-        (sitesById.get(p.siteId) ?? p.siteId).toLowerCase().includes(q) ||
+        (sitesById.get(p.siteId)?.shortName ?? p.siteId).toLowerCase().includes(q) ||
         (p.pointPrelevement ?? '').toLowerCase().includes(q)
       );
     });
@@ -66,7 +70,7 @@ export function PrelevementsPage() {
               sheetName: 'Prélèvements',
               columns: [
                 { header: 'Code', accessor: (p) => p.codePrelevement },
-                { header: 'Site', accessor: (p) => sitesById.get(p.siteId) ?? p.siteId },
+                { header: 'Site', accessor: (p) => sitesById.get(p.siteId)?.shortName ?? p.siteId },
                 {
                   header: 'Type',
                   accessor: (p) =>
@@ -83,6 +87,7 @@ export function PrelevementsPage() {
                 { header: 'Échantillons', accessor: (p) => p.nombreEchantillons },
               ],
               rows: items,
+              note: noteScopeSitesActifs(),
             })
           }
         >
@@ -171,7 +176,14 @@ export function PrelevementsPage() {
               {items.map((p) => (
                 <tr key={p.id}>
                   <td className={styles.code}>{p.codePrelevement}</td>
-                  <td>{sitesById.get(p.siteId) ?? (p.siteId || '—')}</td>
+                  <td>
+                    {sitesById.get(p.siteId)?.shortName ?? (p.siteId || '—')}
+                    {/* Le site est exclu des agrégats mais le libellé reste résolu
+                     * — ce badge explique pourquoi le total ne recoupe pas la liste. */}
+                    {sitesById.get(p.siteId)?.actif === false ? (
+                      <Badge size="sm" variant="neutral" className={styles.badgeInactif}>Inactif</Badge>
+                    ) : null}
+                  </td>
                   <td>
                     {(TYPE_PRELEVEMENT_LABEL[p.typePrelevement] ?? p.typePrelevement) || '—'}
                   </td>

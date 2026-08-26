@@ -58,7 +58,11 @@ export function AgentDetailPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const { data: usersPage, isLoading } = useUsers();
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : si cet agent est affecté à un site depuis désactivé,
+   * son nom doit rester résolu (sitesById) ; seul le formulaire de
+   * réaffectation (sitesActifs) doit l'exclure comme nouvelle cible. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
+  const sitesActifs = useMemo(() => (sitesPage?.items ?? []).filter((s) => s.actif), [sitesPage]);
   const { data: collectionsPage } = useCollections({ agentId: id });
   const updateMut = useUpdateUser();
   const deleteMut = useDeleteUser();
@@ -69,12 +73,13 @@ export function AgentDetailPage() {
   );
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, { shortName: string; commune: string; city: string }>();
+    const map = new Map<string, { shortName: string; commune: string; city: string; actif: boolean }>();
     (sitesPage?.items ?? []).forEach((s) =>
       map.set(s.id, {
         shortName: s.shortName,
         commune: s.location.commune,
         city: s.location.city,
+        actif: s.actif,
       }),
     );
     return map;
@@ -299,7 +304,14 @@ export function AgentDetailPage() {
               return (
                 <li key={siteId}>
                   <Link to={`/sites/${siteId}`} className={styles.siteChip}>
-                    {s ? s.shortName : siteId}
+                    <span className={styles.siteChipName}>
+                      {s ? s.shortName : siteId}
+                      {/* Le site est exclu des agrégats mais reste résolu —
+                       * le badge dit pourquoi il n'apparaît plus ailleurs. */}
+                      {s?.actif === false ? (
+                        <Badge size="sm" variant="neutral">Inactif</Badge>
+                      ) : null}
+                    </span>
                     {s ? (
                       <span className={styles.siteChipMeta}>
                         {s.commune}, {s.city}
@@ -344,7 +356,12 @@ export function AgentDetailPage() {
                         {formatRelativeTime(c.collectedAt)}
                       </span>
                     </td>
-                    <td>{site?.shortName ?? c.siteId}</td>
+                    <td>
+                      {site?.shortName ?? c.siteId}
+                      {site?.actif === false ? (
+                        <Badge size="sm" variant="neutral" style={{ marginLeft: 6 }}>Inactif</Badge>
+                      ) : null}
+                    </td>
                     <td>
                       <Badge variant={STATUS_VARIANT[c.status]} size="sm">
                         {STATUS_LABEL[c.status]}
@@ -413,7 +430,7 @@ export function AgentDetailPage() {
           <div className={styles.formGridFull}>
             <FormField label="Sites affectés" required>
               <div className={styles.checklist}>
-                {(sitesPage?.items ?? []).map((s) => (
+                {sitesActifs.map((s) => (
                   <Checkbox
                     key={s.id}
                     checked={form.assignedSiteIds.includes(s.id)}

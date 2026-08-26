@@ -1,12 +1,13 @@
-/* Encart d'aide : bordure hairline et fond neutre, aucun aplat coloré — il
- * informe sans concurrencer le contenu de la page. */
+/* Encart d'aide : fond bleu très pâle, sans bordure d'accent latérale — la
+ * teinte du fond et le rayon suffisent à le détacher. Le texte reste gris
+ * foncé : du bleu sur fond bleu ne se lirait pas. */
 .note {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-primary-soft);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
 }
 
@@ -21,8 +22,6 @@
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
   color: var(--color-primary);
   flex-shrink: 0;
 }
@@ -48,15 +47,14 @@
   flex-shrink: 0;
 }
 .fermer:hover {
-  background: var(--color-surface-2);
-  border-color: var(--color-border);
-  color: var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-primary);
 }
 
 .resume {
   margin: 0;
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text);
   line-height: 1.6;
   max-width: 80ch;
 }
@@ -82,11 +80,10 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   font-size: var(--text-2xs);
   font-weight: var(--weight-bold);
-  color: var(--color-text-muted);
+  color: var(--color-primary);
   font-variant-numeric: tabular-nums;
 }
 .etapeTexte {
@@ -102,7 +99,7 @@
 }
 .etapeDetail {
   font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  color: var(--color-text);
   line-height: 1.5;
 }
 .etapeDetail code {
@@ -110,8 +107,7 @@
   font-size: 0.92em;
   padding: 1px 4px;
   border-radius: 3px;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 /* Seul signal coloré de l'encart, réservé au risque réel. */

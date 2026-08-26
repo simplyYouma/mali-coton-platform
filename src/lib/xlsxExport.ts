@@ -27,12 +27,35 @@ export interface XlsxExportOptions<T> {
   sheetName?: string;
   columns: Array<XlsxColumn<T>>;
   rows: T[];
+  /**
+   * Ligne de contexte insérée au-dessus de l'en-tête — typiquement le
+   * périmètre couvert (ex. « Sites actifs au 26/08/2026 »). Sans elle, deux
+   * exports du même mois peuvent différer sans explication visible : un site
+   * désactivé entre-temps change le total sans que rien ne le dise dans le
+   * fichier lui-même.
+   */
+  note?: string;
+}
+
+/**
+ * Note de périmètre standard pour un export dont les chiffres dépendent des
+ * sites actifs (compteurs, listes filtrées par site). Un site désactivé
+ * entre deux exports du même mois change silencieusement le total sans
+ * cette ligne.
+ */
+export function noteScopeSitesActifs(): string {
+  const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return `Périmètre : sites actifs au ${date}. Un site désactivé depuis reste visible dans les données déjà rattachées mais ne compte plus dans les totaux.`;
 }
 
 export function exportRowsToXlsx<T>(opts: XlsxExportOptions<T>): void {
-  const { filename, sheetName = 'Données', columns, rows } = opts;
+  const { filename, sheetName = 'Données', columns, rows, note } = opts;
 
   const aoa: Array<Array<string | number | boolean | null | undefined>> = [];
+  if (note) {
+    aoa.push([note]);
+    aoa.push([]);
+  }
   aoa.push(columns.map((c) => c.header));
   for (const row of rows) {
     aoa.push(columns.map((c) => c.accessor(row) ?? ''));

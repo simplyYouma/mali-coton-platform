@@ -19,6 +19,62 @@ import {
 } from '../api/formulairesNatifs.types';
 
 /* ═══════════════════════════════════════════════════════════
+   Champs renseignés automatiquement
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * Champs de liaison établis par le backend au moment de la soumission.
+ *
+ * Ils rattachent la fiche à un site ou à une collecte : l'agent ne les saisit
+ * jamais. Les exclure du seul rendu ne suffirait pas — un champ obligatoire
+ * invisible laisserait la section éternellement incomplète et bloquerait la
+ * finalisation. Le filtrage se fait donc ici, en amont, pour que rendu,
+ * compteurs, validation et payload partagent la même vue.
+ *
+ * L'appariement se fait sur le **libellé** plutôt que sur le code : les codes
+ * diffèrent d'un formulaire à l'autre (`grp_a/site_code` sur la Fiche Site,
+ * `grp_entete/...` sur la Fiche Employé) et peuvent changer de version en
+ * version, alors que le libellé métier est ce qui identifie le champ de façon
+ * stable. Les codes constatés sont listés en regard, à titre documentaire.
+ */
+const LIBELLES_CHAMPS_AUTO = new Set<string>([
+  // Fiche Site — « Code du site » (constaté : grp_a/site_code, choix simple
+  // alimenté par /references/sites-collecte).
+  'code du site',
+  // Fiche Employé — « Identifiant Fiche Site liée » (constaté :
+  // grp_entete/id_fiche_site).
+  'identifiant fiche site liee',
+  // Fiche Suivi Environnemental — « Identifiant collecte SE ».
+  'identifiant collecte se',
+]);
+
+/**
+ * Codes exclus quel que soit leur libellé.
+ *
+ * Vide aujourd'hui : `grp_a/id_site` (« Identifiant du site ») en faisait
+ * partie à tort — c'est un texte libre effectivement saisi par l'agent, comme
+ * le montrent les brouillons existants et les exemples de soumission.
+ */
+export const CODES_CHAMPS_AUTO = new Set<string>([]);
+
+/** Normalise un libellé pour l'appariement : minuscules, sans accents. */
+function normaliserLibelle(libelle: string): string {
+  return libelle
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function estChampAuto(champ: ChampNatif): boolean {
+  return (
+    CODES_CHAMPS_AUTO.has(champ.code) ||
+    LIBELLES_CHAMPS_AUTO.has(normaliserLibelle(champ.libelle))
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
    Logique conditionnelle
 ═══════════════════════════════════════════════════════════ */
 
@@ -28,6 +84,7 @@ import {
  * l'appartenance (cas d'un CHOIX_MULTIPLE).
  */
 export function champVisible(champ: ChampNatif, reponses: ReponsesFormulaire): boolean {
+  if (estChampAuto(champ)) return false;
   if (!hasCondition(champ)) return true;
   const { champParentCode, operateur, valeur } = champ.condition;
   const valeurParent = reponses[champParentCode];

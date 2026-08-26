@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Beaker, Clock } from 'lucide-react';
 import { Badge, Button } from '@/components/common';
 import { useSites } from '@/features/sites/hooks/useSites';
+import type { Site } from '@/features/sites/api/site.types';
 import type { Collection } from '../api/collection.types';
 import { findRule } from '../lib/indicatorRules';
 import { useCollections } from '../hooks/useCollections';
@@ -13,6 +14,8 @@ interface BackorderRow {
   collectionId: string;
   indicatorLabel: string;
   siteShortName: string;
+  /** Le site est exclu des agrégats mais reste résolu — le badge dit pourquoi. */
+  siteInactif: boolean;
   labLabel: string;
   daysLate: number;
   isOverdue: boolean;
@@ -20,7 +23,7 @@ interface BackorderRow {
 
 function buildBackorderRows(
   collections: Collection[],
-  sitesById: Map<string, string>,
+  sitesById: Map<string, Site>,
   labsById: Map<string, string>,
 ): BackorderRow[] {
   const rows: BackorderRow[] = [];
@@ -34,10 +37,12 @@ function buildBackorderRows(
       const isOverdue = expected < now;
       if (!isOverdue) continue;
       const rule = findRule(m.indicatorId);
+      const site = sitesById.get(collection.siteId);
       rows.push({
         collectionId: collection.id,
         indicatorLabel: rule?.label ?? m.indicatorId,
-        siteShortName: sitesById.get(collection.siteId) ?? collection.siteId,
+        siteShortName: site?.shortName ?? collection.siteId,
+        siteInactif: site?.actif === false,
         labLabel: m.sample.labId ? labsById.get(m.sample.labId) ?? m.sample.labId : '—',
         daysLate: Math.ceil((now - expected) / (1000 * 60 * 60 * 24)),
         isOverdue,
@@ -49,12 +54,15 @@ function buildBackorderRows(
 
 export function LabBackorderWidget() {
   const { data: collectionsPage } = useCollections();
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const { data: labs } = useLabs();
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, string>();
-    sitesPage?.items.forEach((s) => map.set(s.id, s.shortName));
+    const map = new Map<string, Site>();
+    sitesPage?.items.forEach((s) => map.set(s.id, s));
     return map;
   }, [sitesPage]);
 
@@ -95,7 +103,10 @@ export function LabBackorderWidget() {
           {rows.slice(0, 6).map((row) => (
             <div key={`${row.collectionId}-${row.indicatorLabel}`} className={styles.row}>
               <span className={styles.indicator}>{row.indicatorLabel}</span>
-              <span className={styles.site}>{row.siteShortName}</span>
+              <span className={styles.site}>
+                {row.siteShortName}
+                {row.siteInactif ? <Badge size="sm" variant="neutral">Inactif</Badge> : null}
+              </span>
               <span className={styles.lab}>{row.labLabel}</span>
               <span className={styles.delay}>
                 <Clock size={12} aria-hidden="true" /> +{row.daysLate} j

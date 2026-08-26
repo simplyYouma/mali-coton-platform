@@ -2,15 +2,25 @@ import styles from './Spinner.module.css';
 
 export interface SpinnerProps {
   size?: number;
+  /** Texte lu par les lecteurs d'écran ; un défaut est fourni. */
   label?: string;
+  /**
+   * À activer quand un texte visible voisin annonce déjà le chargement :
+   * le spinner devient décoratif et n'est pas annoncé une seconde fois.
+   */
+  decoratif?: boolean;
+  className?: string;
 }
 
-export function Spinner({ size = 16, label }: SpinnerProps) {
+export function Spinner({ size = 16, label = 'Chargement en cours', decoratif = false, className }: SpinnerProps) {
+  /* `role="status"` est posé systématiquement — sans lui, un spinner seul
+   * n'est signalé à personne. Le cas décoratif reste explicite, pour les
+   * situations où un libellé visible dit déjà la même chose. */
   return (
     <span
-      role={label ? 'status' : undefined}
-      aria-label={label}
-      className={styles.spinner}
+      role={decoratif ? undefined : 'status'}
+      aria-hidden={decoratif ? true : undefined}
+      className={className ? `${styles.spinner} ${className}` : styles.spinner}
       style={{ width: size, height: size }}
     >
       <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
@@ -31,7 +41,7 @@ export function Spinner({ size = 16, label }: SpinnerProps) {
           strokeLinecap="round"
         />
       </svg>
-      {label ? <span className="sr-only">{label}</span> : null}
+      {decoratif ? null : <span className="sr-only">{label}</span>}
     </span>
   );
 }

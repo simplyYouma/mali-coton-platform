@@ -25,12 +25,12 @@ import {
   UserCheck,
 } from 'lucide-react';
 import {
+  Badge,
   Button,
   Tabs,
   Skeleton,
   EmptyState,
 } from '@/components/common';
-import { useAuth } from '@/app/providers/AuthProvider';
 import { useSite, useSiteDetail, useSiteEmployes } from '../hooks/useSites';
 import { SiteForm } from '../components/SiteForm';
 import { DonneesEnvPanel } from '../components/DonneesEnvPanel';
@@ -42,6 +42,8 @@ import { useConformiteSite } from '@/features/conformite/hooks/useConformite';
 import type { StatutConformite } from '@/features/conformite/api/conformite';
 import { formatDateTime, formatGps } from '@/lib/format';
 import styles from './SiteDetailPage.module.css';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 
 /* ─── helpers ─── */
 
@@ -302,7 +304,7 @@ function SectionCard({
 
 export function SiteDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { role } = useAuth();
+  const { peut } = useAutorisations();
   const { data: site, isLoading, isError } = useSite(id);
   const { data: detail, isLoading: detailLoading } = useSiteDetail(id);
 
@@ -322,7 +324,8 @@ export function SiteDetailPage() {
       return next;
     });
   }
-  const isAdmin = role === 'admin';
+  /* L'écriture est ouverte par la permission, jamais par le nom du rôle. */
+  const peutModifier = peut(PERM.siteUpdate);
 
   const cs = detail?.collecteSite ?? null;
   const photos: KoboPhotoBackend[] = detail?.photos ?? [];
@@ -339,6 +342,27 @@ export function SiteDetailPage() {
   const formations: KoboCodedItem[] = detail?.formationsRecues ?? [];
   const appuis: KoboCodedItem[] = detail?.appuisRecus ?? [];
   const besoins: KoboCodedItem[] = detail?.besoinsPrioritaires ?? [];
+
+  /*
+   * Un site COLLECTE_NATIVE n'a pas de `collecteSite` (fiche terrain Kobo) :
+   * il n'existe pas dans `GET /api/site_teintures/{id}` pour ce type de
+   * source. Ce n'est pas une fiche Kobo incomplète — elle a un périmètre
+   * différent (listes codées + identité de base, sans les champs propres au
+   * formulaire terrain : date de visite, source d'eau, statut juridique…).
+   * Chaque section ci-dessous est donc montrée si elle a une donnée réelle à
+   * exposer — jamais un champ vide ni un tiret pour un concept qui n'existe
+   * simplement pas pour cette provenance.
+   */
+  const profilAExposer = Boolean(
+    cs || detail?.creePar || detail?.validePar || site?.responsableName ||
+    effectifFemmes != null || effectifHommes != null,
+  );
+  const conditionsAExposer = Boolean(
+    cs || equipements.length > 0 || epis.length > 0 || risques.length > 0,
+  );
+  const appuisAExposer = Boolean(
+    cs || formations.length > 0 || appuis.length > 0 || besoins.length > 0,
+  );
 
   /* ── loading / error ── */
   if (isLoading) {
@@ -381,13 +405,25 @@ export function SiteDetailPage() {
             {' · '}
             {SITE_TYPE_LABEL[site.type]}
           </span>
-          <h1 className={styles.heroTitle}>{site.shortName}</h1>
+          <h1 className={styles.heroTitle}>
+            {site.shortName}
+            {/* Se lit sans avoir eu besoin d'ouvrir la fiche pour le savoir —
+             * ici c'est déjà la fiche, mais le badge reste le même repère
+             * visuel que sur la liste et la carte. */}
+            {!site.actif ? (
+              <Badge size="sm" variant="neutral" style={{ marginLeft: 'var(--space-3)', verticalAlign: 'middle' }}>
+                Inactif
+              </Badge>
+            ) : null}
+          </h1>
           {site.niveauFormalisation ? (
             <p className={styles.heroDescription}>
               Niveau de formalisation : {site.niveauFormalisation}
             </p>
           ) : null}
         </div>
+        {/* Désactiver/réactiver/supprimer vivent uniquement dans la liste
+         * (SitesListPage/SiteCard) — pas ici. */}
         <div className={styles.heroActions} />
       </header>
 
@@ -496,8 +532,22 @@ export function SiteDetailPage() {
           </div>
         ) : null}
 
-        {/* ── Empty state sans données (commun) ── */}
-        {!detailLoading && !cs && (tab === 'profil' || tab === 'conditions' || tab === 'appuis') ? (
+        {/* ── Empty state sans données (par onglet, natif ou Kobo) ── */}
+        {!detailLoading && tab === 'profil' && !profilAExposer ? (
+          <EmptyState
+            icon={<ClipboardList size={24} />}
+            title="Pas encore de données collectées"
+            description="La fiche terrain pour ce site n'a pas encore été importée."
+          />
+        ) : null}
+        {!detailLoading && tab === 'conditions' && !conditionsAExposer ? (
+          <EmptyState
+            icon={<ClipboardList size={24} />}
+            title="Pas encore de données collectées"
+            description="La fiche terrain pour ce site n'a pas encore été importée."
+          />
+        ) : null}
+        {!detailLoading && tab === 'appuis' && !appuisAExposer ? (
           <EmptyState
             icon={<ClipboardList size={24} />}
             title="Pas encore de données collectées"
@@ -506,32 +556,54 @@ export function SiteDetailPage() {
         ) : null}
 
         {/* ══ Onglet Profil du site ══ */}
-        {tab === 'profil' && cs ? (
+        {tab === 'profil' && profilAExposer ? (
           <div className={styles.sheet}>
             {/* Commune, annee, effectifs, teinture et GPS figurent deja dans la
              *  bande d'identite : les repeter ici n'apprendrait rien. Ne restent
-             *  que les informations propres a la visite. */}
-            <SectionCard title="Visite de terrain" icon={<Calendar size={16} />}>
-              <FieldRow label="Date de visite">
-                {cs.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
-              </FieldRow>
-              <FieldRow label="Agent collecteur">{formatName(cs.agent)}</FieldRow>
-              <FieldRow label="Statut juridique">{cs.statutJuridique ?? '—'}</FieldRow>
-              <FieldRow label="Identifiant Kobo">
-                {cs.koboSubmissionId ? <code className={styles.codeInline}>{cs.koboSubmissionId}</code> : '—'}
-              </FieldRow>
-            </SectionCard>
+             *  que les informations propres a la visite — Kobo uniquement, un
+             *  site COLLECTE_NATIVE n'a pas de fiche terrain. */}
+            {cs ? (
+              <SectionCard title="Visite de terrain" icon={<Calendar size={16} />}>
+                <FieldRow label="Date de visite">
+                  {cs.dateVisite ? formatDateTime(cs.dateVisite, 'dd MMM yyyy') : '—'}
+                </FieldRow>
+                <FieldRow label="Agent collecteur">{formatName(cs.agent)}</FieldRow>
+                <FieldRow label="Statut juridique">{cs.statutJuridique ?? '—'}</FieldRow>
+                <FieldRow label="Identifiant Kobo">
+                  {cs.koboSubmissionId ? <code className={styles.codeInline}>{cs.koboSubmissionId}</code> : '—'}
+                </FieldRow>
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="Responsable du site" icon={<User size={16} />}>
-              <FieldRow label="Nom">{cs.nomResponsable ?? site.responsableName ?? '—'}</FieldRow>
-              <FieldRow label="Genre">{formatCode(cs.genreResponsable)}</FieldRow>
-              <FieldRow label="Répartition de l'effectif">
-                {effectifFemmes ?? '—'} femmes · {effectifHommes ?? '—'} hommes
-                <RatioBar femmes={effectifFemmes} hommes={effectifHommes} />
-              </FieldRow>
-            </SectionCard>
+            {/* Pas d'équivalent natif à « Visite de terrain » : ce que la
+             * collecte native fournit à la place, c'est qui a créé et validé
+             * la fiche. */}
+            {detail?.creePar || detail?.validePar ? (
+              <SectionCard title="Création & validation" icon={<UserCheck size={16} />}>
+                {detail?.creePar ? (
+                  <FieldRow label="Créé par">{detail.creePar.nomComplet}</FieldRow>
+                ) : null}
+                {detail?.validePar ? (
+                  <FieldRow label="Validé par">{detail.validePar.nomComplet}</FieldRow>
+                ) : null}
+              </SectionCard>
+            ) : null}
 
-            {cs.observationsGenerales || cs.recommandations ? (
+            {site.responsableName || effectifFemmes != null || effectifHommes != null ? (
+              <SectionCard title="Responsable du site" icon={<User size={16} />}>
+                <FieldRow label="Nom">{cs?.nomResponsable ?? site.responsableName ?? '—'}</FieldRow>
+                {/* Le genre du responsable n'existe que dans la fiche terrain Kobo. */}
+                {cs ? (
+                  <FieldRow label="Genre">{formatCode(cs.genreResponsable)}</FieldRow>
+                ) : null}
+                <FieldRow label="Répartition de l'effectif">
+                  {effectifFemmes ?? '—'} femmes · {effectifHommes ?? '—'} hommes
+                  <RatioBar femmes={effectifFemmes} hommes={effectifHommes} />
+                </FieldRow>
+              </SectionCard>
+            ) : null}
+
+            {cs && (cs.observationsGenerales || cs.recommandations) ? (
               <SectionCard title="Synthèse de la visite" icon={<MessageSquare size={16} />}>
                 {cs.observationsGenerales ? (
                   <FieldRow label="Observations générales" large>{cs.observationsGenerales}</FieldRow>
@@ -544,98 +616,132 @@ export function SiteDetailPage() {
           </div>
         ) : null}
 
-        {/* ══ Onglet Conditions de travail ══ */}
-        {tab === 'conditions' && cs ? (
+        {/* ══ Onglet Infrastructure & Sécurité ══
+         * Les listes codées (équipements, EPI, risques) existent pour les
+         * deux provenances ; l'état qualitatif, les observations libres et
+         * la ressource en eau n'existent que dans la fiche terrain Kobo. */}
+        {tab === 'conditions' && conditionsAExposer ? (
           <div className={styles.sheet}>
-            <SectionCard title="Ressource en eau" icon={<Droplet size={16} />}>
-              <FieldRow label="Source d'eau">{formatCode(cs.sourceEau)}</FieldRow>
-              <FieldRow label="État de la source"><QualBadge val={cs.etatSourcePrincipale} /></FieldRow>
-              <FieldRow label="Consommation (m³)">
-                {cs.consommationEauM3 != null ? `${cs.consommationEauM3} m³` : '—'}
-              </FieldRow>
-              {cs.observationsEau ? (
-                <FieldRow label="Observations" large>{cs.observationsEau}</FieldRow>
-              ) : null}
-            </SectionCard>
+            {cs ? (
+              <SectionCard title="Ressource en eau" icon={<Droplet size={16} />}>
+                <FieldRow label="Source d'eau">{formatCode(cs.sourceEau)}</FieldRow>
+                <FieldRow label="État de la source"><QualBadge val={cs.etatSourcePrincipale} /></FieldRow>
+                <FieldRow label="Consommation (m³)">
+                  {cs.consommationEauM3 != null ? `${cs.consommationEauM3} m³` : '—'}
+                </FieldRow>
+                {cs.observationsEau ? (
+                  <FieldRow label="Observations" large>{cs.observationsEau}</FieldRow>
+                ) : null}
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="Équipements" icon={<Wrench size={16} />}>
-              <FieldRow label="Équipements disponibles">
-                <Chips items={equipements} />
-              </FieldRow>
-              <FieldRow label="État général"><QualBadge val={cs.etatGeneralEquipements} /></FieldRow>
-              {cs.observationsEquipements ? (
-                <FieldRow label="Observations" large>{cs.observationsEquipements}</FieldRow>
-              ) : null}
-            </SectionCard>
+            {equipements.length > 0 || cs ? (
+              <SectionCard title="Équipements" icon={<Wrench size={16} />}>
+                <FieldRow label="Équipements disponibles">
+                  <Chips items={equipements} />
+                </FieldRow>
+                {cs ? (
+                  <>
+                    <FieldRow label="État général"><QualBadge val={cs.etatGeneralEquipements} /></FieldRow>
+                    {cs.observationsEquipements ? (
+                      <FieldRow label="Observations" large>{cs.observationsEquipements}</FieldRow>
+                    ) : null}
+                  </>
+                ) : null}
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />}>
-              <FieldRow label="EPI disponibles">
-                <Chips items={epis} />
-              </FieldRow>
-              <FieldRow label="Qualité des EPI"><QualBadge val={cs.qualiteEpi} /></FieldRow>
-              <FieldRow label="Formation EPI reçue">
-                <OuiNon val={cs.formationEpiRecue} />
-              </FieldRow>
-              {cs.observationsEpiSite ? (
-                <FieldRow label="Observations" large>{cs.observationsEpiSite}</FieldRow>
-              ) : null}
-            </SectionCard>
+            {epis.length > 0 || cs ? (
+              <SectionCard title="EPI — Protection individuelle" icon={<Shield size={16} />}>
+                <FieldRow label="EPI disponibles">
+                  <Chips items={epis} />
+                </FieldRow>
+                {cs ? (
+                  <>
+                    <FieldRow label="Qualité des EPI"><QualBadge val={cs.qualiteEpi} /></FieldRow>
+                    <FieldRow label="Formation EPI reçue">
+                      <OuiNon val={cs.formationEpiRecue} />
+                    </FieldRow>
+                    {cs.observationsEpiSite ? (
+                      <FieldRow label="Observations" large>{cs.observationsEpiSite}</FieldRow>
+                    ) : null}
+                  </>
+                ) : null}
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />}>
-              <div className={styles.boolRow}>
-                <span className={styles.boolItem}>
-                  <Lock size={12} />
-                  Clôture
-                  <OuiNon val={cs.cloture} />
-                </span>
-                <span className={styles.boolItem}>
-                  <Zap size={12} />
-                  Éclairage
-                  <OuiNon val={cs.eclairage} />
-                </span>
-                <span className={styles.boolItem}>
-                  <Eye size={12} />
-                  Surveillance
-                  <OuiNon val={cs.surveillance} />
-                </span>
-              </div>
-              <PostureSecurite
-                dispositifs={[
-                  { nom: 'Clôture', present: isOui(cs.cloture) },
-                  { nom: 'Éclairage', present: isOui(cs.eclairage) },
-                  { nom: 'Surveillance', present: isOui(cs.surveillance) },
-                ]}
-              />
-              <FieldRow label="Risques identifiés">
-                <Chips items={risques} />
-              </FieldRow>
-              <FieldRow label="Accidents récents">
-                <OuiNon val={cs.accidentsRecents} />
-              </FieldRow>
-              {cs.descriptionAccidents ? (
-                <FieldRow label="Description" large>{cs.descriptionAccidents}</FieldRow>
-              ) : null}
-              {cs.observationsSecurite ? (
-                <FieldRow label="Observations" large>{cs.observationsSecurite}</FieldRow>
-              ) : null}
-            </SectionCard>
+            {risques.length > 0 || cs ? (
+              <SectionCard title="Sécurité du site" icon={<AlertTriangle size={16} />}>
+                {cs ? (
+                  <>
+                    <div className={styles.boolRow}>
+                      <span className={styles.boolItem}>
+                        <Lock size={12} />
+                        Clôture
+                        <OuiNon val={cs.cloture} />
+                      </span>
+                      <span className={styles.boolItem}>
+                        <Zap size={12} />
+                        Éclairage
+                        <OuiNon val={cs.eclairage} />
+                      </span>
+                      <span className={styles.boolItem}>
+                        <Eye size={12} />
+                        Surveillance
+                        <OuiNon val={cs.surveillance} />
+                      </span>
+                    </div>
+                    <PostureSecurite
+                      dispositifs={[
+                        { nom: 'Clôture', present: isOui(cs.cloture) },
+                        { nom: 'Éclairage', present: isOui(cs.eclairage) },
+                        { nom: 'Surveillance', present: isOui(cs.surveillance) },
+                      ]}
+                    />
+                  </>
+                ) : null}
+                <FieldRow label="Risques identifiés">
+                  <Chips items={risques} />
+                </FieldRow>
+                {cs ? (
+                  <>
+                    <FieldRow label="Accidents récents">
+                      <OuiNon val={cs.accidentsRecents} />
+                    </FieldRow>
+                    {cs.descriptionAccidents ? (
+                      <FieldRow label="Description" large>{cs.descriptionAccidents}</FieldRow>
+                    ) : null}
+                    {cs.observationsSecurite ? (
+                      <FieldRow label="Observations" large>{cs.observationsSecurite}</FieldRow>
+                    ) : null}
+                  </>
+                ) : null}
+              </SectionCard>
+            ) : null}
           </div>
         ) : null}
 
-        {/* ══ Onglet Appuis & Besoins ══ */}
-        {tab === 'appuis' && cs ? (
+        {/* ══ Onglet Appuis & Besoins ══
+         * Formations/appuis/besoins existent pour les deux provenances (via
+         * les listes codées) ; gestion administrative et observations libres
+         * n'existent que dans la fiche terrain Kobo. */}
+        {tab === 'appuis' && appuisAExposer ? (
           <div className={styles.sheet}>
-            <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />}>
-              <FieldRow label="Comptabilité">{formatCode(cs.comptabilite)}</FieldRow>
-              <FieldRow label="Couverture sociale"><QualBadge val={cs.couvertureSociale} /></FieldRow>
-            </SectionCard>
+            {cs ? (
+              <SectionCard title="Gestion administrative" icon={<ListChecks size={16} />}>
+                <FieldRow label="Comptabilité">{formatCode(cs.comptabilite)}</FieldRow>
+                <FieldRow label="Couverture sociale"><QualBadge val={cs.couvertureSociale} /></FieldRow>
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="Formations reçues" icon={<BookOpen size={16} />}>
-              <Chips items={formations} />
-              {cs.formationsAutre ? (
-                <FieldRow label="Autres">{cs.formationsAutre}</FieldRow>
-              ) : null}
-            </SectionCard>
+            {formations.length > 0 || cs ? (
+              <SectionCard title="Formations reçues" icon={<BookOpen size={16} />}>
+                <Chips items={formations} />
+                {cs?.formationsAutre ? (
+                  <FieldRow label="Autres">{cs.formationsAutre}</FieldRow>
+                ) : null}
+              </SectionCard>
+            ) : null}
 
             <SectionCard title="Appuis reçus" icon={<HandHelping size={16} />}>
               <Chips items={appuis} />
@@ -645,7 +751,7 @@ export function SiteDetailPage() {
               <Chips items={besoins} />
             </SectionCard>
 
-            {cs.observationsGenerales || cs.recommandations ? (
+            {cs && (cs.observationsGenerales || cs.recommandations) ? (
               <div className={styles.fullWidth}>
                 <SectionCard title="Observations & Recommandations" icon={<MessageSquare size={16} />}>
                   {cs.observationsGenerales ? (
@@ -836,7 +942,7 @@ export function SiteDetailPage() {
         {tab === 'conformite' ? <ConformiteSitePanel siteId={id} /> : null}
       </div>
 
-      {isAdmin ? (
+      {peutModifier ? (
         <SiteForm open={editOpen} onClose={() => setEditOpen(false)} site={site} />
       ) : null}
     </>

@@ -8,8 +8,15 @@ import {
   ShieldCheck,
   UsersRound,
 } from 'lucide-react';
-import { Button, EmptyState, Select, Skeleton } from '@/components/common';
-import { exportRowsToXlsx } from '@/lib/xlsxExport';
+import {
+  Button,
+  EmptyState,
+  Select,
+  Skeleton,
+  SkeletonBandeStats,
+  SkeletonTableau,
+} from '@/components/common';
+import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { ConformiteSitePanel } from '@/features/sites/components/ConformiteSitePanel';
 import {
@@ -52,8 +59,13 @@ export function DashboardPage() {
   const [siteFilter, setSiteFilter] = useState<string>('all');
   const filterSiteId = siteFilter === 'all' ? null : siteFilter;
 
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : la résolution de nom/localisation (siteNameById,
+   * locBySiteId) et le filtre par site ne doivent pas orpheliner un site
+   * désactivé qui a de l'historique de conformité — seul le compteur
+   * "N sites suivis" (sitesActifs) doit les exclure. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const allSites = useMemo(() => sitesPage?.items ?? [], [sitesPage]);
+  const sitesActifs = useMemo(() => allSites.filter((s) => s.actif), [allSites]);
 
   const { data: conformiteGlobale, isLoading: loadingGlobale } = useConformiteGlobale();
   const { data: conformiteSite, isLoading: loadingSite } = useConformiteSite(filterSiteId ?? undefined);
@@ -109,6 +121,11 @@ export function DashboardPage() {
         rows,
       });
     } else if (conformiteGlobale) {
+      /* `conformiteGlobale.sites` vient d'un endpoint backend indépendant de
+       * `useSites()` — non garanti d'exclure déjà les sites désactivés. On
+       * le filtre ici pour que l'export tienne réellement la promesse de la
+       * note, plutôt que de l'écrire sans la garantir. */
+      const idsActifs = new Set(sitesActifs.map((s) => Number(s.id)));
       exportRowsToXlsx({
         filename: 'conformite_sites',
         sheetName: 'Conformité',
@@ -122,7 +139,8 @@ export function DashboardPage() {
               s.composantes[code] ? (STATUT_SHORT[s.composantes[code]!] ?? s.composantes[code]) : '—',
           })),
         ],
-        rows: conformiteGlobale.sites,
+        rows: conformiteGlobale.sites.filter((s) => idsActifs.has(s.id)),
+        note: noteScopeSitesActifs(),
       });
     }
   };
@@ -133,7 +151,7 @@ export function DashboardPage() {
     <div className={styles.page}>
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
-          <span className={styles.heroEyebrow}>{allSites.length} sites suivis · {today}</span>
+          <span className={styles.heroEyebrow}>{sitesActifs.length} sites suivis · {today}</span>
           <h1 className={styles.heroTitle}>Tableau de bord environnemental</h1>
           <p className={styles.heroDescription}>
             Suivi de la conformité environnementale des sites de teinture.
@@ -318,8 +336,9 @@ interface GlobalEnvSectionProps {
 function GlobalEnvSection({ data, isLoading, locBySiteId, paramsHorsNorme, loadingParams }: GlobalEnvSectionProps) {
   if (isLoading) {
     return (
-      <div className={styles.envCard}>
-        <div style={{ padding: 'var(--space-5)' }}><Skeleton height={400} /></div>
+      <div className={styles.envSkeleton}>
+        <SkeletonBandeStats colonnes={5} />
+        <SkeletonTableau colonnes={5} lignes={5} hauteurLigne={46} />
       </div>
     );
   }
@@ -473,7 +492,14 @@ function GlobalEnvSection({ data, isLoading, locBySiteId, paramsHorsNorme, loadi
             <h3 className={styles.envSubTitle}>Paramètres hors norme</h3>
           </header>
           {loadingParams ? (
-            <div style={{ padding: 'var(--space-4)' }}><Skeleton height={220} /></div>
+            <div className={styles.paramSkeleton}>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className={styles.paramSkeletonLigne}>
+                  <Skeleton height={12} width="58%" />
+                  <Skeleton height={9} width="34%" />
+                </div>
+              ))}
+            </div>
           ) : paramsHorsNorme.length === 0 ? (
             <p className={styles.empty}>Aucun paramètre hors norme actuellement.</p>
           ) : (
@@ -531,8 +557,9 @@ function SiteEnvSection({ siteId, siteName, data, isLoading }: SiteEnvSectionPro
         ) : null}
       </header>
       {isLoading ? (
-        <div className={styles.envCard}>
-          <div style={{ padding: 'var(--space-5)' }}><Skeleton height={360} /></div>
+        <div className={styles.envSkeleton}>
+          <SkeletonBandeStats colonnes={6} />
+          <SkeletonTableau colonnes={5} lignes={5} hauteurLigne={46} />
         </div>
       ) : (
         <ConformiteSitePanel siteId={siteId} />

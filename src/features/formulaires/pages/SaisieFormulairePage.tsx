@@ -7,19 +7,28 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudOff,
-  Loader2,
+  Lock,
   Send,
 } from 'lucide-react';
-import { Button, EmptyState, NoteExplicative, Skeleton } from '@/components/common';
+import {
+  Button,
+  EmptyState,
+  NoteExplicative,
+  Skeleton,
+  Spinner,
+} from '@/components/common';
 import { useToast } from '@/app/providers/ToastProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 import { ChampNatifField } from '../components/ChampNatifField';
 import {
-  useBrouillons,
+  useBrouillon,
   useFinaliserSoumission,
   useFormulairePublie,
   useUploaderFichier,
 } from '../hooks/useFormulairesNatifs';
-import { useBrouillonLocal, lireBrouillonLocal } from '../hooks/useBrouillonLocal';
+import { lireBrouillonLocal, useBrouillonLocal } from '../hooks/useBrouillonLocal';
 import { extraireErreursValidation } from '../api/formulairesNatifs';
 import {
   alertesCoherence,
@@ -33,10 +42,27 @@ import {
 } from '../lib/logiqueChamp';
 import {
   isGeopoint,
+  type FormulairePublie,
   type ReponsesFormulaire,
+  type TypeChampNatif,
   type ValeurChamp,
 } from '../api/formulairesNatifs.types';
 import styles from './SaisieFormulairePage.module.css';
+
+/** Types dont le contrôle a besoin de toute la largeur pour rester lisible. */
+const CHAMPS_PLEINE_LARGEUR = new Set<TypeChampNatif>([
+  'TEXTE_LONG',
+  'CHOIX_MULTIPLE',
+  'GEOPOINT',
+  'FICHIER',
+]);
+
+/** Première section, dans l'ordre, dont les champs obligatoires visibles ne sont pas tous remplis. */
+function premiereSectionIncomplete(formulaire: FormulairePublie, reponses: ReponsesFormulaire): number {
+  const ordonnees = [...formulaire.sections].sort((a, b) => a.ordre - b.ordre);
+  const i = ordonnees.findIndex((s) => !avancementSection(s, reponses).complete);
+  return i < 0 ? Math.max(0, ordonnees.length - 1) : i;
+}
 
 /**
  * Saisie d'une fiche de collecte.
@@ -50,50 +76,140 @@ export function SaisieFormulairePage() {
   const { code } = useParams<{ code: string }>();
   const [params] = useSearchParams();
   const reprendre = params.get('reprendre') === '1';
+  /* Identifiant du brouillon ciblé — sans lui, reprendre une fiche revenait à
+   * ouvrir « le premier brouillon trouvé pour ce modèle », qui n'est pas
+   * nécessairement le bon dès qu'il en existe plusieurs. */
+  const idDepuisUrl = params.get('id') || undefined;
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
+  const { peut } = useAutorisations();
+  const userId = user?.id ?? '';
+  /* Un agent de collecte (soumission.create sans soumission.validate) doit
+   * compléter une section avant d'avancer, et ne finalise jamais — il
+   * enregistre et envoie pour validation ; qui valide les soumissions navigue
+   * librement et finalise, sur ses propres brouillons comme sur ceux des
+   * autres agents. Une seule permission gouverne les deux, jamais un nom de
+   * rôle (`ROLE_ADMIN`, `superviseur`… incohérents en base). */
+  const peutValider = peut(PERM.soumissionValidate);
 
   const { data: formulaire, isLoading, isError } = useFormulairePublie(code);
-  const { data: brouillonsServeur } = useBrouillons();
+  const {
+    data: brouillonServeur,
+    isLoading: chargementBrouillonServeur,
+  } = useBrouillon(reprendre ? idDepuisUrl : undefined);
   const finaliserMut = useFinaliserSoumission();
   const uploadMut = useUploaderFichier();
 
   const [reponses, setReponses] = useState<ReponsesFormulaire>({});
   const [erreurs, setErreurs] = useState<ErreursChamps>({});
-  /* Un champ n'affiche son erreur qu'une fois quitté ou après une tentative de
-   * finalisation : signaler « obligatoire » sur un champ jamais atteint serait
-   * du bruit. */
+  /* Un champ n'affiche son erreur qu'une fois quitté, après une tentative de
+   * finalisation, ou après un clic sur Suivant qui l'a mis en cause : signaler
+   * « obligatoire » sur un champ jamais atteint serait du bruit. */
   const [touches, setTouches] = useState<Set<string>>(new Set());
   const [tentativeFinalisation, setTentativeFinalisation] = useState(false);
-  const [indexSection, setIndexSection] = useState(0);
-  const [hydrate, setHydrate] = useState(false);
-
-  const brouillonServeur = useMemo(
-    () => (reprendre ? (brouillonsServeur ?? []).find((b) => b.formulaireCode === code) : undefined),
-    [reprendre, brouillonsServeur, code],
-  );
+  /* Bouton de fin de parcours pour un agent (« Enregistrer et soumettre pour
+   * validation ») — distinct de `finaliserMut.isPending`, qui ne couvre que
+   * l'appel réservé aux détenteurs de `soumission.validate`. */
+  const [enSoumission, setEnSoumission] = useState(false);
+  const [indexSection, setIndexSection] = useState(() => {
+    const n = Number(params.get('section'));
+    return Number.isInteger(n) && n >= 0 ? n : 0;
+  });
+  /* Dernière section réellement atteignable pour un agent : verrouille les
+   * sections jamais complétées, sans quoi le blocage sur « Suivant » se
+   * contourne en cliquant directement l'étape suivante dans le sommaire. */
+  const [maxSectionAtteinte, setMaxSectionAtteinte] = useState(indexSection);
+  /* `true` dès le premier montage pour un nouveau brouillon (rien à charger) ;
+   * `false` tant qu'une reprise n'a pas résolu serveur ET local. */
+  const [hydrate, setHydrate] = useState(() => !reprendre);
 
   const brouillon = useBrouillonLocal({
     formulaireCode: code ?? '',
-    soumissionInitiale: brouillonServeur
-      ? { id: brouillonServeur.id, clientSubmissionId: brouillonServeur.clientSubmissionId }
-      : undefined,
+    userId,
+    clientSubmissionId: reprendre ? idDepuisUrl : undefined,
   });
+  const { hydrater } = brouillon;
 
-  /* Hydratation : le local prime sur le serveur — c'est lui qui porte les
-   * frappes les plus récentes quand le réseau a lâché en cours de saisie. */
   useEffect(() => {
-    if (hydrate || !code || !formulaire) return;
-    const local = lireBrouillonLocal(code);
-    if (local?.reponses) setReponses(local.reponses);
-    else if (brouillonServeur?.reponses) setReponses(brouillonServeur.reponses);
+    if (reprendre && !idDepuisUrl) {
+      toast.error('Ce lien de reprise est incomplet : une nouvelle fiche a été démarrée.');
+    }
+    // Ne doit s'afficher qu'une fois, à l'arrivée sur la page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Hydratation : n'a lieu qu'une fois, et seulement après résolution complète
+   * des deux sources.
+   *
+   * Hydrater dès que le *formulaire* est chargé — sans attendre la requête de
+   * reprise — écrivait `reponses = {}` un court instant, que l'auto-save
+   * poussait ensuite au serveur : les réponses déjà enregistrées étaient
+   * silencieusement écrasées. La garde ci-dessous attend que la requête
+   * brouillon soit tranchée (succès ou échec — un brouillon jamais synchronisé
+   * n'existe pas côté serveur et doit pouvoir se reprendre avec la seule copie
+   * locale), compare les deux dates si les deux existent, et ne marque
+   * `hydrate` qu'une fois la source retenue effectivement appliquée.
+   */
+  useEffect(() => {
+    if (hydrate || !formulaire || !userId) return;
+    if (!reprendre || !idDepuisUrl) {
+      setHydrate(true);
+      return;
+    }
+    if (chargementBrouillonServeur) return;
+
+    const local = lireBrouillonLocal(userId, idDepuisUrl);
+    const tServeur = brouillonServeur ? Date.parse(brouillonServeur.updatedAt || brouillonServeur.createdAt || '') || 0 : -1;
+    const tLocal = local ? Date.parse(local.majLe) || 0 : -1;
+
+    const source =
+      tLocal > tServeur
+        ? local
+          ? {
+              reponses: local.reponses,
+              majLe: local.majLe,
+              soumissionId: local.soumissionId,
+              revision: local.revision ?? null,
+              latitude: local.latitude ?? null,
+              longitude: local.longitude ?? null,
+            }
+          : null
+        : brouillonServeur
+          ? {
+              reponses: brouillonServeur.reponses,
+              majLe: brouillonServeur.updatedAt || brouillonServeur.createdAt,
+              soumissionId: brouillonServeur.id,
+              revision: brouillonServeur.revision,
+              latitude: brouillonServeur.latitude,
+              longitude: brouillonServeur.longitude,
+            }
+          : null;
+
+    if (source) {
+      setReponses(source.reponses);
+      hydrater(source);
+      const idx = premiereSectionIncomplete(formulaire, source.reponses);
+      setIndexSection(idx);
+      setMaxSectionAtteinte(idx);
+    } else {
+      toast.error('Aucune donnée n’a été retrouvée pour ce brouillon — vous repartez d’une fiche vierge.');
+    }
     setHydrate(true);
-  }, [hydrate, code, formulaire, brouillonServeur]);
+  }, [hydrate, formulaire, userId, reprendre, idDepuisUrl, chargementBrouillonServeur, brouillonServeur, hydrater, toast]);
 
   const sections = useMemo(
     () => (formulaire ? [...formulaire.sections].sort((a, b) => a.ordre - b.ordre) : []),
     [formulaire],
   );
+
+  // Un `section=N` hors bornes (lien obsolète, saisie manuelle) ne doit pas geler la page.
+  useEffect(() => {
+    if (sections.length === 0) return;
+    setIndexSection((i) => Math.min(i, sections.length - 1));
+  }, [sections.length]);
+
   const sectionCourante = sections[indexSection];
 
   const alertes = useMemo(() => {
@@ -157,20 +273,83 @@ export function SaisieFormulairePage() {
   );
   const toutComplet = avancements.every((a) => a.complete);
 
+  const focusPremierChampFautif = useCallback((codes: string[]) => {
+    requestAnimationFrame(() => {
+      for (const code of codes) {
+        const conteneur = document.querySelector(`[data-champ-code="${CSS.escape(code)}"]`);
+        const champ = conteneur?.querySelector<HTMLElement>('input, select, textarea, button');
+        if (champ) {
+          champ.focus();
+          return;
+        }
+      }
+    });
+  }, []);
+
+  /**
+   * Clic sur « Suivant ».
+   *
+   * Le bouton reste toujours actif — c'est le clic qui révèle les erreurs,
+   * pas un état désactivé sans explication. Seuls les champs **visibles** de
+   * la section comptent : un champ masqué par une condition ne doit jamais
+   * bloquer l'avancée.
+   */
+  const handleSuivant = () => {
+    if (!peutValider && sectionCourante) {
+      const champsSection = champsVisiblesSection(sectionCourante, reponses);
+      const erreursSection: ErreursChamps = {};
+      for (const c of champsSection) {
+        const e = validerChamp(c, reponses);
+        if (e) erreursSection[c.code] = e;
+      }
+      if (Object.keys(erreursSection).length > 0) {
+        setErreurs((prev) => ({ ...prev, ...erreursSection }));
+        setTouches((prev) => {
+          const next = new Set(prev);
+          Object.keys(erreursSection).forEach((code) => next.add(code));
+          return next;
+        });
+        focusPremierChampFautif(champsSection.filter((c) => erreursSection[c.code]).map((c) => c.code));
+        return;
+      }
+    }
+    const suivant = Math.min(sections.length - 1, indexSection + 1);
+    setIndexSection(suivant);
+    setMaxSectionAtteinte((m) => Math.max(m, suivant));
+  };
+
+  const allerASection = (i: number) => {
+    // En arrière : toujours libre. En avant : verrouillé au-delà de ce qui a été atteint.
+    if (!peutValider && i > maxSectionAtteinte) return;
+    setIndexSection(i);
+  };
+
+  /**
+   * Valide le formulaire entier (pas seulement la section courante) avant un
+   * envoi définitif — commun à la finalisation et à l'envoi pour validation.
+   * Révèle les erreurs, ramène à la première section fautive, et renvoie si
+   * l'envoi peut continuer.
+   */
+  const validerAvantEnvoi = (): boolean => {
+    if (!formulaire) return false;
+    const locales = validerFormulaire(formulaire, reponses);
+    if (Object.keys(locales).length === 0) return true;
+    setErreurs(locales);
+    const premier = sections.findIndex((s) =>
+      champsVisiblesSection(s, reponses).some((c) => locales[c.code]),
+    );
+    if (premier >= 0) {
+      setIndexSection(premier);
+      setMaxSectionAtteinte((m) => Math.max(m, premier));
+    }
+    toast.error('Certains champs doivent être corrigés avant l’envoi.');
+    return false;
+  };
+
   const finaliser = async () => {
     if (!formulaire || !code) return;
     setTentativeFinalisation(true);
-
-    const locales = validerFormulaire(formulaire, reponses);
-    if (Object.keys(locales).length > 0) {
-      setErreurs(locales);
-      const premier = sections.findIndex((s) =>
-        champsVisiblesSection(s, reponses).some((c) => locales[c.code]),
-      );
-      if (premier >= 0) setIndexSection(premier);
-      toast.error('Certains champs doivent être corrigés avant l’envoi.');
-      return;
-    }
+    if (!validerAvantEnvoi()) return;
 
     try {
       // On vide le débounce : la finalisation doit porter la dernière frappe.
@@ -198,7 +377,10 @@ export function SaisieFormulairePage() {
         });
         setErreurs(map);
         const premier = sections.findIndex((s) => s.champs.some((c) => map[c.code]));
-        if (premier >= 0) setIndexSection(premier);
+        if (premier >= 0) {
+          setIndexSection(premier);
+          setMaxSectionAtteinte((m) => Math.max(m, premier));
+        }
         toast.error(
           `${violations.length} champ${violations.length > 1 ? 's' : ''} refusé${violations.length > 1 ? 's' : ''} par le serveur.`,
         );
@@ -208,7 +390,35 @@ export function SaisieFormulairePage() {
     }
   };
 
-  if (isLoading) {
+  /**
+   * Action de fin de parcours pour un agent de collecte — il n'a pas le
+   * droit de finaliser. Force la synchronisation et ramène à la liste avec un
+   * accusé clair : la fiche part en validation, l'agent ne doit jamais croire
+   * qu'un bouton grisé le bloque sans explication.
+   */
+  const soumettrePourValidation = async () => {
+    if (!formulaire) return;
+    setTentativeFinalisation(true);
+    if (!validerAvantEnvoi()) return;
+
+    setEnSoumission(true);
+    try {
+      const soumissionId = await brouillon.forcerSync(
+        reponsesVisibles(formulaire, reponses),
+        coords,
+      );
+      if (soumissionId === undefined) {
+        toast.error('La fiche n’a pas pu être envoyée. Vérifiez votre connexion.');
+        return;
+      }
+      toast.success('Fiche enregistrée et envoyée pour validation.');
+      navigate('/formulaires/brouillons');
+    } finally {
+      setEnSoumission(false);
+    }
+  };
+
+  if (isLoading || !hydrate) {
     return (
       <div className={styles.page}>
         <Skeleton height={80} radius={14} />
@@ -234,22 +444,32 @@ export function SaisieFormulairePage() {
   }
 
   const champsAffiches = champsVisiblesSection(sectionCourante, reponses);
+  /* Compteur pied-de-section : dérivé des champs déjà révélés (`touches`),
+   * donc mis à jour en direct au fil des corrections — pas un instantané figé
+   * au moment du clic. */
+  const erreursSectionCourante = champsAffiches.filter(
+    (c) => touches.has(c.code) && erreurs[c.code],
+  );
 
   return (
     <div className={styles.page}>
-      <header className={styles.entete}>
-        <div className={styles.enteteTexte}>
-          <Link to="/formulaires" className={styles.retour}>
-            <ArrowLeft size={14} aria-hidden="true" />
-            Modèles
-          </Link>
-          <h1 className={styles.titre}>{formulaire.titre}</h1>
+      <Link to="/formulaires" className={styles.retour}>
+        <ArrowLeft size={14} aria-hidden="true" />
+        Modèles
+      </Link>
+
+      <header className={styles.hero} data-page-header>
+        <div className={styles.heroLeft}>
+          <span className={styles.heroEyebrow}>Saisie terrain</span>
+          <h1 className={styles.heroTitle}>{formulaire.titre}</h1>
         </div>
-        <IndicateurSauvegarde
-          etat={brouillon.etat}
-          derniere={brouillon.derniereSauvegarde}
-          isOnline={brouillon.isOnline}
-        />
+        <div className={styles.heroActions}>
+          <IndicateurSauvegarde
+            etat={brouillon.etat}
+            derniere={brouillon.derniereSauvegarde}
+            isOnline={brouillon.isOnline}
+          />
+        </div>
       </header>
 
       <NoteExplicative
@@ -269,7 +489,7 @@ export function SaisieFormulairePage() {
             detail: (
               <>
                 Chaque section affiche son avancement (<code>3/5 requis</code>). Un ✓ signale une
-                section terminée ; vous pouvez cliquer pour y revenir à tout moment.
+                section terminée ; un cadenas signale une section pas encore atteinte.
               </>
             ),
           },
@@ -287,8 +507,10 @@ export function SaisieFormulairePage() {
             ),
           },
           {
-            titre: 'Finaliser',
-            detail: 'Disponible en dernière section, une fois toutes les sections obligatoires complètes. C’est l’envoi définitif.',
+            titre: peutValider ? 'Finaliser' : 'Enregistrer et soumettre pour validation',
+            detail: peutValider
+              ? 'Disponible en dernière section, une fois toutes les sections obligatoires complètes. C’est l’envoi définitif.'
+              : 'Disponible en dernière section, une fois toutes les sections obligatoires complètes. Envoie la fiche à un superviseur pour validation.',
           },
         ]}
       />
@@ -299,6 +521,7 @@ export function SaisieFormulairePage() {
           {sections.map((s, i) => {
             const a = avancements[i]!;
             const etat = a.enErreur ? 'erreur' : a.complete ? 'complete' : 'encours';
+            const verrouillee = !peutValider && i > maxSectionAtteinte;
             return (
               <button
                 key={s.id}
@@ -306,10 +529,16 @@ export function SaisieFormulairePage() {
                 className={styles.etape}
                 data-actif={i === indexSection ? 'true' : undefined}
                 data-etat={etat}
-                onClick={() => setIndexSection(i)}
+                data-verrouillee={verrouillee ? 'true' : undefined}
+                aria-disabled={verrouillee ? 'true' : undefined}
+                onClick={() => allerASection(i)}
                 aria-current={i === indexSection ? 'step' : undefined}
+                title={
+                  verrouillee
+                    ? 'Complétez d’abord les sections précédentes pour y accéder.'
+                    : undefined
+                }
               >
-                <span className={styles.etapeCode}>{s.code}</span>
                 <span className={styles.etapeCorps}>
                   <span className={styles.etapeLibelle}>{s.libelle}</span>
                   <span className={styles.etapeCompteur}>
@@ -317,7 +546,9 @@ export function SaisieFormulairePage() {
                   </span>
                 </span>
                 <span className={styles.etapePuce} aria-hidden="true">
-                  {a.enErreur ? (
+                  {verrouillee ? (
+                    <Lock size={12} />
+                  ) : a.enErreur ? (
                     <AlertTriangle size={13} />
                   ) : a.complete ? (
                     <Check size={13} />
@@ -338,7 +569,15 @@ export function SaisieFormulairePage() {
 
           <div className={styles.champs}>
             {champsAffiches.map((champ) => (
-              <div key={champ.id} onBlur={() => marquerTouche(champ.code)}>
+              <div
+                key={champ.id}
+                data-champ-code={champ.code}
+                onBlur={() => marquerTouche(champ.code)}
+                /* Les champs longs (texte libre, choix multiple, GPS, fichier)
+                 * occupent toute la largeur ; les champs courts se rangent en
+                 * colonnes pour raccourcir les formulaires à 100+ questions. */
+                data-large={CHAMPS_PLEINE_LARGEUR.has(champ.type) ? 'true' : undefined}
+              >
                 <ChampNatifField
                   champ={champ}
                   valeur={reponses[champ.code]}
@@ -379,11 +618,11 @@ export function SaisieFormulairePage() {
               <Button
                 variant="primary"
                 iconRight={<ChevronRight size={15} />}
-                onClick={() => setIndexSection((i) => Math.min(sections.length - 1, i + 1))}
+                onClick={handleSuivant}
               >
                 Suivant
               </Button>
-            ) : (
+            ) : peutValider ? (
               <Button
                 variant="success"
                 iconLeft={<Send size={15} />}
@@ -394,8 +633,28 @@ export function SaisieFormulairePage() {
               >
                 Finaliser
               </Button>
+            ) : (
+              <Button
+                variant="success"
+                iconLeft={<Send size={15} />}
+                onClick={() => void soumettrePourValidation()}
+                loading={enSoumission}
+                disabled={!toutComplet}
+                title={toutComplet ? undefined : 'Complétez les champs obligatoires de chaque section.'}
+              >
+                Enregistrer et soumettre pour validation
+              </Button>
             )}
           </footer>
+
+          {erreursSectionCourante.length > 0 && indexSection < sections.length - 1 ? (
+            <p className={styles.blocage}>
+              <AlertTriangle size={13} aria-hidden="true" />
+              {erreursSectionCourante.length} champ{erreursSectionCourante.length > 1 ? 's' : ''}{' '}
+              {erreursSectionCourante.length > 1 ? 'restent' : 'reste'} à corriger dans cette
+              section avant de continuer.
+            </p>
+          ) : null}
 
           {!toutComplet && indexSection === sections.length - 1 ? (
             <p className={styles.blocage}>
@@ -433,6 +692,18 @@ function IndicateurSauvegarde({
 
   const depuis = derniere ? formaterDepuis(derniere) : null;
 
+  /* Distinct de « local » : un 401/403 est définitif, pas une panne réseau
+   * qui se résorbe au retour de connexion — le dire évite de laisser croire
+   * qu'un envoi est simplement en attente. */
+  if (etat === 'erreur') {
+    return (
+      <span className={`${styles.sauvegarde} ${styles.sauvegardeErreur}`}>
+        <AlertTriangle size={13} aria-hidden="true" />
+        Non enregistré — droit refusé par le serveur
+      </span>
+    );
+  }
+
   if (!isOnline || etat === 'local') {
     return (
       <span className={`${styles.sauvegarde} ${styles.sauvegardeLocal}`}>
@@ -444,7 +715,7 @@ function IndicateurSauvegarde({
   if (etat === 'enregistrement') {
     return (
       <span className={styles.sauvegarde}>
-        <Loader2 size={13} className={styles.spin} aria-hidden="true" />
+        <Spinner size={13} decoratif />
         Enregistrement…
       </span>
     );

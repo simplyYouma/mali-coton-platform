@@ -171,3 +171,6 @@
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   color: var(--color-primary);
 }
+.badgeInactif {
+  margin-left: 6px;
+}

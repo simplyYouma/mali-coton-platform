@@ -1,0 +1,49 @@
+.piste {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 2000;
+  pointer-events: none;
+  /* Aucune ombre : la barre signale sans se détacher du bandeau. */
+  background: transparent;
+}
+
+.barre {
+  height: 100%;
+  width: 0;
+  background: var(--color-primary);
+  transform-origin: left;
+}
+
+/* Progression volontairement décélérante : on ne connaît pas la durée réelle,
+ * la barre approche donc l'arrivée sans jamais l'atteindre d'elle-même. */
+.barre[data-etat='actif'] {
+  animation: avancer 8s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+.barre[data-etat='sortie'] {
+  width: 100%;
+  animation: disparaitre 0.25s ease-out forwards;
+}
+
+@keyframes avancer {
+  0% { width: 0; }
+  40% { width: 62%; }
+  100% { width: 88%; }
+}
+
+@keyframes disparaitre {
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barre[data-etat='actif'] {
+    animation: none;
+    width: 65%;
+  }
+  .barre[data-etat='sortie'] {
+    animation: none;
+    opacity: 0;
+  }
+}

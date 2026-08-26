@@ -52,7 +52,10 @@ export function AnalyticsPage() {
   const [tab, setTab] = useState<'trend' | 'distribution' | 'comparison'>('trend');
   const [domainFilter, setDomainFilter] = useState<DomainFilter>('all');
 
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const { data: collectionsPage, isLoading } = useCollections({});
 
   const sites = useMemo(() => sitesPage?.items ?? [], [sitesPage]);

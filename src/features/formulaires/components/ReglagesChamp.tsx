@@ -1,12 +1,7 @@
 import { useState } from 'react';
-import { Check, ClipboardPaste, FlaskConical, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ClipboardPaste, Plus, Trash2 } from 'lucide-react';
 import { Button, Checkbox, FormField, Input, Select, Textarea } from '@/components/common';
-import { fetchOptionsReference } from '../api/formulairesNatifs';
-import {
-  genererCodeChamp,
-  slugifier,
-  codeDisponible,
-} from '../lib/logiqueChamp';
+import { genererCodeChamp, slugifier } from '../lib/logiqueChamp';
 import {
   champsNumeriques,
   parentsPossibles,
@@ -15,8 +10,8 @@ import {
 } from '../lib/brouillonStructure';
 import {
   hasValidation,
+  SOURCE_AGENTS_COLLECTE,
   type ConditionChamp,
-  type FormulairePublie,
   type OptionChamp,
   type OptionsSource,
   type RegleValidation,
@@ -24,8 +19,17 @@ import {
 } from '../api/formulairesNatifs.types';
 import styles from './ReglagesChamp.module.css';
 
-/** Raccourcis pour les deux listes de référence connues du backend. */
-const SOURCES_CONNUES: Array<{ nom: string; source: OptionsSource }> = [
+/**
+ * Listes de référence servies par le backend, présentées par leur nom métier.
+ *
+ * `sites_collecte` : un site désactivé (`SiteTeinture.actif = false`, voir
+ * `features/sites`) ne doit plus être une cible de collecte possible sur
+ * `grp_a/site_code`. `fetchOptionsReference()` filtre désormais côté client
+ * (`actif !== false`) — que `/api/references/sites-collecte` le fasse déjà
+ * côté serveur reste non vérifiable ici (jeton réel requis) ; si l'API les
+ * exclut déjà, ce filtre est sans effet, donc sûr dans les deux cas.
+ */
+const SOURCES_REFERENCE: Array<{ nom: string; source: OptionsSource }> = [
   {
     nom: 'Sites de collecte',
     source: {
@@ -35,17 +39,13 @@ const SOURCES_CONNUES: Array<{ nom: string; source: OptionsSource }> = [
   },
   {
     nom: 'Agents de collecte',
-    source: {
-      mode: 'reference', resource: 'agents_collecte', endpoint: '/api/references/agents-collecte',
-      valueField: 'value', labelField: 'label', idField: 'resourceId', permission: 'collecte.create',
-    },
+    source: SOURCE_AGENTS_COLLECTE,
   },
 ];
 
 interface ReglagesChampProps {
   champ: ChampBrouillon;
   brouillon: StructureBrouillon;
-  formulaire: FormulairePublie;
   ordreSections: string[];
   onChange: (patch: Partial<ChampBrouillon>) => void;
 }
@@ -53,23 +53,19 @@ interface ReglagesChampProps {
 export function ReglagesChamp({
   champ,
   brouillon,
-  formulaire,
   ordreSections,
   onChange,
 }: ReglagesChampProps) {
-  const [codeManuel, setCodeManuel] = useState(false);
   const estChoix = champ.type === 'CHOIX_SIMPLE' || champ.type === 'CHOIX_MULTIPLE';
   const estNumerique = champ.type === 'ENTIER' || champ.type === 'DECIMAL';
 
-  const codeDejaPris =
-    champ.code !== '' && !codeDisponible(formulaire, champ.code, champ.id > 0 ? champ.id : undefined)
-    && brouillon.champs.filter((c) => c.code === champ.code && c.etat !== 'supprime').length > 1;
-
-  /* Le code suit le libellé tant que l'utilisateur ne l'a pas repris à la main :
-   * il reste lisible sans imposer une saisie technique. */
+  /* Le code technique est dérivé du libellé et jamais montré : c'est une clé
+   * interne, pas une information utile à qui édite le questionnaire. Il n'est
+   * régénéré que sur un champ neuf — le renommer sur un champ publié casserait
+   * le lien avec les réponses déjà collectées. */
   const majLibelle = (libelle: string) => {
     const patch: Partial<ChampBrouillon> = { libelle };
-    if (!codeManuel && champ.etat === 'nouveau') {
+    if (champ.etat === 'nouveau') {
       patch.code = genererCodeChamp(champ.sectionCode, libelle);
     }
     onChange(patch);
@@ -86,27 +82,6 @@ export function ReglagesChamp({
             data-champ-libelle
           />
         </FormField>
-
-        <FormField
-          label="Code"
-          error={codeDejaPris ? 'Ce code est déjà utilisé dans le formulaire.' : undefined}
-          hint={!codeManuel ? 'Dérivé du libellé.' : undefined}
-        >
-          <Input
-            value={champ.code}
-            onChange={(e) => {
-              setCodeManuel(true);
-              onChange({ code: e.target.value });
-            }}
-            className={styles.mono}
-            invalid={codeDejaPris}
-          />
-        </FormField>
-        {!codeManuel ? (
-          <button type="button" className={styles.lienDiscret} onClick={() => setCodeManuel(true)}>
-            modifier le code
-          </button>
-        ) : null}
 
         <FormField label="Texte d’aide">
           <Input
@@ -174,27 +149,11 @@ function EditeurOptions({
 }) {
   const [collageOuvert, setCollageOuvert] = useState(false);
   const [collage, setCollage] = useState('');
-  const [test, setTest] = useState<{ etat: 'idle' | 'charge' | 'ok' | 'ko'; apercu: OptionChamp[] }>({
-    etat: 'idle',
-    apercu: [],
-  });
-
   const dynamique = champ.optionsSource !== null;
 
   const majOption = (i: number, patch: Partial<OptionChamp>) => {
     const options = champ.options.map((o, idx) => (idx === i ? { ...o, ...patch } : o));
     onChange({ options });
-  };
-
-  const testerSource = async () => {
-    if (!champ.optionsSource) return;
-    setTest({ etat: 'charge', apercu: [] });
-    try {
-      const options = await fetchOptionsReference(champ.optionsSource);
-      setTest({ etat: 'ok', apercu: options.slice(0, 3) });
-    } catch {
-      setTest({ etat: 'ko', apercu: [] });
-    }
   };
 
   return (
@@ -217,7 +176,7 @@ function EditeurOptions({
           className={styles.basculeBtn}
           data-actif={dynamique ? 'true' : undefined}
           onClick={() =>
-            onChange({ optionsSource: champ.optionsSource ?? SOURCES_CONNUES[0]!.source, options: [] })
+            onChange({ optionsSource: champ.optionsSource ?? SOURCES_REFERENCE[0]!.source, options: [] })
           }
         >
           Liste dynamique
@@ -226,61 +185,23 @@ function EditeurOptions({
 
       {dynamique && champ.optionsSource ? (
         <div className={styles.champsEmpiles}>
-          <div className={styles.raccourcis}>
-            {SOURCES_CONNUES.map((s) => (
-              <button
-                key={s.source.resource}
-                type="button"
-                className={styles.raccourci}
-                onClick={() => onChange({ optionsSource: s.source })}
-              >
-                {s.nom}
-              </button>
-            ))}
-          </div>
-          {(['resource', 'endpoint', 'valueField', 'labelField', 'idField', 'permission'] as const).map(
-            (cle) => (
-              <FormField key={cle} label={cle}>
-                <Input
-                  value={champ.optionsSource![cle]}
-                  onChange={(e) =>
-                    onChange({ optionsSource: { ...champ.optionsSource!, [cle]: e.target.value } })
-                  }
-                  className={styles.mono}
-                />
-              </FormField>
-            ),
-          )}
-          <Button
-            variant="secondary"
-            size="sm"
-            iconLeft={
-              test.etat === 'charge' ? <Loader2 size={14} className={styles.spin} /> : <FlaskConical size={14} />
-            }
-            onClick={() => void testerSource()}
-          >
-            Tester l’endpoint
-          </Button>
-          {test.etat === 'ok' ? (
-            <div className={styles.testOk}>
-              <Check size={13} aria-hidden="true" />
-              <div>
-                <strong>{test.apercu.length} option(s) lues :</strong>
-                <ul className={styles.testListe}>
-                  {test.apercu.map((o) => (
-                    <li key={o.value}>
-                      <code>{o.value}</code> — {o.label}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ) : null}
-          {test.etat === 'ko' ? (
-            <p className={styles.testKo}>
-              Appel impossible — vérifiez l’endpoint et vos droits.
-            </p>
-          ) : null}
+          {/* Le mapping technique (endpoint, champs, permission) est porté par
+            * SOURCES_REFERENCE : le choisir revient à choisir une liste métier,
+            * pas à configurer un appel HTTP. */}
+          <FormField label="Liste de référence">
+            <Select
+              value={champ.optionsSource.resource}
+              onChange={(resource) => {
+                const src = SOURCES_REFERENCE.find((o) => o.source.resource === resource);
+                if (src) onChange({ optionsSource: src.source });
+              }}
+              options={SOURCES_REFERENCE.map((o) => ({ value: o.source.resource, label: o.nom }))}
+              fullWidth
+            />
+          </FormField>
+          <p className={styles.note}>
+            Les choix proposés à l’agent sont tenus à jour automatiquement à partir de cette liste.
+          </p>
         </div>
       ) : (
         <div className={styles.champsEmpiles}>

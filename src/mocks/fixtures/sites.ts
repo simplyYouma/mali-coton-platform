@@ -41,6 +41,8 @@ export const mockSites: Site[] = [
     },
     lastCollectionAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     collectionsCount: 18,
+    actif: true,
+    source: 'KOBO',
   },
   {
     id: 'site-dianeguela',
@@ -78,6 +80,8 @@ export const mockSites: Site[] = [
     },
     lastCollectionAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     collectionsCount: 22,
+    actif: true,
+    source: 'KOBO',
   },
   {
     id: 'site-galanimassiriw',
@@ -115,6 +119,8 @@ export const mockSites: Site[] = [
     },
     lastCollectionAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     collectionsCount: 14,
+    actif: true,
+    source: 'KOBO',
   },
   {
     id: 'site-djiguiyaso',
@@ -152,6 +158,8 @@ export const mockSites: Site[] = [
     },
     lastCollectionAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     collectionsCount: 16,
+    actif: true,
+    source: 'KOBO',
   },
   {
     id: 'site-ndomo',
@@ -189,5 +197,11 @@ export const mockSites: Site[] = [
     },
     lastCollectionAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
     collectionsCount: 12,
+    /* Seul site désactivé du jeu de mock, volontairement : c'est aussi le
+     * seul site assigné à l'agent de Ségou (`agents_collecte` mock) — utile
+     * pour vérifier en développement qu'un site inactif reste résoluble par
+     * nom (collectes, alertes) sans entrer dans les agrégats. */
+    actif: false,
+    source: 'KOBO',
   },
 ];

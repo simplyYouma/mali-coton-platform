@@ -487,6 +487,13 @@
   margin-left: 2px;
 }
 
+/* Spinner en ligne avec son libellé, dans l'espace contraint du popup. */
+.popupChargement {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Paramètres hors seuil — liste compacte, la valeur alignée à droite pour
  * qu'on balaie la colonne des mesures d'un seul regard. */
 .popupMesures {

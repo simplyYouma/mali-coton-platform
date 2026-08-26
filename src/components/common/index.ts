@@ -31,6 +31,26 @@ export { Spinner } from './Spinner/Spinner';
 export type { SpinnerProps } from './Spinner/Spinner';
 
 export { Skeleton } from './Skeleton/Skeleton';
+
+export { RouteProgress } from './RouteProgress/RouteProgress';
+
+export { PageLoader } from './PageLoader/PageLoader';
+export type { PageLoaderProps } from './PageLoader/PageLoader';
+
+export {
+  SkeletonTableau,
+  SkeletonGrilleCards,
+  SkeletonBandeStats,
+  SkeletonListe,
+  SkeletonSplit,
+} from './SkeletonBlocs/SkeletonBlocs';
+export type {
+  SkeletonTableauProps,
+  SkeletonGrilleCardsProps,
+  SkeletonBandeStatsProps,
+  SkeletonListeProps,
+  SkeletonSplitProps,
+} from './SkeletonBlocs/SkeletonBlocs';
 export type { SkeletonProps } from './Skeleton/Skeleton';
 
 export { FormField } from './FormField/FormField';
@@ -50,8 +70,8 @@ export type { EmptyStateProps } from './EmptyState/EmptyState';
 
 export { OfflineBanner } from './OfflineBanner/OfflineBanner';
 
-export { RoleGuard } from './RoleGuard/RoleGuard';
-export type { RoleGuardProps } from './RoleGuard/RoleGuard';
+export { AucunAcces } from './AucunAcces/AucunAcces';
+export type { AucunAccesProps } from './AucunAcces/AucunAcces';
 
 export { PageHeader } from './PageHeader/PageHeader';
 export type { PageHeaderProps } from './PageHeader/PageHeader';

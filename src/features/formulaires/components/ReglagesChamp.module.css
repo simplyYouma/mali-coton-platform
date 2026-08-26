@@ -38,19 +38,6 @@
   font-size: var(--text-xs);
 }
 
-.lienDiscret {
-  align-self: flex-start;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: var(--text-2xs);
-  color: var(--color-text-muted);
-  text-decoration: underline;
-  cursor: pointer;
-}
-.lienDiscret:hover {
-  color: var(--color-primary);
-}
 
 .note,
 .recap,
@@ -97,24 +84,6 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
-.raccourcis {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.raccourci {
-  padding: 4px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  font-size: var(--text-2xs);
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-.raccourci:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
 
 .options,
 .regles {
@@ -187,40 +156,4 @@
   flex-wrap: wrap;
 }
 
-.testOk,
-.testKo {
-  display: flex;
-  gap: 6px;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  line-height: 1.5;
-}
-.testOk {
-  background: var(--color-success-bg);
-  border: 1px solid var(--color-success-border);
-  color: var(--color-success);
-}
-.testKo {
-  margin: 0;
-  background: var(--color-danger-bg);
-  border: 1px solid var(--color-danger-border);
-  color: var(--color-danger);
-}
-.testListe {
-  margin: 4px 0 0;
-  padding-left: var(--space-4);
-}
-.testListe code {
-  font-family: var(--font-mono);
-}
 
-.spin {
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spin { animation: none; }
-}

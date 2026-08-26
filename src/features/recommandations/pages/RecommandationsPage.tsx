@@ -16,7 +16,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { exportRowsToXlsx } from '@/lib/xlsxExport';
+import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import {
   Badge,
   Button,
@@ -25,7 +25,7 @@ import {
   Input,
   Modal,
   Select,
-  Skeleton,
+  SkeletonSplit,
   StructuredText,
   Textarea,
 } from '@/components/common';
@@ -33,6 +33,7 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { useToast } from '@/app/providers/ToastProvider';
 import { useConfirm } from '@/app/providers/ConfirmProvider';
 import { useSites } from '@/features/sites/hooks/useSites';
+import type { Site } from '@/features/sites/api/site.types';
 import { useCollections } from '@/features/collection/hooks/useCollections';
 import { INDICATOR_RULES } from '@/features/collection/lib/indicatorRules';
 import { useRapportsRecommandations } from '@/features/reporting/hooks/useRapportsRecommandations';
@@ -99,7 +100,10 @@ export function RecommandationsPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const { data: page, isLoading } = useRecommandations();
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const { data: collectionsPage } = useCollections({});
   const { items: rapportRecos } = useRapportsRecommandations();
   const createMut = useCreateRecommandation();
@@ -171,8 +175,8 @@ export function RecommandationsPage() {
   const selected = mergedItems.find((m) => mergedId(m) === selectedId) ?? mergedItems[0] ?? null;
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, string>();
-    (sitesPage?.items ?? []).forEach((s) => map.set(s.id, s.shortName));
+    const map = new Map<string, Site>();
+    (sitesPage?.items ?? []).forEach((s) => map.set(s.id, s));
     return map;
   }, [sitesPage]);
 
@@ -295,7 +299,7 @@ export function RecommandationsPage() {
                   {
                     header: 'Site',
                     accessor: (r: Recommandation) =>
-                      r.siteId ? sitesById.get(r.siteId) ?? '' : 'Transversal',
+                      r.siteId ? sitesById.get(r.siteId)?.shortName ?? '' : 'Transversal',
                   },
                   { header: 'Créée le', accessor: (r: Recommandation) => r.createdAt },
                   { header: 'Échéance', accessor: (r: Recommandation) => r.dateEcheance ?? '' },
@@ -303,6 +307,7 @@ export function RecommandationsPage() {
                   { header: 'Description', accessor: (r: Recommandation) => r.description },
                 ],
                 rows: recoItems,
+                note: noteScopeSitesActifs(),
               });
             }}
           >
@@ -354,7 +359,7 @@ export function RecommandationsPage() {
       </div>
 
       {isLoading ? (
-        <Skeleton height={420} />
+        <SkeletonSplit />
       ) : mergedItems.length === 0 ? (
         <EmptyState
           icon={<ListChecks size={28} />}
@@ -409,7 +414,8 @@ export function RecommandationsPage() {
                 }
 
                 const r = m.reco;
-                const siteLabel = r.siteId ? sitesById.get(r.siteId) ?? r.siteId : 'Transversal';
+                const siteRef = r.siteId ? sitesById.get(r.siteId) : undefined;
+                const siteLabel = r.siteId ? siteRef?.shortName ?? r.siteId : 'Transversal';
                 return (
                   <button
                     key={r.id}
@@ -422,6 +428,9 @@ export function RecommandationsPage() {
                       <span className={styles.rowTitle}>{r.titre}</span>
                       <span className={styles.rowMeta}>
                         <MapPin size={11} aria-hidden="true" /> {siteLabel}
+                        {siteRef?.actif === false ? (
+                          <Badge size="sm" variant="neutral">Inactif</Badge>
+                        ) : null}
                         {r.dateEcheance ? (
                           <>
                             <span className={styles.rowDot} aria-hidden="true" />
@@ -458,7 +467,10 @@ export function RecommandationsPage() {
             ) : selected && selected.kind === 'reco' ? (
               <RecommandationDetail
                 reco={selected.reco}
-                siteName={selected.reco.siteId ? sitesById.get(selected.reco.siteId) : undefined}
+                siteName={selected.reco.siteId ? sitesById.get(selected.reco.siteId)?.shortName : undefined}
+                siteInactif={
+                  selected.reco.siteId ? sitesById.get(selected.reco.siteId)?.actif === false : false
+                }
                 onStatut={(s) => updateStatut(selected.reco, s)}
                 onDelete={() => handleDelete(selected.reco)}
                 isUpdating={updateMut.isPending}
@@ -662,12 +674,14 @@ function RapportRecommandationDetail({
 interface DetailProps {
   reco: Recommandation;
   siteName?: string;
+  /** Le site est exclu des agrégats mais reste résolu — le badge dit pourquoi. */
+  siteInactif?: boolean;
   onStatut: (s: RecommandationStatut) => void;
   onDelete: () => void;
   isUpdating: boolean;
 }
 
-function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }: DetailProps) {
+function RecommandationDetail({ reco, siteName, siteInactif, onStatut, onDelete, isUpdating }: DetailProps) {
   /* Historique métier : la fixture contient une trace par changement
    * (creation + chaque changement de statut). On la dédupliques par
    * timestamp + kind pour éviter les doublons email/sms. */
@@ -706,9 +720,12 @@ function RecommandationDetail({ reco, siteName, onStatut, onDelete, isUpdating }
           <h2 className={styles.detailTitle}>{reco.titre}</h2>
           <div className={styles.detailMeta}>
             {siteName ? (
-              <Link to={`/sites/${reco.siteId}`} className={styles.detailMetaLink}>
-                <MapPin size={12} aria-hidden="true" /> {siteName}
-              </Link>
+              <>
+                <Link to={`/sites/${reco.siteId}`} className={styles.detailMetaLink}>
+                  <MapPin size={12} aria-hidden="true" /> {siteName}
+                </Link>
+                {siteInactif ? <Badge size="sm" variant="neutral">Inactif</Badge> : null}
+              </>
             ) : (
               <span className={styles.detailMetaItem}>
                 <MapPin size={12} aria-hidden="true" /> Recommandation transversale

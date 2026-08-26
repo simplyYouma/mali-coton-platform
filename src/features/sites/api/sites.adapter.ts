@@ -6,7 +6,14 @@
  * à `Site`) continuent à fonctionner sans changement.
  */
 import type { ConformityLevel } from '@/types/common';
-import type { Site, SiteLegalStatus, SiteType } from './site.types';
+import type { Site, SiteLegalStatus, SiteSource, SiteType } from './site.types';
+
+/** Compte plateforme référencé par `creePar`/`validePar` (natif uniquement). */
+export interface CompteRefBackend {
+  id: number;
+  nomComplet: string;
+  email: string;
+}
 
 /**
  * Forme renvoyée par GET /api/site_teintures (resp. /:id) en JSON-LD.
@@ -35,6 +42,13 @@ export interface SiteTeintureBackend {
   niveauFormalisation?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  /** Absent sur les sites créés avant l'introduction du champ — voir `toSite()`. */
+  actif?: boolean | null;
+  /** Absent = KOBO (provenance historique) — voir `toSite()`. */
+  source?: string | null;
+  /** Natif uniquement — absent sur un site importé de Kobo. */
+  creePar?: CompteRefBackend | null;
+  validePar?: CompteRefBackend | null;
 }
 
 /** Élément codé (teinture, équipement, EPI, risque, formation, appui, besoin). */
@@ -205,5 +219,9 @@ export function toSite(b: SiteTeintureBackend): Site {
     },
     lastCollectionAt: null,
     collectionsCount: 0,
+    // Absent = actif (voir le commentaire sur `Site.actif`).
+    actif: b.actif ?? true,
+    // Absent = KOBO : c'était la seule provenance avant la collecte native.
+    source: b.source === 'COLLECTE_NATIVE' ? 'COLLECTE_NATIVE' : ('KOBO' as SiteSource),
   };
 }

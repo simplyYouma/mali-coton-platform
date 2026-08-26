@@ -92,6 +92,10 @@
   color: var(--color-text);
   letter-spacing: -0.005em;
 }
+.siteSource {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+}
 .refStar {
   color: var(--color-amber-hover);
 }
@@ -156,3 +160,14 @@
 .confBadgeWarn { background: #fef9c3; color: #854d0e; }
 .confBadgeCrit { background: #fee2e2; color: #991b1b; }
 .confBadgeNd   { color: var(--color-text-muted); font-size: var(--text-xs); }
+
+/* ── Actions de ligne (désactiver/réactiver, supprimer) ── */
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.deleteAction:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}

@@ -22,7 +22,7 @@ import {
   Target,
   ZoomIn,
 } from 'lucide-react';
-import { Badge, Skeleton } from '@/components/common';
+import { Badge, Skeleton, Spinner } from '@/components/common';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { useConformiteGlobale, useConformiteSite } from '@/features/conformite/hooks/useConformite';
 import type { StatutConformite } from '@/features/conformite/api/conformite';
@@ -516,7 +516,12 @@ function MesuresSite({ siteId, actif }: { siteId: string; actif: boolean }) {
   const { data, isLoading, isError } = useConformiteSite(actif ? siteId : undefined);
 
   if (isLoading) {
-    return <span className={styles.popupMeta}>Chargement des mesures…</span>;
+    return (
+      <span className={`${styles.popupMeta} ${styles.popupChargement}`}>
+        <Spinner size={14} label="Chargement des mesures" />
+        Chargement des mesures…
+      </span>
+    );
   }
   if (isError || !data) {
     return <span className={styles.popupMeta}>Mesures indisponibles pour ce site.</span>;

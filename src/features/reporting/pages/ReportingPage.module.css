@@ -433,6 +433,9 @@
 }
 
 .rapportSite {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-display);
   font-size: var(--text-h3);
   font-weight: var(--weight-semibold);
@@ -771,4 +774,12 @@
 .historyDelete:hover {
   background: var(--color-danger-bg);
   color: var(--color-danger);
+}
+
+/* Spinner aligné sur la ligne de texte qu'il accompagne. */
+.chargement {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
 }

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { ChevronRight, FileSpreadsheet, Microscope, Paperclip } from 'lucide-react';
-import { Button, EmptyState, Skeleton } from '@/components/common';
-import { exportRowsToXlsx } from '@/lib/xlsxExport';
+import { Badge, Button, EmptyState, Skeleton } from '@/components/common';
+import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import { formatDateTime } from '@/lib/format';
 import { useSites } from '@/features/sites/hooks/useSites';
+import type { Site } from '@/features/sites/api/site.types';
 import { useResultatsAnalyse } from '../hooks/useLaboratoire';
 import { TYPE_PRELEVEMENT_LABEL } from '../api/laboratoire';
 import type { ResultatAnalyse, ValeursAnalytiques } from '../api/laboratoire';
@@ -69,11 +70,12 @@ function ExpandPanel({ valeurs }: { valeurs: ValeursAnalytiques }) {
   );
 }
 
-function ResultRow({ r, sitesById }: { r: ResultatAnalyse; sitesById: Map<string, string> }) {
+function ResultRow({ r, sitesById }: { r: ResultatAnalyse; sitesById: Map<string, Site> }) {
   const [open, setOpen] = useState(false);
 
+  const site = r.siteId ? sitesById.get(r.siteId) : undefined;
   const siteName = r.siteId
-    ? (sitesById.get(r.siteId) ?? r.siteCode ?? r.siteNom ?? r.siteId)
+    ? (site?.shortName ?? r.siteCode ?? r.siteNom ?? r.siteId)
     : (r.siteCode ?? r.siteNom ?? '—');
 
   return (
@@ -94,7 +96,12 @@ function ResultRow({ r, sitesById }: { r: ResultatAnalyse; sitesById: Map<string
           </button>
         </td>
         <td className={styles.muted}>{r.echantillon || '—'}</td>
-        <td>{siteName}</td>
+        <td>
+          {siteName}
+          {site?.actif === false ? (
+            <Badge size="sm" variant="neutral" style={{ marginLeft: 6 }}>Inactif</Badge>
+          ) : null}
+        </td>
         <td className={styles.muted}>
           {(TYPE_PRELEVEMENT_LABEL[r.typePrelevement ?? ''] ?? r.typePrelevement) || '—'}
         </td>
@@ -131,7 +138,10 @@ export function AnalysesPage() {
   const [search, setSearch] = useState('');
   const [siteFilter, setSiteFilter] = useState('');
 
-  const { data: sitesPage } = useSites();
+  /* inclureInactifs : un site désactivé ne doit pas devenir orphelin à
+   * l'écran (nom vide sur une collecte/analyse/alerte existante) — seul
+   * l'agrégat l'exclut, jamais la résolution d'un libellé déjà rattaché. */
+  const { data: sitesPage } = useSites({ inclureInactifs: true });
   const { data: page, isLoading } = useResultatsAnalyse({
     site: siteFilter || undefined,
   });
@@ -139,8 +149,8 @@ export function AnalysesPage() {
   const sites = sitesPage?.items ?? [];
 
   const sitesById = useMemo(() => {
-    const map = new Map<string, string>();
-    sites.forEach((s) => map.set(s.id, s.shortName));
+    const map = new Map<string, Site>();
+    sites.forEach((s) => map.set(s.id, s));
     return map;
   }, [sites]);
 
@@ -152,7 +162,7 @@ export function AnalysesPage() {
         (r.echantillon ?? '').toLowerCase().includes(q) ||
         (r.siteNom ?? '').toLowerCase().includes(q) ||
         (r.siteCode ?? '').toLowerCase().includes(q) ||
-        (r.siteId ? sitesById.get(r.siteId) ?? '' : '').toLowerCase().includes(q),
+        (r.siteId ? sitesById.get(r.siteId)?.shortName ?? '' : '').toLowerCase().includes(q),
     );
   }, [page, search, sitesById]);
 
@@ -180,7 +190,7 @@ export function AnalysesPage() {
                 {
                   header: 'Site',
                   accessor: (r) =>
-                    (r.siteId ? sitesById.get(r.siteId) : null) ??
+                    (r.siteId ? sitesById.get(r.siteId)?.shortName : null) ??
                     r.siteCode ??
                     r.siteNom ??
                     '',
@@ -198,6 +208,7 @@ export function AnalysesPage() {
                 })),
               ],
               rows: items,
+              note: noteScopeSitesActifs(),
             })
           }
         >
