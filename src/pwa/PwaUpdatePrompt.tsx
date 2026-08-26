@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import { appliquerMiseAJour, lireEtatPwa, souscrirePwa } from './pwaRegistration';
-import styles from './PwaUpdatePrompt.module.css';
+import styles from './PwaBanner.module.css';
 
 /**
  * Banniere discrete annoncant qu'une nouvelle version est prete.

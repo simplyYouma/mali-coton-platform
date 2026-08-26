@@ -8,6 +8,7 @@ import { ConfirmProvider } from './providers/ConfirmProvider';
 import { AuthzProvider } from './providers/AuthzProvider';
 import { SessionExpiredModal } from './providers/SessionExpiredModal';
 import { PwaUpdatePrompt } from '@/pwa/PwaUpdatePrompt';
+import { PwaInstallPrompt } from '@/pwa/PwaInstallPrompt';
 import { RouteProgress } from '@/components/common';
 import { AppRoutes } from './routes';
 
@@ -27,6 +28,7 @@ export function App() {
                 <ToastViewport />
                 <SessionExpiredModal />
                 <PwaUpdatePrompt />
+                <PwaInstallPrompt />
               </AuthzProvider>
             </ConfirmProvider>
           </BrowserRouter>
