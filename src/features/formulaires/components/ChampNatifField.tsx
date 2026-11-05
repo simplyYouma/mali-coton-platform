@@ -120,11 +120,18 @@ export function ChampNatifField({
           return <EtatOptions chargement={optionsChargement} permission={champ.optionsSource.permission} />;
         }
         const val = typeof valeur === 'string' ? valeur : '';
+        /* Une valeur enregistrée hors du référentiel actuel (import antérieur,
+         * option retirée depuis) ne doit jamais disparaître de l'affichage —
+         * ni le Select ni les radios ne montrent autre chose que `options`. */
+        const optionsAffichees: OptionChamp[] =
+          val && !options.some((o) => o.value === val)
+            ? [...options, { value: val, label: `${val} (hors liste)` }]
+            : options;
         // Peu d'options : tout montrer évite un tap supplémentaire sur le terrain.
-        if (options.length > 0 && options.length <= SEUIL_RADIO) {
+        if (optionsAffichees.length > 0 && optionsAffichees.length <= SEUIL_RADIO) {
           return (
             <div className={styles.choixGroupe} role="radiogroup" aria-labelledby={`${id}-label`}>
-              {options.map((o) => (
+              {optionsAffichees.map((o) => (
                 <Radio
                   key={o.value}
                   name={champ.code}
@@ -143,9 +150,9 @@ export function ChampNatifField({
             id={id}
             value={val || null}
             onChange={(v) => onChange(v)}
-            options={options}
-            placeholder={options.length === 0 ? 'Aucune option' : 'Sélectionner…'}
-            disabled={disabled || options.length === 0}
+            options={optionsAffichees}
+            placeholder={optionsAffichees.length === 0 ? 'Aucune option' : 'Sélectionner…'}
+            disabled={disabled || optionsAffichees.length === 0}
             invalid={Boolean(erreur)}
             fullWidth
           />
@@ -157,9 +164,16 @@ export function ChampNatifField({
           return <EtatOptions chargement={optionsChargement} permission={champ.optionsSource.permission} />;
         }
         const selection = Array.isArray(valeur) ? valeur : [];
+        /* Même garde que CHOIX_SIMPLE : une sélection hors référentiel actuel
+         * doit rester visible, pas s'effacer faute de case à cocher. */
+        const horsListe = selection.filter((v) => !options.some((o) => o.value === v));
+        const optionsAffichees: OptionChamp[] =
+          horsListe.length > 0
+            ? [...options, ...horsListe.map((v) => ({ value: v, label: `${v} (hors liste)` }))]
+            : options;
         return (
           <div className={styles.choixGroupe}>
-            {options.map((o) => (
+            {optionsAffichees.map((o) => (
               <Checkbox
                 key={o.value}
                 label={o.label}

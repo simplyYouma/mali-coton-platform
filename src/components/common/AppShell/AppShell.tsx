@@ -14,13 +14,17 @@ export interface AppShellProps {
 
 export function AppShell({ sections, children }: AppShellProps) {
   const { collapsed } = useSidebar();
+  /* data-app-shell / data-app-content : points d'accroche pour les mises en
+   * page d'impression des pages (ex. Cartographie) qui masquent la navigation. */
   return (
-    <div className={clsx(styles.shell, collapsed && styles.shellCollapsed)}>
+    <div className={clsx(styles.shell, collapsed && styles.shellCollapsed)} data-app-shell>
       <Sidebar sections={sections} />
       <div className={styles.main}>
         <OfflineBanner />
         <Topbar />
-        <div className={styles.content}>{children}</div>
+        <div className={styles.content} data-app-content>
+          {children}
+        </div>
       </div>
     </div>
   );

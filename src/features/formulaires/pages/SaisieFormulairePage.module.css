@@ -258,6 +258,29 @@
   color: var(--color-text-muted);
   line-height: 1.5;
 }
+
+/* Bandeau de repli lecture seule — un écran non éditable sans explication
+ * passe pour un bug, donc jamais discret au point de passer inaperçu. */
+.bandeauLectureSeule {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-info-border);
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.bandeauLectureSeule > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.bandeauLectureSeule strong {
+  color: inherit;
+}
 .blocage > svg {
   flex-shrink: 0;
   margin-top: 1px;

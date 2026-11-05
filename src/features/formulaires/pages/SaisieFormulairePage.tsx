@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudOff,
+  Eye,
   Lock,
   Send,
 } from 'lucide-react';
@@ -21,11 +22,15 @@ import { useToast } from '@/app/providers/ToastProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useAutorisations } from '@/app/providers/AuthzProvider';
 import { PERM } from '@/features/auth/lib/permissions';
+import { HttpError } from '@/lib/http';
+import { formatDateTime, formatRelativeTime } from '@/lib/format';
 import { ChampNatifField } from '../components/ChampNatifField';
 import {
   useBrouillon,
+  useBrouillonDepuisListe,
   useFinaliserSoumission,
   useFormulairePublie,
+  useOptionsReference,
   useUploaderFichier,
 } from '../hooks/useFormulairesNatifs';
 import { lireBrouillonLocal, useBrouillonLocal } from '../hooks/useBrouillonLocal';
@@ -42,6 +47,7 @@ import {
 } from '../lib/logiqueChamp';
 import {
   isGeopoint,
+  SOURCE_AGENTS_COLLECTE,
   type FormulairePublie,
   type ReponsesFormulaire,
   type TypeChampNatif,
@@ -97,7 +103,24 @@ export function SaisieFormulairePage() {
   const {
     data: brouillonServeur,
     isLoading: chargementBrouillonServeur,
+    isError: detailRefuse,
+    error: detailErreur,
   } = useBrouillon(reprendre ? idDepuisUrl : undefined);
+  /*
+   * Repli lecture seule : constaté en production, `GET /brouillons/{id}`
+   * refuse un brouillon dont on n'est pas l'auteur (403/404 selon le cas)
+   * même pour un détenteur de `soumission.validate` — alors que `/tous` le
+   * liste avec ses réponses complètes. Le repli n'est tenté que pour ce
+   * profil : un agent sans ce droit n'a de toute façon pas accès à `/tous`,
+   * et son propre détail ne devrait jamais échouer par autorisation.
+   */
+  const repliPossible = reprendre && Boolean(idDepuisUrl) && peutValider;
+  const declencherRepli = repliPossible && !chargementBrouillonServeur && detailRefuse;
+  const {
+    data: brouillonDepuisListe,
+    isLoading: chargementRepli,
+    isError: repliEnErreur,
+  } = useBrouillonDepuisListe(idDepuisUrl, code, { enabled: declencherRepli });
   const finaliserMut = useFinaliserSoumission();
   const uploadMut = useUploaderFichier();
 
@@ -123,13 +146,33 @@ export function SaisieFormulairePage() {
   /* `true` dès le premier montage pour un nouveau brouillon (rien à charger) ;
    * `false` tant qu'une reprise n'a pas résolu serveur ET local. */
   const [hydrate, setHydrate] = useState(() => !reprendre);
+  /* 'detail' = lecture-écriture normale ; 'liste' = repli, consultation seule. */
+  const [sourceChargement, setSourceChargement] = useState<'detail' | 'liste' | null>(null);
+  const [infosRepli, setInfosRepli] = useState<{
+    soumissionId: number;
+    createdById: number | null;
+    updatedAt: string;
+  } | null>(null);
+  const lectureSeule = sourceChargement === 'liste';
 
   const brouillon = useBrouillonLocal({
     formulaireCode: code ?? '',
     userId,
     clientSubmissionId: reprendre ? idDepuisUrl : undefined,
+    lectureSeule,
   });
   const { hydrater } = brouillon;
+
+  /* Nom de l'auteur affiché dans le bandeau — même liste de référence que le
+   * champ `grp_a/agent` du formulaire, pas un second appel dédié. */
+  const { data: agentsRef } = useOptionsReference(lectureSeule ? SOURCE_AGENTS_COLLECTE : null);
+  const nomAuteurRepli = useMemo(() => {
+    if (!infosRepli?.createdById) return null;
+    return (
+      agentsRef?.find((a) => a.value === String(infosRepli.createdById))?.label ??
+      `Agent n°${infosRepli.createdById}`
+    );
+  }, [agentsRef, infosRepli]);
 
   useEffect(() => {
     if (reprendre && !idDepuisUrl) {
@@ -159,9 +202,46 @@ export function SaisieFormulairePage() {
       return;
     }
     if (chargementBrouillonServeur) return;
+    // Le détail a échoué et un repli est possible : attendre son issue avant de conclure.
+    if (detailRefuse && repliPossible && chargementRepli) return;
 
+    if (detailRefuse && import.meta.env.DEV) {
+      const statut = detailErreur instanceof HttpError ? detailErreur.status : 'réseau';
+      // Journalise le refus plutôt que de le masquer derrière le repli — un
+      // vrai problème d'API (droit, contrat backend) ne doit pas passer inaperçu.
+      console.warn(
+        `[brouillon] détail refusé (${statut}) pour ${idDepuisUrl}` +
+          (repliPossible ? ' — repli sur /brouillons/tous en lecture seule.' : ''),
+      );
+    }
+    if (detailRefuse && repliPossible && !chargementRepli && repliEnErreur) {
+      if (import.meta.env.DEV) {
+        console.warn(`[brouillon] repli /brouillons/tous également en échec pour ${code}.`);
+      }
+    }
+
+    // Repli trouvé dans /tous : consultation seule, aucune écriture.
+    if (detailRefuse && repliPossible && brouillonDepuisListe) {
+      setReponses(brouillonDepuisListe.reponses);
+      setSourceChargement('liste');
+      setInfosRepli({
+        soumissionId: brouillonDepuisListe.id,
+        createdById: brouillonDepuisListe.createdById,
+        updatedAt: brouillonDepuisListe.updatedAt || brouillonDepuisListe.createdAt,
+      });
+      const idx = premiereSectionIncomplete(formulaire, brouillonDepuisListe.reponses);
+      setIndexSection(idx);
+      setMaxSectionAtteinte(idx);
+      setHydrate(true);
+      return;
+    }
+
+    // Chemin normal : détail direct, ou repli sur la copie locale (brouillon jamais synchronisé).
     const local = lireBrouillonLocal(userId, idDepuisUrl);
-    const tServeur = brouillonServeur ? Date.parse(brouillonServeur.updatedAt || brouillonServeur.createdAt || '') || 0 : -1;
+    const tServeur =
+      !detailRefuse && brouillonServeur
+        ? Date.parse(brouillonServeur.updatedAt || brouillonServeur.createdAt || '') || 0
+        : -1;
     const tLocal = local ? Date.parse(local.majLe) || 0 : -1;
 
     const source =
@@ -176,7 +256,7 @@ export function SaisieFormulairePage() {
               longitude: local.longitude ?? null,
             }
           : null
-        : brouillonServeur
+        : !detailRefuse && brouillonServeur
           ? {
               reponses: brouillonServeur.reponses,
               majLe: brouillonServeur.updatedAt || brouillonServeur.createdAt,
@@ -190,6 +270,7 @@ export function SaisieFormulairePage() {
     if (source) {
       setReponses(source.reponses);
       hydrater(source);
+      setSourceChargement('detail');
       const idx = premiereSectionIncomplete(formulaire, source.reponses);
       setIndexSection(idx);
       setMaxSectionAtteinte(idx);
@@ -197,7 +278,24 @@ export function SaisieFormulairePage() {
       toast.error('Aucune donnée n’a été retrouvée pour ce brouillon — vous repartez d’une fiche vierge.');
     }
     setHydrate(true);
-  }, [hydrate, formulaire, userId, reprendre, idDepuisUrl, chargementBrouillonServeur, brouillonServeur, hydrater, toast]);
+  }, [
+    hydrate,
+    formulaire,
+    userId,
+    reprendre,
+    idDepuisUrl,
+    chargementBrouillonServeur,
+    detailRefuse,
+    detailErreur,
+    repliPossible,
+    chargementRepli,
+    repliEnErreur,
+    code,
+    brouillonDepuisListe,
+    brouillonServeur,
+    hydrater,
+    toast,
+  ]);
 
   const sections = useMemo(
     () => (formulaire ? [...formulaire.sections].sort((a, b) => a.ordre - b.ordre) : []),
@@ -352,17 +450,18 @@ export function SaisieFormulairePage() {
     if (!validerAvantEnvoi()) return;
 
     try {
-      // On vide le débounce : la finalisation doit porter la dernière frappe.
-      const soumissionId = await brouillon.forcerSync(
-        reponsesVisibles(formulaire, reponses),
-        coords,
-      );
+      /* Repli lecture seule : rien n'a été modifié localement — forcerSync
+       * pousserait un état reconstruit à la place de celui de l'agent.
+       * L'id numérique vient déjà de /tous, jamais du clientSubmissionId. */
+      const soumissionId = lectureSeule
+        ? infosRepli?.soumissionId
+        : await brouillon.forcerSync(reponsesVisibles(formulaire, reponses), coords);
       if (soumissionId === undefined) {
         toast.error('Le brouillon n’a pas pu être envoyé. Vérifiez votre connexion.');
         return;
       }
       await finaliserMut.mutateAsync(soumissionId);
-      brouillon.terminer();
+      if (!lectureSeule) brouillon.terminer();
       toast.success('Fiche envoyée.');
       navigate('/formulaires');
     } catch (err) {
@@ -464,24 +563,58 @@ export function SaisieFormulairePage() {
           <h1 className={styles.heroTitle}>{formulaire.titre}</h1>
         </div>
         <div className={styles.heroActions}>
-          <IndicateurSauvegarde
-            etat={brouillon.etat}
-            derniere={brouillon.derniereSauvegarde}
-            isOnline={brouillon.isOnline}
-          />
+          {lectureSeule ? null : (
+            <IndicateurSauvegarde
+              etat={brouillon.etat}
+              derniere={brouillon.derniereSauvegarde}
+              isOnline={brouillon.isOnline}
+            />
+          )}
         </div>
       </header>
 
+      {lectureSeule ? (
+        <p className={styles.bandeauLectureSeule} role="status">
+          <Eye size={14} aria-hidden="true" />
+          <span>
+            Consultation seule — le détail de ce brouillon n’a pas pu être ouvert directement ;
+            ces données viennent de la liste des brouillons
+            {nomAuteurRepli ? (
+              <>
+                {' '}
+                (auteur : <strong>{nomAuteurRepli}</strong>)
+              </>
+            ) : null}
+            {infosRepli?.updatedAt ? (
+              <>
+                {' '}
+                — dernière mise à jour {formatDateTime(infosRepli.updatedAt)} (
+                {formatRelativeTime(infosRepli.updatedAt)}). Si l’agent continue à saisir depuis,
+                cet affichage peut être périmé.
+              </>
+            ) : null}
+          </span>
+        </p>
+      ) : null}
+
       <NoteExplicative
         id="formulaires-saisie"
-        titre="Comment remplir cette fiche"
+        titre={lectureSeule ? 'Comment lire cette fiche' : 'Comment remplir cette fiche'}
         resume={
-          <>
-            La fiche est découpée en sections : vous n’en voyez qu’une à la fois, et vous avancez
-            avec <strong>Suivant</strong>. <strong>Votre saisie est enregistrée toute seule</strong>,
-            au fur et à mesure — vous pouvez fermer la page, perdre le réseau ou éteindre l’appareil
-            sans rien perdre.
-          </>
+          lectureSeule ? (
+            <>
+              La fiche est découpée en sections : vous n’en voyez qu’une à la fois, et vous
+              naviguez librement avec <strong>Suivant</strong> et <strong>Précédent</strong>.
+              Les champs ne sont pas modifiables ici — voir le bandeau ci-dessus.
+            </>
+          ) : (
+            <>
+              La fiche est découpée en sections : vous n’en voyez qu’une à la fois, et vous avancez
+              avec <strong>Suivant</strong>. <strong>Votre saisie est enregistrée toute seule</strong>,
+              au fur et à mesure — vous pouvez fermer la page, perdre le réseau ou éteindre l’appareil
+              sans rien perdre.
+            </>
+          )
         }
         etapes={[
           {
@@ -497,15 +630,19 @@ export function SaisieFormulairePage() {
             titre: 'Les champs marqués *',
             detail: 'Obligatoires. Certaines questions n’apparaissent qu’en fonction de vos réponses précédentes.',
           },
-          {
-            titre: 'L’état en haut à droite',
-            detail: (
-              <>
-                « Brouillon enregistré » = envoyé au serveur. « Enregistré sur l’appareil » = pas de
-                réseau, la saisie est gardée en local et partira au retour de la connexion.
-              </>
-            ),
-          },
+          ...(lectureSeule
+            ? []
+            : [
+                {
+                  titre: 'L’état en haut à droite',
+                  detail: (
+                    <>
+                      « Brouillon enregistré » = envoyé au serveur. « Enregistré sur l’appareil » = pas
+                      de réseau, la saisie est gardée en local et partira au retour de la connexion.
+                    </>
+                  ),
+                },
+              ]),
           {
             titre: peutValider ? 'Finaliser' : 'Enregistrer et soumettre pour validation',
             detail: peutValider
@@ -588,8 +725,9 @@ export function SaisieFormulairePage() {
                       : undefined
                   }
                   alerte={alertes[champ.code]}
+                  disabled={lectureSeule}
                   onUploadFichier={
-                    brouillon.soumissionId !== undefined
+                    !lectureSeule && brouillon.soumissionId !== undefined
                       ? async (fichier) => {
                           await uploadMut.mutateAsync({
                             soumissionId: brouillon.soumissionId!,

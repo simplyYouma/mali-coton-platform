@@ -90,6 +90,34 @@ export function useBrouillon(clientSubmissionId: string | undefined) {
 }
 
 /**
+ * Repli en lecture seule : retrouve un brouillon précis dans `/brouillons/tous`
+ * quand sa lecture directe (`useBrouillon`) est refusée — cas observé pour un
+ * détenteur de `soumission.validate` consultant le brouillon d'un agent :
+ * `GET /brouillons/{id}` semble réservé à l'auteur côté backend, alors que
+ * `/tous` (qui liste bien ce brouillon, réponses complètes incluses) lui est
+ * ouvert. N'interroge jamais les pages une à une : filtré par `formulaireCode`
+ * (connu depuis l'URL), une seule requête suffit à retrouver l'entrée parmi
+ * les quelques brouillons du modèle.
+ */
+export function useBrouillonDepuisListe(
+  clientSubmissionId: string | undefined,
+  formulaireCode: string | undefined,
+  options: { enabled?: boolean } = {},
+) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['soumissions', 'brouillons', 'repli', formulaireCode ?? null],
+    queryFn: () => fetchBrouillonsTous({ formulaireCode, page: 1, limite: 100 }),
+    enabled: Boolean(options.enabled) && Boolean(clientSubmissionId) && Boolean(formulaireCode),
+    staleTime: 60 * 1000,
+  });
+  return {
+    data: data?.items.find((b) => b.clientSubmissionId === clientSubmissionId),
+    isLoading,
+    isError,
+  };
+}
+
+/**
  * Brouillons dans la portée que l'appelant a le droit de voir.
  *
  * Le choix d'endpoint (`/brouillons` propre, ou `/brouillons/tous` paginé)

@@ -9,6 +9,10 @@
   flex-direction: column;
   gap: var(--space-5);
   height: calc(100vh - var(--topbar-height) - var(--space-7));
+  /* Zone carte imprimee : A4 paysage (297 x 210 mm) moins 10 mm de marge,
+   * moins l'en-tete d'impression. Voir @media print en fin de fichier. */
+  --print-map-width: 277mm;
+  --print-map-height: 160mm;
 }
 
 /* ───── Hero ───── */
@@ -404,6 +408,18 @@
   border-color: var(--color-primary);
 }
 
+/* Bouton Imprimer : meme style que Recentrer, sous Satellite */
+.mapPrintBtn {
+  top: calc(var(--space-3) + 72px);
+}
+.mapPrintBtn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.mapPrintBtn:disabled:hover {
+  background: var(--color-text);
+}
+
 /* ───── Popup enrichi ───── */
 .popup {
   display: flex;
@@ -590,4 +606,177 @@
   background: var(--color-primary-hover, #1a56db);
   border-color: var(--color-primary-hover, #1a56db);
   color: #fff;
+}
+
+/* ───────────────────────────────────────────────
+ * Impression — carte A4 paysage + annexe des sites
+ *
+ * `data-print-layout` est pose sur .page par MappingPage juste avant
+ * l'impression (bouton ou beforeprint) : il donne a la carte ses dimensions
+ * imprimees des l'ecran, pour que Leaflet recalcule sa taille et charge les
+ * tuiles de toute la zone. Il est retire a afterprint.
+ * ─────────────────────────────────────────────── */
+.printHeader,
+.printAnnex {
+  display: none;
+}
+
+.page[data-print-layout='true'] .layout {
+  overflow: hidden;
+}
+.page[data-print-layout='true'] .mapShell {
+  width: var(--print-map-width);
+  height: var(--print-map-height);
+  min-height: 0;
+}
+
+@media print {
+  /* Page nommee : l'emporte sur le @page A4 portrait global (globals.css). */
+  @page carto {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  :global(body):has(.page) {
+    page: carto;
+    background: var(--color-surface);
+  }
+
+  /* Navigation de l'application : sidebar, topbar, bandeau hors-ligne */
+  :global([data-app-shell]):has(.page) > :not(:has(.page)),
+  :global([data-app-shell]):has(.page) > * > :not(:has(.page)) {
+    display: none !important;
+  }
+  :global([data-app-shell]):has(.page) {
+    display: block;
+    min-height: 0;
+    background: none;
+  }
+  :global([data-app-content]):has(.page) {
+    padding: 0;
+  }
+
+  .page {
+    display: block;
+    height: auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .hero,
+  .sidePanel,
+  .panelToggle,
+  .mapRecenterBtn,
+  .mapSatelliteBtn,
+  .mapPrintBtn,
+  .mapShell :global(.leaflet-control-zoom) {
+    display: none !important;
+  }
+
+  .layout {
+    display: block;
+    overflow: visible;
+  }
+
+  .mapShell {
+    width: var(--print-map-width);
+    height: var(--print-map-height);
+    min-height: 0;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 0;
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Fondu d'apparition des tuiles Leaflet : sans cela l'impression peut
+   * figer des tuiles a mi-opacite (carte delavee). */
+  .mapShell :global(.leaflet-tile) {
+    opacity: 1 !important;
+    transition: none !important;
+  }
+  /* Attribution OSM / Esri : obligation de licence, toujours imprimee */
+  .mapShell :global(.leaflet-control-attribution) {
+    display: block !important;
+    font-size: var(--text-2xs);
+  }
+
+  .printHeader {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+  }
+  .printTitleRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+  .printTitle {
+    margin: 0;
+    font-size: var(--text-h2);
+    font-weight: var(--weight-bold);
+  }
+  .printDate {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+  .printMetaRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-4);
+    font-size: var(--text-xs);
+  }
+  .printLegend {
+    display: flex;
+    gap: var(--space-3);
+    margin: 0 0 0 auto;
+    padding: 0;
+    list-style: none;
+  }
+  .printLegend li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .printAnnex {
+    display: block;
+    break-before: page;
+    page-break-before: always;
+    font-family: var(--font-sans);
+    color: var(--color-text);
+  }
+  .printTable {
+    width: 100%;
+    margin-top: var(--space-2);
+    border-collapse: collapse;
+    font-size: var(--text-xs);
+  }
+  .printTable th,
+  .printTable td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+  }
+  .printTable th {
+    font-weight: var(--weight-semibold);
+    border-bottom-color: var(--color-border-strong);
+  }
+  .printTable td:nth-child(4),
+  .printTable td:nth-child(5) {
+    font-family: var(--font-mono);
+  }
+  .printTable .legendDot {
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .printTable tr {
+    break-inside: avoid;
+  }
+  .printTable thead {
+    display: table-header-group;
+  }
 }

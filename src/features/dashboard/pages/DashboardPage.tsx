@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Clock,
   Download,
@@ -15,10 +15,13 @@ import {
   Skeleton,
   SkeletonBandeStats,
   SkeletonTableau,
+  Tabs,
 } from '@/components/common';
 import { exportRowsToXlsx, noteScopeSitesActifs } from '@/lib/xlsxExport';
 import { useSites } from '@/features/sites/hooks/useSites';
 import { ConformiteSitePanel } from '@/features/sites/components/ConformiteSitePanel';
+import { useAutorisations } from '@/app/providers/AuthzProvider';
+import { PERM } from '@/features/auth/lib/permissions';
 import {
   useConformiteDetails,
   useConformiteGlobale,
@@ -30,7 +33,27 @@ import type {
   ConformiteSiteSummary,
   StatutConformite,
 } from '@/features/conformite/api/conformite';
+import { EnvKpi } from '../components/EnvKpi';
+import { DonutChart } from '../components/DonutChart';
+import { SitesTab } from './SitesTab';
+import { EmployesTab } from './EmployesTab';
+import type { FiltresDashboard } from '../api/dashboardStats';
 import styles from './DashboardPage.module.css';
+
+type Onglet = 'environnement' | 'sites' | 'employes';
+type Periode = '12mois' | 'annee' | 'tout';
+
+function bornesPeriode(periode: Periode): { dateDebut?: string; dateFin?: string } {
+  if (periode === 'tout') return {};
+  const auj = new Date();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  if (periode === 'annee') {
+    return { dateDebut: `${auj.getFullYear()}-01-01`, dateFin: iso(auj) };
+  }
+  const debut = new Date(auj);
+  debut.setMonth(debut.getMonth() - 12);
+  return { dateDebut: iso(debut), dateFin: iso(auj) };
+}
 
 const RISQUE_LABEL: Record<string, string> = {
   FAIBLE: 'Faible', MODERE: 'Modéré', ELEVE: 'Élevé', CRITIQUE: 'Critique',
@@ -56,8 +79,32 @@ const COMP_ORDER = ['AIR', 'EAU', 'SOL'];
 ═══════════════════════════════════════════════════════════ */
 
 export function DashboardPage() {
+  const { peut } = useAutorisations();
+  /* Sites et Employés sont conditionnés à ce droit — jamais un nom de rôle.
+   * Sans lui, les onglets ne sont pas affichés (pas grisés). */
+  const peutAnalytics = peut(PERM.analyticsRead);
+
+  const [onglet, setOnglet] = useState<Onglet>('environnement');
+  const [periode, setPeriode] = useState<Periode>('tout');
   const [siteFilter, setSiteFilter] = useState<string>('all');
   const filterSiteId = siteFilter === 'all' ? null : siteFilter;
+
+  /* La fonction d'export de l'onglet Sites/Employés actif — enregistrée par
+   * le composant d'onglet lui-même une fois ses données chargées, puisque lui
+   * seul sait quoi exporter. `() => fn` : `fn` est stockée comme état, jamais
+   * exécutée comme mise à jour fonctionnelle. */
+  const [exportOnglet, setExportOnglet] = useState<(() => void) | null>(null);
+  const registrarExport = useCallback((fn: (() => void) | null) => {
+    setExportOnglet(() => fn);
+  }, []);
+
+  const filtresStats: FiltresDashboard = useMemo(
+    () => ({
+      siteId: filterSiteId ? Number(filterSiteId) : undefined,
+      ...bornesPeriode(periode),
+    }),
+    [filterSiteId, periode],
+  );
 
   /* inclureInactifs : la résolution de nom/localisation (siteNameById,
    * locBySiteId) et le filtre par site ne doivent pas orpheliner un site
@@ -102,6 +149,10 @@ export function DashboardPage() {
   ];
 
   const handleExport = () => {
+    if (onglet !== 'environnement') {
+      exportOnglet?.();
+      return;
+    }
     if (filterSiteId && conformiteSite) {
       const rows = conformiteSite.composantes.flatMap((c) =>
         c.parametres.map((p) => ({ composante: c.code, ...p })),
@@ -145,19 +196,53 @@ export function DashboardPage() {
     }
   };
 
-  const exportDisabled = filterSiteId ? !conformiteSite : !conformiteGlobale?.sites.length;
+  const exportDisabled =
+    onglet !== 'environnement'
+      ? !exportOnglet
+      : filterSiteId
+        ? !conformiteSite
+        : !conformiteGlobale?.sites.length;
+
+  const ongletItems = [
+    { value: 'environnement' as const, label: 'Environnement' },
+    ...(peutAnalytics
+      ? [
+          { value: 'sites' as const, label: 'Sites' },
+          { value: 'employes' as const, label: 'Employés' },
+        ]
+      : []),
+  ];
 
   return (
     <div className={styles.page}>
       <header className={styles.hero} data-page-header>
         <div className={styles.heroLeft}>
           <span className={styles.heroEyebrow}>{sitesActifs.length} sites suivis · {today}</span>
-          <h1 className={styles.heroTitle}>Tableau de bord environnemental</h1>
+          <h1 className={styles.heroTitle}>Tableau de bord</h1>
           <p className={styles.heroDescription}>
-            Suivi de la conformité environnementale des sites de teinture.
+            {onglet === 'environnement'
+              ? 'Suivi de la conformité environnementale des sites de teinture.'
+              : onglet === 'sites'
+                ? 'Indicateurs des sites de teinture — géolocalisation, effectifs, équipements et conditions de sécurité.'
+                : 'Indicateurs du personnel des sites — effectifs, EPI, santé-sécurité et conditions de travail.'}
           </p>
         </div>
         <div className={styles.heroControls}>
+          {onglet !== 'environnement' ? (
+            <div className={styles.periodeSelect}>
+              <Select<Periode>
+                value={periode}
+                onChange={setPeriode}
+                options={[
+                  { value: '12mois', label: '12 derniers mois' },
+                  { value: 'annee', label: 'Année en cours' },
+                  { value: 'tout', label: 'Toute la période' },
+                ]}
+                aria-label="Filtrer par période"
+                fullWidth
+              />
+            </div>
+          ) : null}
           <Select<string>
             value={siteFilter}
             onChange={setSiteFilter}
@@ -170,21 +255,34 @@ export function DashboardPage() {
         </div>
       </header>
 
-      {filterSiteId ? (
-        <SiteEnvSection
-          siteId={filterSiteId}
-          siteName={selectedSiteName}
-          data={conformiteSite}
-          isLoading={loadingSite}
+      <Tabs value={onglet} onChange={setOnglet} items={ongletItems} variant="pill" aria-label="Onglets du tableau de bord" />
+
+      {onglet === 'environnement' ? (
+        filterSiteId ? (
+          <SiteEnvSection
+            siteId={filterSiteId}
+            siteName={selectedSiteName}
+            data={conformiteSite}
+            isLoading={loadingSite}
+          />
+        ) : (
+          <GlobalEnvSection
+            data={conformiteGlobale}
+            isLoading={loadingGlobale}
+            locBySiteId={locBySiteId}
+            paramsHorsNorme={paramsHorsNorme}
+            loadingParams={loadingParams}
+          />
+        )
+      ) : onglet === 'sites' ? (
+        <SitesTab
+          filtres={filtresStats}
+          actif
+          sitesActifsCount={sitesActifs.length}
+          onRegistrarExport={registrarExport}
         />
       ) : (
-        <GlobalEnvSection
-          data={conformiteGlobale}
-          isLoading={loadingGlobale}
-          locBySiteId={locBySiteId}
-          paramsHorsNorme={paramsHorsNorme}
-          loadingParams={loadingParams}
-        />
+        <EmployesTab filtres={filtresStats} actif onRegistrarExport={registrarExport} />
       )}
     </div>
   );
@@ -273,56 +371,6 @@ function StatutPill({ statut }: { statut: string }) {
     : statut === 'A_SURVEILLER' ? styles.pillWarn
     : styles.pillNd;
   return <span className={`${styles.envPill} ${cls}`}>{STATUT_SHORT[statut] ?? statut}</span>;
-}
-
-function DonutChart({ conformes, surveiller, critiques, total }: {
-  conformes: number; surveiller: number; critiques: number; total: number;
-}) {
-  const SIZE = 190; const C = SIZE / 2; const R = 68; const SW = 26;
-  const circ = 2 * Math.PI * R;
-  const segs = [
-    { n: critiques, color: 'var(--color-danger)' },
-    { n: surveiller, color: 'var(--color-amber)' },
-    { n: conformes, color: 'var(--color-success)' },
-  ].filter((s) => s.n > 0 && total > 0);
-  let cum = 0;
-  return (
-    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" className={styles.donutSvg}>
-      <circle cx={C} cy={C} r={R} fill="none" stroke="var(--color-border)" strokeWidth={SW} />
-      {segs.map((seg, i) => {
-        const dash = (seg.n / total) * circ;
-        const offset = circ * 0.25 - cum;
-        cum += dash;
-        return (
-          <circle key={i} cx={C} cy={C} r={R} fill="none" stroke={seg.color} strokeWidth={SW}
-            strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset={offset} />
-        );
-      })}
-      <text x={C} y={C - 6} textAnchor="middle" className={styles.donutBig}>{total}</text>
-      <text x={C} y={C + 13} textAnchor="middle" className={styles.donutSub}>Sites suivis</text>
-    </svg>
-  );
-}
-
-function EnvKpi({ icon, label, value, sub, tone, progress }: {
-  icon: ReactNode; label: string; value: string; sub: string;
-  tone: 'neutral' | 'success' | 'warning' | 'danger'; progress?: number;
-}) {
-  return (
-    <div className={styles.envKpi} data-tone={tone}>
-      <header className={styles.envKpiTop}>
-        <span className={styles.envKpiIcon} data-tone={tone}>{icon}</span>
-        <span className={styles.envKpiLabel}>{label}</span>
-      </header>
-      <span className={styles.envKpiValue}>{value}</span>
-      <span className={styles.envKpiSub}>{sub}</span>
-      {progress !== undefined ? (
-        <div className={styles.envKpiTrack}>
-          <div className={styles.envKpiBar} data-tone={tone} style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 interface GlobalEnvSectionProps {
@@ -427,8 +475,16 @@ function GlobalEnvSection({ data, isLoading, locBySiteId, paramsHorsNorme, loadi
         <div className={`${styles.envCard} ${styles.envDonutCol}`}>
           <h3 className={styles.envSubTitle}>Répartition des sites par statut</h3>
           <div className={styles.envDonutInner}>
-            <DonutChart conformes={resume.sitesConformes} surveiller={resume.sitesASurveiller}
-              critiques={resume.sitesCritiques} total={total} />
+            <DonutChart
+              segments={[
+                { valeur: resume.sitesCritiques, couleur: 'var(--color-danger)', label: 'Critiques' },
+                { valeur: resume.sitesASurveiller, couleur: 'var(--color-amber)', label: 'À surveiller' },
+                { valeur: resume.sitesConformes, couleur: 'var(--color-success)', label: 'Conformes' },
+              ]}
+              total={total}
+              centreValeur={String(total)}
+              centreLabel="Sites suivis"
+            />
             <ul className={styles.donutLegend}>
               <li className={styles.donutLegendRow}>
                 <span className={styles.ldCrit} aria-hidden="true" />

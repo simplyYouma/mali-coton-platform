@@ -222,6 +222,9 @@
   background: var(--color-success);
   transition: width var(--duration-slow) var(--ease-out);
 }
+.envKpiBar[data-tone="warning"] { background: var(--color-warning); }
+.envKpiBar[data-tone="danger"]  { background: var(--color-danger); }
+.envKpiBar[data-tone="neutral"] { background: var(--color-primary); }
 
 .envComposanteCol {
   padding: var(--space-5);
@@ -520,4 +523,197 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* ── Onglets Sites / Employés — vocabulaire étendu, mêmes tokens ── */
+
+.tabsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.periodeSelect { min-width: 180px; }
+
+/* Note de périmètre (Kobo, pas la collecte native) — discrète mais jamais
+ * masquée : un onglet qui semble vide sans elle passe pour un bug. */
+.bandeauLimite {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.bandeauLimite > svg { flex-shrink: 0; margin-top: 1px; }
+
+/* Écart kpi.totalSites vs. sites actifs connus du front — signalé, pas corrigé côté client. */
+.bandeauEcart {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.bandeauEcart > svg { flex-shrink: 0; margin-top: 1px; }
+
+/* ── Grille des cartes de classement (EPI, risques, besoins…) ── */
+.grilleClassements {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+@media (max-width: 1100px) {
+  .grilleClassements { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .grilleClassements { grid-template-columns: 1fr; }
+}
+
+.classementCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.classementHead { display: flex; flex-direction: column; gap: 2px; }
+.classementTitre {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+.classementSousTitre {
+  margin: 0;
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.classementListe { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.classementLigne { display: flex; flex-direction: column; gap: 3px; }
+.classementLigneHaut { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.classementLibelle { font-size: var(--text-xs); color: var(--color-text); font-weight: var(--weight-medium); min-width: 0; }
+.classementValeur {
+  flex-shrink: 0;
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.classementPart { margin-left: 4px; }
+
+.classementTrack {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.classementFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.classementFoot { margin: 0; font-size: var(--text-2xs); color: var(--color-text-muted); }
+.classementErreur { margin: 0; font-size: var(--text-xs); color: var(--color-danger); }
+.classementVide { margin: 0; font-size: var(--text-xs); color: var(--color-text-muted); }
+.classementSkeleton { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* ── Répartitions en barres (région, type, contrat, instruction) ── */
+.repartitionListe { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.repartitionLigne {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.repartitionLigne[data-attenue="true"] { opacity: 0.55; }
+.repartitionLibelle {
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.repartitionTrack {
+  height: 8px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.repartitionFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+.repartitionFill[data-attenue="true"] { background: var(--color-text-muted); }
+.repartitionValeur {
+  flex-shrink: 0;
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .repartitionLigne { grid-template-columns: 90px 1fr auto; }
+}
+
+/* ── Évolution mensuelle (visites / collectes) ── */
+.evolutionCard { padding: 0; }
+.evolutionCorps { padding: var(--space-4) var(--space-5) var(--space-5); }
+.evolutionBarres {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 180px;
+  padding-top: var(--space-4);
+}
+.evolutionColonne {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+.evolutionValeur {
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+.evolutionBarreTrack {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.evolutionBarre {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: var(--color-primary);
+}
+.evolutionMois {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }

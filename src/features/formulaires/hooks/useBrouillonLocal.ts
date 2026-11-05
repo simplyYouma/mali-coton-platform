@@ -144,9 +144,18 @@ interface Options {
    * nouveau brouillon : un identifiant est alors généré une fois pour toutes.
    */
   clientSubmissionId?: string;
+  /**
+   * Consultation seule (repli sur `/brouillons/tous` — voir `SaisieFormulairePage`).
+   * Neutralise `enregistrer`/`forcerSync` et la resynchronisation au retour
+   * réseau : aucune écriture localStorage, aucun appel serveur. La garde vit
+   * ici, dans la fonction elle-même — pas seulement dans le rendu — pour ne
+   * jamais pouvoir écraser les réponses de l'agent par un état reconstruit
+   * depuis la liste.
+   */
+  lectureSeule?: boolean;
 }
 
-export function useBrouillonLocal({ formulaireCode, userId, clientSubmissionId }: Options) {
+export function useBrouillonLocal({ formulaireCode, userId, clientSubmissionId, lectureSeule }: Options) {
   const { isOnline } = useOffline();
 
   const [etat, setEtat] = useState<EtatSauvegarde>('idle');
@@ -267,6 +276,8 @@ export function useBrouillonLocal({ formulaireCode, userId, clientSubmissionId }
   /** Enregistre localement puis programme la synchronisation serveur. */
   const enregistrer = useCallback(
     (reponses: ReponsesFormulaire, coords?: { lat?: number; lng?: number }) => {
+      // Consultation seule : aucune écriture, jamais — c'est la garde principale.
+      if (lectureSeule) return;
       // Jamais avant hydratation : ce serait écraser un brouillon existant par `{}`.
       if (!pret) return;
       const snapshot = ecrireLocal(reponses, true, coords);
@@ -278,27 +289,28 @@ export function useBrouillonLocal({ formulaireCode, userId, clientSubmissionId }
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => void pousser(snapshot), DELAI_AUTOSAVE);
     },
-    [pret, ecrireLocal, pousser],
+    [lectureSeule, pret, ecrireLocal, pousser],
   );
 
   /** Vide le débounce et pousse tout de suite — avant une finalisation. */
   const forcerSync = useCallback(
     async (reponses: ReponsesFormulaire, coords?: { lat?: number; lng?: number }) => {
+      if (lectureSeule) return undefined;
       if (!pret) return undefined;
       if (timerRef.current) clearTimeout(timerRef.current);
       const snapshot = ecrireLocal(reponses, true, coords);
       await pousser(snapshot);
       return soumissionIdRef.current;
     },
-    [pret, ecrireLocal, pousser],
+    [lectureSeule, pret, ecrireLocal, pousser],
   );
 
   // Retour du réseau : on repousse ce qui restait en local pour ce brouillon précis.
   useEffect(() => {
-    if (!isOnline || !pret) return;
+    if (lectureSeule || !isOnline || !pret) return;
     const local = lireBrouillonLocal(userId, idRef.current);
     if (local?.enAttenteSync) void pousser(local);
-  }, [isOnline, pret, userId, pousser]);
+  }, [lectureSeule, isOnline, pret, userId, pousser]);
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current);
